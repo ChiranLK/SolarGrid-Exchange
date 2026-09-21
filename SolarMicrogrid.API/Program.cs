@@ -31,6 +31,8 @@ builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
 builder.Services.AddSingleton<MongoDbContext>();
 builder.Services.AddHostedService<MongoDbIndexInitializer>();
 
+
+
 builder.Services.AddControllers();
 
 builder.Services.AddOpenApi();
