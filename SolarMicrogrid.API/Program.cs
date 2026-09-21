@@ -1,4 +1,8 @@
+using SolarMicrogrid.API.Settings;
+
 var builder = WebApplication.CreateBuilder(args);
+
+
 
 
 builder.Services.AddControllers();
