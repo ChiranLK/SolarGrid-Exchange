@@ -63,18 +63,18 @@ namespace SolarMicrogrid.API.Models.Entities
         
         [BsonElement("created_at")]
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
-        public DateTime CreatedAt { get; set; }
+        public DateTime CreatedAtUtc { get; set; }
 
        
         [BsonElement("updated_at")]
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
-        public DateTime UpdatedAt { get; set; }
+        public DateTime UpdatedAtUtc { get; set; }
 
     
         [BsonElement("last_login_at")]
         [BsonIgnoreIfNull]
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
-        public DateTime? LastLoginAt { get; set; }
+        public DateTime? LastLoginAtUtc { get; set; }
     }
 
     
