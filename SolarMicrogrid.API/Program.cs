@@ -1,6 +1,10 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using SolarMicrogrid.API.Data;
+using SolarMicrogrid.API.Helpers;
 using SolarMicrogrid.API.Settings;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -31,6 +35,45 @@ builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
 builder.Services.AddSingleton<MongoDbContext>();
 builder.Services.AddHostedService<MongoDbIndexInitializer>();
 
+builder.Services
+    .AddOptions<JwtSettings>()
+    .Bind(builder.Configuration.GetSection(JwtSettings.SectionName))
+    .Validate(settings => !string.IsNullOrWhiteSpace(settings.Key) && settings.Key.Length >= 32,
+        "JwtSettings:Key is required and must be at least 32 characters.")
+    .Validate(settings => !string.IsNullOrWhiteSpace(settings.Issuer),
+        "JwtSettings:Issuer is required.")
+    .Validate(settings => !string.IsNullOrWhiteSpace(settings.Audience),
+        "JwtSettings:Audience is required.")
+    .Validate(settings => settings.ExpirationMinutes > 0,
+        "JwtSettings:ExpirationMinutes must be greater than 0.")
+    .ValidateOnStart();
+
+// Creates tokens at login (used by AuthService).
+builder.Services.AddSingleton<JwtHelper>();
+
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer();
+
+builder.Services
+    .AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+    .Configure<IOptions<JwtSettings>>((options, jwtOptions) =>
+    {
+        JwtSettings settings = jwtOptions.Value;
+
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = settings.Issuer,
+            ValidateAudience = true,
+            ValidAudience = settings.Audience,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(settings.Key)),
+            ValidateLifetime = true
+        };
+    });
+
 builder.Services.AddControllers();
 
 builder.Services.AddOpenApi();
@@ -45,6 +88,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// Authentication (who are you?) must come before authorization (what may you do?).
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
