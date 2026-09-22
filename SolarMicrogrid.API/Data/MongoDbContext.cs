@@ -16,16 +16,16 @@ public sealed class MongoDbContext
         IMongoDatabase database = mongoClient.GetDatabase(settings.DatabaseName);
 
         Users = database.GetCollection<User>(settings.UsersCollectionName);
-       /// Stations = database.GetCollection<SolarStationInfo>(settings.StationsCollectionName);
-        ///Slots = database.GetCollection<EnergyBookingSlot>(settings.SlotsCollectionName);
+        Stations = database.GetCollection<SolarStationInfo>(settings.StationsCollectionName);
+        Slots = database.GetCollection<EnergyBookingSlot>(settings.SlotsCollectionName);
         ///Reservations = database.GetCollection<EnergyReservation>(settings.ReservationsCollectionName);
     }
 
     public IMongoCollection<User> Users { get; }
 
-    ///public IMongoCollection<SolarStationInfo> Stations { get; }
+    public IMongoCollection<SolarStationInfo> Stations { get; }
 
-    ///public IMongoCollection<EnergyBookingSlot> Slots { get; }
+    public IMongoCollection<EnergyBookingSlot> Slots { get; }
 
     ///public IMongoCollection<EnergyReservation> Reservations { get; }
 
