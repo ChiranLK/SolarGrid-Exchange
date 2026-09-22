@@ -78,6 +78,7 @@ builder.Services
 builder.Services.AddControllers();
 
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<StationService>();
 
 builder.Services.AddOpenApi();
 
