@@ -6,6 +6,7 @@ using MongoDB.Driver;
 using SolarMicrogrid.API.Data;
 using SolarMicrogrid.API.Helpers;
 using SolarMicrogrid.API.Settings;
+using SolarMicrogrid.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -75,6 +76,8 @@ builder.Services
     });
 
 builder.Services.AddControllers();
+
+builder.Services.AddScoped<AuthService>();
 
 builder.Services.AddOpenApi();
 
