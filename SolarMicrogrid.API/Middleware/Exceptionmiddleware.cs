@@ -8,6 +8,8 @@
  * Mapping : ConflictException     -> 409 Conflict
  *           UnauthorizedException -> 401 Unauthorized
  *           ForbiddenException     -> 403 Forbidden
+ *           NotFoundException      -> 404 Not Found
+ *           ArgumentException      -> 400 Bad Request
  *           anything else          -> 500 Internal Server Error
  * Wiring  : Add app.UseMiddleware<ExceptionMiddleware>(); in Program.cs, before
  *           app.UseAuthentication(), so it can catch exceptions from every
@@ -52,6 +54,8 @@ namespace SolarMicrogrid.API.Middleware
                 ConflictException => HttpStatusCode.Conflict,           // 409
                 UnauthorizedException => HttpStatusCode.Unauthorized,   // 401
                 ForbiddenException => HttpStatusCode.Forbidden,         // 403
+                NotFoundException => HttpStatusCode.NotFound,           // 404
+                ArgumentException => HttpStatusCode.BadRequest,         // 400
                 _ => HttpStatusCode.InternalServerError                 // 500
             };
 

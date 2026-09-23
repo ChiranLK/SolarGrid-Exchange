@@ -4,7 +4,6 @@ namespace SolarMicrogrid.API.Models.DTOs.Slots;
 
 public sealed class CreateSlotRequestDto
 {
-    [Required]
     [RegularExpression("^[a-fA-F0-9]{24}$", ErrorMessage = "StationId must be a valid MongoDB ObjectId.")]
     public string StationId { get; set; } = string.Empty;
 

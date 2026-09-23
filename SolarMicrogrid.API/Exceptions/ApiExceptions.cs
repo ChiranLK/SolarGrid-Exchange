@@ -17,4 +17,9 @@ namespace SolarMicrogrid.API.Exceptions
     {
         public ForbiddenException(string message) : base(message) { }
     }
+
+    public class NotFoundException : Exception
+    {
+        public NotFoundException(string message) : base(message) { }
+    }
 }

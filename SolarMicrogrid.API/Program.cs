@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using SolarMicrogrid.API.Data;
 using SolarMicrogrid.API.Helpers;
+using SolarMicrogrid.API.Middleware;
 using SolarMicrogrid.API.Settings;
 using SolarMicrogrid.API.Services;
 
@@ -79,6 +80,7 @@ builder.Services.AddControllers();
 
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<StationService>();
+builder.Services.AddScoped<SlotService>();
 
 builder.Services.AddOpenApi();
 
@@ -91,6 +93,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseMiddleware<ExceptionMiddleware>();
 
 // Authentication (who are you?) must come before authorization (what may you do?).
 app.UseAuthentication();
