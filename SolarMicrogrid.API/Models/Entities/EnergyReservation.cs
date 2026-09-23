@@ -101,6 +101,22 @@ public sealed class EnergyReservation
     [BsonIgnoreIfNull]
     public string? CancellationRequestFingerprintHash { get; set; }
 
+    [BsonElement("approval_request_id_hash")]
+    [BsonIgnoreIfNull]
+    public string? ApprovalRequestIdHash { get; set; }
+
+    [BsonElement("approval_request_fingerprint_hash")]
+    [BsonIgnoreIfNull]
+    public string? ApprovalRequestFingerprintHash { get; set; }
+
+    [BsonElement("rejection_request_id_hash")]
+    [BsonIgnoreIfNull]
+    public string? RejectionRequestIdHash { get; set; }
+
+    [BsonElement("rejection_request_fingerprint_hash")]
+    [BsonIgnoreIfNull]
+    public string? RejectionRequestFingerprintHash { get; set; }
+
     [BsonElement("created_at")]
     [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
     public DateTime CreatedAtUtc { get; set; }

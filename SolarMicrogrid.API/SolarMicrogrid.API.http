@@ -141,6 +141,21 @@ Content-Type: application/json
   "requestedEnergyKwh": 5.0
 }
 
+### Role-scoped reservation list with combined dashboard filters
+GET {{baseUrl}}/api/reservations?view=Pending&status=Pending&stationId={{stationId}}&page=1&pageSize=20
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Backoffice reservation search
+GET {{baseUrl}}/api/reservations?search={{targetProsumerNic}}&page=1&pageSize=20
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Authorized reservation detail
+GET {{baseUrl}}/api/reservations/{{reservationId}}
+Authorization: Bearer {{token}}
+Accept: application/json
+
 ### Active Backoffice or assigned Grid Operator creates for an eligible Prosumer
 POST {{baseUrl}}/api/reservations/staff
 Authorization: Bearer {{token}}
@@ -174,4 +189,25 @@ Content-Type: application/json
 {
   "expectedVersion": 1,
   "reason": "Plans changed before the notice cutoff."
+}
+
+### Backoffice or assigned Grid Operator approves a Pending reservation
+POST {{baseUrl}}/api/reservations/{{reservationId}}/approve
+Authorization: Bearer {{token}}
+Idempotency-Key: approve-reservation-example-001
+Content-Type: application/json
+
+{
+  "expectedVersion": 1
+}
+
+### Backoffice rejects a Pending reservation
+POST {{baseUrl}}/api/reservations/{{reservationId}}/reject
+Authorization: Bearer {{token}}
+Idempotency-Key: reject-reservation-example-001
+Content-Type: application/json
+
+{
+  "expectedVersion": 1,
+  "reason": "Reservation does not meet the documented operational requirements."
 }

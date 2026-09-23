@@ -109,6 +109,10 @@ Values are stored as strings, following the existing user and slot enum conventi
 | `CreatedByActorNic` | string | Yes | Authenticated NIC; normally identical to `ProsumerNic`. |
 | `UpdatedAtUtc` | UTC `DateTime` | Yes | Time of last successful mutation. |
 | `UpdatedByActorNic` | string | Yes | Authenticated NIC responsible for the last mutation. |
+| Approval audit fields | nullable UTC timestamp and actor NIC | No | Set only by a successful Pending-to-Approved transition. |
+| Rejection audit fields | nullable UTC timestamp, actor NIC, and reason | No | Set only by a successful Pending-to-Rejected transition. |
+| Cancellation audit fields | nullable UTC timestamp, actor NIC, and reason | No | Set only by a successful cancellation transition. |
+| Mutation request hashes | nullable strings | No | Scoped SHA-256 key/fingerprint hashes for create, latest update, cancel, approve, and reject retries; raw keys are never stored. |
 | `StatusHistory` | embedded array | Yes | Append-only transition audit; first entry records creation as `Pending`. |
 | `CompletedVerificationId` | string, nullable | No | Member 4 verification receipt used for a completed reservation; never contains the raw QR token. |
 
@@ -133,7 +137,7 @@ An exact active duplicate must also be protected against races. The implementati
 | None | Create | Prosumer | `Pending`, version 1 | Allocate requested energy once. |
 | `Pending` | Material update | Owning Prosumer | Remain `Pending`; increment version | Apply only the energy delta, or atomically move allocation between slots. |
 | `Approved` | Material update | Owning Prosumer | Change to `Pending`; increment version; invalidate old QR eligibility | Apply only the delta/move; capacity remains held by the updated reservation. |
-| `Pending` | Approve | Backoffice | `Approved`; increment version | None; capacity is already held. |
+| `Pending` | Approve | Backoffice or assigned Grid Operator | `Approved`; increment version | None; capacity is already held. |
 | `Pending` | Reject | Backoffice | `Rejected`; increment version | Release held energy once. |
 | `Pending` | Cancel | Owner or authorized staff | `Cancelled`; increment version | Release held energy once. |
 | `Approved` | Cancel | Owner or authorized staff | `Cancelled`; increment version; invalidate QR eligibility | Release held energy once. |
@@ -155,7 +159,8 @@ A material update means a changed `SlotId` or changed `RequestedEnergyKwh`. The 
 | List/view | Own reservations only | All reservations with filters | Reservations for assigned station only |
 | Update/reschedule | Own `Pending` or `Approved` reservation, subject to notice | Yes, on behalf of the owner without bypassing rules | Yes, only when both current and destination stations match the assigned station |
 | Cancel | Own `Pending` or `Approved` reservation, subject to notice | Yes, on behalf of the owner without bypassing rules | Yes, only at the operator's assigned station and without bypassing rules |
-| Approve/reject | No | Yes, `Pending` only | No |
+| Approve | No | Yes, `Pending` only | Yes, `Pending` only at the assigned station |
+| Reject | No | Yes, `Pending` only | No |
 | Obtain/display QR | Own current `Approved` reservation | Read eligibility only | No |
 | Verify QR | No | No | Yes, only for assigned station |
 | Complete | No | No | Yes, only for assigned station and a current verification receipt |
@@ -172,7 +177,7 @@ Web versus Android does not change permissions. Authorization comes from JWT cla
 - Staff creation uses a separate DTO with `TargetProsumerNic`; the API still derives `ActorNic` and role from JWT claims, validates both current user records, and records the staff actor separately from the target owner.
 - On update/cancel, the API loads the reservation, applies owner or explicit staff scope, and never trusts a client-supplied target identity.
 - Staff update uses the stored immutable `ProsumerNic`; the request cannot replace the owner. Backoffice is globally scoped, while a Grid Operator must match both the reservation's current station and the proposed slot's station.
-- Backoffice action DTOs identify only the reservation; the target remains the immutable stored `ProsumerNic`.
+- Staff decision DTOs identify only the reservation; the target remains the immutable stored `ProsumerNic`.
 - Grid Operator scope is checked using the actor's stored `AssignedStationId` against the reservation's `StationId`.
 - Audit fields record the actor, while `ProsumerNic` continues to identify the reservation owner.
 - For a Prosumer requesting another user's identifier, return 404 rather than revealing that the reservation exists. A valid reservation with an explicitly disallowed role/action returns 403.
@@ -228,11 +233,14 @@ Staff cancellation follows the same status, version, notice, idempotency, and ca
 
 ### Approve and reject
 
-- Actor must be an active Backoffice user.
-- Reservation must be `Pending`, and `ExpectedVersion` must match.
-- Approval keeps capacity held and creates new current-version QR eligibility.
-- Rejection requires a non-empty sanitized reason and releases capacity once.
+- Approval actor must be an active Backoffice user or active Grid Operator assigned to the reservation station. Rejection remains Backoffice-only.
+- Reservation must be `Pending`, `ExpectedVersion` must match, and internal capacity state must be `Held`.
+- Approval rechecks that the Prosumer is active, station is active, slot belongs to the station, schedule snapshot is unchanged, slot still fits the operating schedule, start is future and within the configured horizon, no other active reservation overlaps, and exactly one matching capacity claim exists.
+- Approval changes only the reservation status/version/audit/history and does not allocate or adjust slot capacity. The new reservation version becomes eligible for Member 4's QR workflow.
+- Rejection requires a non-empty trimmed reason of at most 500 characters, records staff audit/history, and releases the exact held claim once.
 - Approval/rejection after the scheduled start is not allowed. Handling a still-pending reservation that reaches its start requires the team confirmation listed below.
+- Both routes require actor-scoped idempotency keys. A matching same-key replay returns the persisted result; a different fingerprint or new request against a non-Pending/final status returns 409.
+- Reservation ID, expected version, Pending status, slot, quantity, and `Held` capacity state participate in compare-and-swap filters, so concurrent approve, reject, update, cancel, or completion operations cannot both win.
 
 ### Verify and complete
 
@@ -300,7 +308,7 @@ When transactions are unavailable, the service uses these durable compensation r
 - Moving slots holds the target first, performs a version-filtered reservation compare-and-swap, then releases the old claim. If the compare-and-swap fails or its result is uncertain, reconciliation reads the persisted reservation, retains its canonical slot claim, and releases only non-canonical claims.
 - A same-slot increase is held before the reservation compare-and-swap; a failed compare-and-swap reconciles back to the persisted quantity. A same-slot decrease is persisted before energy is freed, so failure preserves the original larger allocation.
 - Cancellation records `Cancelled` plus `ReleasePending` through a status/version/capacity-state compare-and-swap, removes the exact slot claim, then marks `Released`. The compare-and-swap means concurrent completion cannot also win. A crash is repaired by `ReconcileCapacityAsync`; claim absence makes release retries harmless. Reusing the same cancellation key/fingerprint returns the persisted cancellation summary after reconciliation, while another request receives a final-state or stale-version conflict.
-- Reject will use the same exact-claim release pattern when its workflow is implemented.
+- Rejection records `Rejected` plus `ReleasePending` through a Pending/version/held-state compare-and-swap, removes the exact slot claim, then marks `Released`. Same-key retries reconcile an interrupted standalone release without restoring availability twice.
 - Completed reservations retain their canonical claim as consumed capacity and use `Consumed`, not `Released`.
 - `CompensationRequired` records an inconsistency that cannot be repaired safely without operator review. The repair path never allocates missing capacity speculatively.
 
@@ -324,6 +332,8 @@ Creation keys must contain 8 through 200 printable characters. The database stor
 - A mutation is not reported successful until its idempotency receipt, reservation change, and capacity change have committed together.
 
 The implemented update path stores the latest scoped update-key hash and canonical request-fingerprint hash on the reservation in the same version-filtered mutation. An immediate same-key/same-request retry reconciles any interrupted fallback capacity step and returns the current saved summary without allocating twice; a changed fingerprint returns 409. Once a later successful update replaces these latest-update fields, replaying an older request fails the normal stale-version check rather than mutating capacity again.
+
+Approval and rejection store separate scoped key/fingerprint hashes. Approval replay returns the saved `Approved` summary without rerunning capacity logic. Rejection replay invokes exact-claim reconciliation before returning the saved `Rejected` summary; claim absence is treated as already released and never increments availability again.
 
 ## DTO contracts
 
@@ -393,6 +403,7 @@ The request does not contain a prosumer NIC, station ID, status, time, or capaci
 
 | Property | Type | Default | Scope |
 | --- | --- | --- | --- |
+| `View` | `All`, `Pending`, `Current`, `ApprovedFuture`, or `History` | `All` | All roles within their authorized data scope. |
 | `Status` | nullable enum | null | All roles within their authorized data scope. |
 | `StationId` | nullable string | null | Backoffice; Grid Operator must match assigned station. |
 | `ProsumerNic` | nullable string | null | Backoffice only; ignored/rejected for other roles. |
@@ -402,6 +413,13 @@ The request does not contain a prosumer NIC, station ID, status, time, or capaci
 | `Page` | int | 1 | Minimum 1. |
 | `PageSize` | int | 20 | Range 1 through 100. |
 
+The view definitions are server-owned and use one request-time UTC value: `Pending` is a
+Pending reservation whose end is still in the future; `Current` is Approved and has started
+but not ended; `ApprovedFuture` is Approved and has not started; and `History` contains every
+Cancelled, Rejected, and Completed record plus Pending or Approved records whose end time has
+passed. `All` never removes final records. Filters combine with the selected view, and results
+use stable newest-first ordering by `CreatedAtUtc` and then reservation `Id`.
+
 ### ReservationResponseDto
 
 | Property | Type | Notes |
@@ -409,14 +427,16 @@ The request does not contain a prosumer NIC, station ID, status, time, or capaci
 | `Id` | string | Reservation ObjectId. |
 | `ProsumerNic` | string | Owner; only returned within authorized scope. |
 | `StationId` | string | Derived station identifier. |
+| `StationName` / `StationAddress` | nullable string | Batched current station display data; IDs and schedule snapshots remain available if the referenced station is unavailable. |
 | `SlotId` | string | Selected energy slot. |
+| `SlotAvailabilityStatus` | nullable string | Current slot display state when the referenced slot is available. |
 | `ScheduledStartTimeUtc` | UTC DateTime | Stable reservation schedule snapshot. |
 | `ScheduledEndTimeUtc` | UTC DateTime | Stable reservation schedule snapshot. |
 | `RequestedEnergyKwh` | decimal | Held/consumed energy allocation. |
 | `Status` | string | Enum name. |
 | `Version` | long | Required by the next mutation. |
 | `QrEligible` | bool | Derived: current status is `Approved`; final issuance rules remain Member 4-owned. |
-| `AllowedActions` | object | Server-derived actor-scoped booleans for update, cancel, approve, reject, QR retrieval/verification, and completion. |
+| `AllowedActions` | object | Server-derived actor-scoped booleans plus a reason for every unavailable update, cancel, approve, reject, QR retrieval/verification, and completion action. |
 | `CreatedAtUtc` | UTC DateTime | Server timestamp. |
 | `UpdatedAtUtc` | UTC DateTime | Server timestamp. |
 | `LastStatusReason` | nullable string | Authorized, sanitized latest transition reason. |
@@ -445,7 +465,7 @@ All routes require JWT authentication. Both web and Android use the Prosumer mut
 | `POST /api/reservations/staff` | Backoffice globally; Grid Operator at assigned station | 201 with `Location` and response DTO | 400; 401; 403 role/station; 404 target/slot/station; 409 target eligibility/duplicate/overlap/capacity/idempotency |
 | `PUT /api/reservations/{reservationId}` | Owning Prosumer, Backoffice, or Grid Operator scoped to current and destination station | 200 | 400; 401; 403; 404; 409 notice/status/version/overlap/capacity/idempotency |
 | `POST /api/reservations/{reservationId}/cancel` | Owning Prosumer, Backoffice, or Grid Operator assigned to the reservation station | 200 | 400; 401; 403; 404; 409 notice/status/version/idempotency |
-| `POST /api/reservations/{reservationId}/approve` | Backoffice | 200 | 400; 401; 403; 404; 409 status/version/time/idempotency |
+| `POST /api/reservations/{reservationId}/approve` | Backoffice or Grid Operator assigned to the reservation station | 200 | 400; 401; 403; 404; 409 reference/status/version/time/capacity/idempotency |
 | `POST /api/reservations/{reservationId}/reject` | Backoffice | 200 | 400; 401; 403; 404; 409 status/version/time/idempotency |
 | `GET /api/reservations/{reservationId}/qr` | Owning Prosumer, Member 4 implementation | 200 QR response | 401; 403; 404; 409 not eligible |
 | `POST /api/reservations/qr/verify` | Assigned Grid Operator, Member 4 implementation | 200 verification receipt/summary | 400; 401; 403; 404; 409 invalid/replayed/expired/stale QR |
@@ -537,17 +557,16 @@ Station deactivation must remain blocked while future `Pending` or `Approved` re
 These items are not contradicted by repository code, but they cross ownership boundaries or are absent from the assignment details:
 
 1. **Energy decimal precision and rounding:** confirm allowed `RequestedEnergyKwh` scale, minimum increment, maximum, and rounding policy. Existing fields use Decimal128-backed `decimal` but specify no precision rule.
-2. **Approval owner:** this contract assigns `Pending -> Approved/Rejected` to Backoffice. Staff creation does not grant Grid Operators approval permission; confirm that Grid Operator remains excluded from approval.
-3. **Grid Operator scope:** confirm that `User.AssignedStationId` is the authoritative single-station assignment and whether multiple-station assignment is needed.
-4. **Slot edits with active reservations:** confirm with Member 2 that schedule changes are rejected while `Pending`/`Approved` reservations reference the slot, and define the operational response when a slot is disabled.
-5. **Pending at start time:** decide whether an unapproved `Pending` reservation is automatically rejected, manually rejected, or handled by another documented process, and whether its now-unusable capacity remains consumed.
-6. **Completion accounting/window:** confirm that `Completed` does not restore consumed energy, and define how early/late a Grid Operator may verify and complete.
-7. **QR details:** Member 4 must confirm token format, expiry, one-time replay store, display/check-in window, and whether verify and complete remain separate operations.
-8. **Error machine codes:** decide whether the shared API error body will remain `{status,message}` or gain a stable optional `code` across all components.
-9. **Reason limits:** confirm the proposed 500-character cancellation/rejection reason maximum and any audit-retention requirements.
-10. **MongoDB deployment:** confirm whether development/test/production use a transaction-capable replica set/sharded cluster or the implemented standalone compensation mode; run topology-specific integration and failure-injection tests before release.
-11. **Administrative override:** Backoffice and assigned Grid Operators may perform ordinary on-behalf-of updates, but there is no emergency update/cancel or bypass of the seven-day/twelve-hour rules. Any override requires a separately authorized and audited team decision.
-12. **Missing clients:** supply the actual web and Android projects before implementation so their framework, language, XML/Compose choice, session contract, and navigation patterns can be followed rather than guessed.
+2. **Grid Operator scope:** confirm that `User.AssignedStationId` is the authoritative single-station assignment and whether multiple-station assignment is needed.
+3. **Slot edits with active reservations:** confirm with Member 2 that schedule changes are rejected while `Pending`/`Approved` reservations reference the slot, and define the operational response when a slot is disabled.
+4. **Pending at start time:** decide whether an unapproved `Pending` reservation is automatically rejected, manually rejected, or handled by another documented process, and whether its now-unusable capacity remains consumed.
+5. **Completion accounting/window:** confirm that `Completed` does not restore consumed energy, and define how early/late a Grid Operator may verify and complete.
+6. **QR details:** Member 4 must confirm token format, expiry, one-time replay store, display/check-in window, and whether verify and complete remain separate operations.
+7. **Error machine codes:** decide whether the shared API error body will remain `{status,message}` or gain a stable optional `code` across all components.
+8. **Reason limits:** confirm the proposed 500-character cancellation/rejection reason maximum and any audit-retention requirements.
+9. **MongoDB deployment:** confirm whether development/test/production use a transaction-capable replica set/sharded cluster or the implemented standalone compensation mode; run topology-specific integration and failure-injection tests before release.
+10. **Administrative override:** Backoffice and assigned Grid Operators may perform ordinary on-behalf-of updates, but there is no emergency update/cancel or bypass of the seven-day/twelve-hour rules. Any override requires a separately authorized and audited team decision.
+11. **Missing clients:** supply the actual web and Android projects before implementation so their framework, language, XML/Compose choice, session contract, and navigation patterns can be followed rather than guessed.
 
 Suggested commit message if this document is later committed by the user:
 
