@@ -2,6 +2,9 @@
 @token = replace-with-a-development-jwt
 @stationId = 000000000000000000000000
 @slotId = 000000000000000000000000
+@reservationId = 000000000000000000000000
+@targetProsumerNic = 000000000V
+@idempotencyKey = create-reservation-example-001
 
 ### List stations
 GET {{baseUrl}}/api/stations?page=1&pageSize=20&isActive=true
@@ -125,4 +128,50 @@ Content-Type: application/json
 
 {
   "status": "Available"
+}
+
+### Active Prosumer creates their own Pending reservation
+POST {{baseUrl}}/api/reservations
+Authorization: Bearer {{token}}
+Idempotency-Key: {{idempotencyKey}}
+Content-Type: application/json
+
+{
+  "slotId": "{{slotId}}",
+  "requestedEnergyKwh": 5.0
+}
+
+### Active Backoffice or assigned Grid Operator creates for an eligible Prosumer
+POST {{baseUrl}}/api/reservations/staff
+Authorization: Bearer {{token}}
+Idempotency-Key: {{idempotencyKey}}-staff
+Content-Type: application/json
+
+{
+  "targetProsumerNic": "{{targetProsumerNic}}",
+  "slotId": "{{slotId}}",
+  "requestedEnergyKwh": 5.0
+}
+
+### Owner or authorized staff updates/reschedules a reservation
+PUT {{baseUrl}}/api/reservations/{{reservationId}}
+Authorization: Bearer {{token}}
+Idempotency-Key: update-reservation-example-001
+Content-Type: application/json
+
+{
+  "slotId": "{{slotId}}",
+  "requestedEnergyKwh": 7.5,
+  "expectedVersion": 1
+}
+
+### Owner, Backoffice, or assigned Grid Operator cancels a reservation
+POST {{baseUrl}}/api/reservations/{{reservationId}}/cancel
+Authorization: Bearer {{token}}
+Idempotency-Key: cancel-reservation-example-001
+Content-Type: application/json
+
+{
+  "expectedVersion": 1,
+  "reason": "Plans changed before the notice cutoff."
 }

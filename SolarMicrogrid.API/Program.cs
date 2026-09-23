@@ -1,3 +1,11 @@
+/*
+ * Program.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Configures the central API, MongoDB/JWT infrastructure, and scoped
+ *           domain services including Component 3 reservation consistency.
+ * -----------------------------------------------------------------------------
+ */
+
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
@@ -26,10 +34,13 @@ builder.Services
         "MongoSettings:SlotsCollectionName is required.")
     .Validate(settings => !string.IsNullOrWhiteSpace(settings.ReservationsCollectionName),
         "MongoSettings:ReservationsCollectionName is required.")
+    .Validate(settings => !string.IsNullOrWhiteSpace(settings.ReservationSchedulingGuardsCollectionName),
+        "MongoSettings:ReservationSchedulingGuardsCollectionName is required.")
     .ValidateOnStart();
 
 builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
 {
+    // Build one shared MongoDB client from validated configuration.
     MongoSettings settings = serviceProvider.GetRequiredService<IOptions<MongoSettings>>().Value;
     return new MongoClient(settings.ConnectionString);
 });
@@ -50,6 +61,15 @@ builder.Services
         "JwtSettings:ExpirationMinutes must be greater than 0.")
     .ValidateOnStart();
 
+builder.Services
+    .AddOptions<BusinessRules>()
+    .Bind(builder.Configuration.GetSection(BusinessRules.SectionName))
+    .Validate(rules => rules.MaxBookingDaysAhead > 0,
+        "BusinessRules:MaxBookingDaysAhead must be greater than 0.")
+    .Validate(rules => rules.MinChangeNoticeHours > 0,
+        "BusinessRules:MinChangeNoticeHours must be greater than 0.")
+    .ValidateOnStart();
+
 // Creates tokens at login (used by AuthService).
 builder.Services.AddSingleton<JwtHelper>();
 
@@ -62,6 +82,7 @@ builder.Services
     .AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
     .Configure<IOptions<JwtSettings>>((options, jwtOptions) =>
     {
+        // Apply the validated issuer, audience, signature, and lifetime checks to JWT bearer auth.
         JwtSettings settings = jwtOptions.Value;
 
         options.TokenValidationParameters = new TokenValidationParameters
@@ -81,6 +102,10 @@ builder.Services.AddControllers();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<StationService>();
 builder.Services.AddScoped<SlotService>();
+builder.Services.AddScoped<MongoTransactionRunner>();
+builder.Services.AddScoped<ReservationCapacityService>();
+builder.Services.AddScoped<ReservationSchedulingGuardService>();
+builder.Services.AddScoped<ReservationService>();
 
 builder.Services.AddOpenApi();
 
