@@ -29,6 +29,8 @@ public sealed class MongoDbContext
         Stations = database.GetCollection<SolarStationInfo>(settings.StationsCollectionName);
         Slots = database.GetCollection<EnergyBookingSlot>(settings.SlotsCollectionName);
         Reservations = database.GetCollection<EnergyReservation>(settings.ReservationsCollectionName);
+        ReservationSchedulingGuards = database.GetCollection<ReservationSchedulingGuard>(
+            settings.ReservationSchedulingGuardsCollectionName);
     }
 
     public IMongoCollection<User> Users { get; }
@@ -38,6 +40,8 @@ public sealed class MongoDbContext
     public IMongoCollection<EnergyBookingSlot> Slots { get; }
 
     public IMongoCollection<EnergyReservation> Reservations { get; }
+
+    public IMongoCollection<ReservationSchedulingGuard> ReservationSchedulingGuards { get; }
 
     public async Task EnsureIndexesAsync(CancellationToken cancellationToken)
     {

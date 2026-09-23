@@ -28,6 +28,7 @@ namespace SolarMicrogrid.API.Middleware
 
         public ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger)
         {
+            // Capture the next pipeline stage and shared logger once for each middleware instance.
             _next = next;
             _logger = logger;
         }
@@ -35,6 +36,7 @@ namespace SolarMicrogrid.API.Middleware
         
         public async Task InvokeAsync(HttpContext context)
         {
+            // Translate all downstream domain exceptions through one stable response convention.
             try
             {
                 await _next(context);
@@ -47,11 +49,14 @@ namespace SolarMicrogrid.API.Middleware
 
         private async Task HandleExceptionAsync(HttpContext context, Exception ex)
         {
+            // Map expected domain/input failures and hide unexpected internal details.
             HttpStatusCode statusCode = ex switch
             {
                 ConflictException => HttpStatusCode.Conflict,           // 409
                 UnauthorizedException => HttpStatusCode.Unauthorized,   // 401
                 ForbiddenException => HttpStatusCode.Forbidden,         // 403
+                NotFoundException => HttpStatusCode.NotFound,           // 404
+                ArgumentException => HttpStatusCode.BadRequest,         // 400
                 _ => HttpStatusCode.InternalServerError                 // 500
             };
 

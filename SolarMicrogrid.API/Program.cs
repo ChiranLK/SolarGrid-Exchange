@@ -13,6 +13,7 @@ using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using SolarMicrogrid.API.Data;
 using SolarMicrogrid.API.Helpers;
+using SolarMicrogrid.API.Middleware;
 using SolarMicrogrid.API.Settings;
 using SolarMicrogrid.API.Services;
 
@@ -33,10 +34,13 @@ builder.Services
         "MongoSettings:SlotsCollectionName is required.")
     .Validate(settings => !string.IsNullOrWhiteSpace(settings.ReservationsCollectionName),
         "MongoSettings:ReservationsCollectionName is required.")
+    .Validate(settings => !string.IsNullOrWhiteSpace(settings.ReservationSchedulingGuardsCollectionName),
+        "MongoSettings:ReservationSchedulingGuardsCollectionName is required.")
     .ValidateOnStart();
 
 builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
 {
+    // Build one shared MongoDB client from validated configuration.
     MongoSettings settings = serviceProvider.GetRequiredService<IOptions<MongoSettings>>().Value;
     return new MongoClient(settings.ConnectionString);
 });
@@ -57,6 +61,15 @@ builder.Services
         "JwtSettings:ExpirationMinutes must be greater than 0.")
     .ValidateOnStart();
 
+builder.Services
+    .AddOptions<BusinessRules>()
+    .Bind(builder.Configuration.GetSection(BusinessRules.SectionName))
+    .Validate(rules => rules.MaxBookingDaysAhead > 0,
+        "BusinessRules:MaxBookingDaysAhead must be greater than 0.")
+    .Validate(rules => rules.MinChangeNoticeHours > 0,
+        "BusinessRules:MinChangeNoticeHours must be greater than 0.")
+    .ValidateOnStart();
+
 // Creates tokens at login (used by AuthService).
 builder.Services.AddSingleton<JwtHelper>();
 
@@ -69,6 +82,7 @@ builder.Services
     .AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
     .Configure<IOptions<JwtSettings>>((options, jwtOptions) =>
     {
+        // Apply the validated issuer, audience, signature, and lifetime checks to JWT bearer auth.
         JwtSettings settings = jwtOptions.Value;
 
         options.TokenValidationParameters = new TokenValidationParameters
@@ -89,6 +103,7 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<StationService>();
 builder.Services.AddScoped<MongoTransactionRunner>();
 builder.Services.AddScoped<ReservationCapacityService>();
+builder.Services.AddScoped<ReservationSchedulingGuardService>();
 builder.Services.AddScoped<ReservationService>();
 
 builder.Services.AddOpenApi();
@@ -102,6 +117,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseMiddleware<ExceptionMiddleware>();
 
 // Authentication (who are you?) must come before authorization (what may you do?).
 app.UseAuthentication();

@@ -9,11 +9,18 @@
  * -----------------------------------------------------------------------------
  */
 
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
+using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using SolarMicrogrid.API.Data;
 using SolarMicrogrid.API.Exceptions;
+using SolarMicrogrid.API.Models.DTOs.Reservations;
 using SolarMicrogrid.API.Models.Entities;
+using SolarMicrogrid.API.Settings;
 
 namespace SolarMicrogrid.API.Services;
 
@@ -28,24 +35,847 @@ public sealed record CapacityReconciliationResult(
     int ReleasedStaleClaims,
     bool IsConsistent);
 
+public sealed record ReservationCreationResult(
+    ReservationResponseDto Reservation,
+    bool IdempotencyReplayed);
+
+internal sealed record ReservationCreationEntityResult(
+    EnergyReservation Reservation,
+    bool IdempotencyReplayed);
+
 public sealed class ReservationService
 {
+    private const string OperatingScheduleTimeZoneId = "Asia/Colombo";
+    private const int MaximumIdempotencyKeyLength = 200;
+    private const int MinimumIdempotencyKeyLength = 8;
+
     private static readonly ReservationStatus[] CapacityHoldingStatuses =
         [ReservationStatus.Pending, ReservationStatus.Approved];
+
+    private static readonly TimeZoneInfo OperatingScheduleTimeZone =
+        TimeZoneInfo.FindSystemTimeZoneById(OperatingScheduleTimeZoneId);
+
+    private static readonly Regex NicPattern = new(
+        "^([0-9]{9}[VX]|[0-9]{12})$",
+        RegexOptions.CultureInvariant);
 
     private readonly MongoDbContext _context;
     private readonly ReservationCapacityService _capacityService;
     private readonly MongoTransactionRunner _transactionRunner;
+    private readonly ReservationSchedulingGuardService _schedulingGuardService;
+    private readonly int _maximumBookingDaysAhead;
+    private readonly int _minimumChangeNoticeHours;
 
     public ReservationService(
         MongoDbContext context,
         ReservationCapacityService capacityService,
-        MongoTransactionRunner transactionRunner)
+        MongoTransactionRunner transactionRunner,
+        ReservationSchedulingGuardService schedulingGuardService,
+        IOptions<BusinessRules> businessRulesOptions)
     {
         // Reuse shared persistence and consistency services through dependency injection.
         _context = context;
         _capacityService = capacityService;
         _transactionRunner = transactionRunner;
+        _schedulingGuardService = schedulingGuardService;
+        BusinessRules rules = businessRulesOptions.Value;
+        _maximumBookingDaysAhead = rules.MaxBookingDaysAhead;
+        _minimumChangeNoticeHours = rules.MinChangeNoticeHours;
+    }
+
+    public async Task<ReservationCreationResult> CreateOwnReservationAsync(
+        string actorNic,
+        string actorRoleClaim,
+        CreateReservationRequestDto request,
+        string idempotencyKey,
+        CancellationToken cancellationToken)
+    {
+        // Derive ownership exclusively from the authenticated Prosumer claims.
+        ArgumentNullException.ThrowIfNull(request);
+        User actor = await LoadAndValidateActorAsync(
+            actorNic,
+            actorRoleClaim,
+            [UserRole.Prosumer],
+            session: null,
+            cancellationToken);
+
+        return await CreateReservationAsync(
+            actor,
+            actor.Nic,
+            request.SlotId,
+            request.RequestedEnergyKwh,
+            idempotencyKey,
+            "POST:/api/reservations",
+            cancellationToken);
+    }
+
+    public async Task<ReservationCreationResult> CreateReservationForProsumerAsync(
+        string actorNic,
+        string actorRoleClaim,
+        StaffCreateReservationRequestDto request,
+        string idempotencyKey,
+        CancellationToken cancellationToken)
+    {
+        // Permit only active staff to identify an eligible target Prosumer explicitly.
+        ArgumentNullException.ThrowIfNull(request);
+        User actor = await LoadAndValidateActorAsync(
+            actorNic,
+            actorRoleClaim,
+            [UserRole.Backoffice, UserRole.GridOperator],
+            session: null,
+            cancellationToken);
+        string targetProsumerNic = NormalizeNic(request.TargetProsumerNic, nameof(request.TargetProsumerNic));
+        await LoadAndValidateTargetProsumerAsync(
+            targetProsumerNic,
+            session: null,
+            cancellationToken);
+
+        return await CreateReservationAsync(
+            actor,
+            targetProsumerNic,
+            request.SlotId,
+            request.RequestedEnergyKwh,
+            idempotencyKey,
+            "POST:/api/reservations/staff",
+            cancellationToken);
+    }
+
+    private async Task<ReservationCreationResult> CreateReservationAsync(
+        User initialActor,
+        string targetProsumerNic,
+        string slotId,
+        decimal requestedEnergyKwh,
+        string idempotencyKey,
+        string canonicalRoute,
+        CancellationToken cancellationToken)
+    {
+        // Serialize this Prosumer's schedule while transaction or compensation creates the booking.
+        string normalizedSlotId = NormalizeObjectId(slotId, nameof(slotId));
+        ValidatePositiveEnergy(requestedEnergyKwh, nameof(requestedEnergyKwh));
+        string normalizedKey = NormalizeIdempotencyKey(idempotencyKey);
+        string requestIdHash = ComputeHash(
+            $"{initialActor.Nic}|POST|{canonicalRoute}|{normalizedKey}");
+        string fingerprintHash = ComputeHash(
+            $"{targetProsumerNic}|{normalizedSlotId}|" +
+            requestedEnergyKwh.ToString("G29", CultureInfo.InvariantCulture));
+        ReservationSchedulingLease lease = await _schedulingGuardService.AcquireAsync(
+            targetProsumerNic,
+            cancellationToken);
+
+        try
+        {
+            DateTime serverNowUtc = DateTime.UtcNow;
+            ConsistencyExecutionResult<ReservationCreationEntityResult> execution;
+            try
+            {
+                execution = await _transactionRunner.ExecuteAsync(
+                    (session, token) => CreateReservationCoreAsync(
+                        initialActor.Nic,
+                        initialActor.Role,
+                        targetProsumerNic,
+                        normalizedSlotId,
+                        requestedEnergyKwh,
+                        requestIdHash,
+                        fingerprintHash,
+                        serverNowUtc,
+                        session,
+                        useCompensation: false,
+                        token),
+                    token => CreateReservationCoreAsync(
+                        initialActor.Nic,
+                        initialActor.Role,
+                        targetProsumerNic,
+                        normalizedSlotId,
+                        requestedEnergyKwh,
+                        requestIdHash,
+                        fingerprintHash,
+                        serverNowUtc,
+                        session: null,
+                        useCompensation: true,
+                        token),
+                    cancellationToken);
+            }
+            catch (MongoWriteException exception)
+                when (exception.WriteError.Category == ServerErrorCategory.DuplicateKey)
+            {
+                EnergyReservation? conflictingCreation =
+                    await FindByCreationRequestHashAsync(
+                        requestIdHash,
+                        session: null,
+                        cancellationToken);
+                if (conflictingCreation is not null)
+                {
+                    ValidateCreationFingerprint(conflictingCreation, fingerprintHash);
+                    await ValidateCreationReferencesAsync(
+                        conflictingCreation,
+                        initialActor,
+                        serverNowUtc,
+                        session: null,
+                        cancellationToken);
+                    await ResumeCreationHoldAsync(
+                        conflictingCreation,
+                        session: null,
+                        cancellationToken);
+                    execution = new ConsistencyExecutionResult<ReservationCreationEntityResult>(
+                        new ReservationCreationEntityResult(
+                            conflictingCreation,
+                            IdempotencyReplayed: true),
+                        UsedTransaction: false,
+                        UsedCompensation: true);
+                }
+                else
+                {
+                    throw new ConflictException(
+                        "A duplicate or overlapping active reservation was created concurrently.");
+                }
+            }
+
+            ReservationResponseDto response = MapToResponse(
+                execution.Value.Reservation,
+                initialActor,
+                serverNowUtc);
+            return new ReservationCreationResult(
+                response,
+                execution.Value.IdempotencyReplayed);
+        }
+        finally
+        {
+            await _schedulingGuardService.ReleaseAsync(lease, CancellationToken.None);
+        }
+    }
+
+    private async Task<ReservationCreationEntityResult> CreateReservationCoreAsync(
+        string actorNic,
+        UserRole expectedActorRole,
+        string targetProsumerNic,
+        string slotId,
+        decimal requestedEnergyKwh,
+        string requestIdHash,
+        string fingerprintHash,
+        DateTime serverNowUtc,
+        IClientSessionHandle? session,
+        bool useCompensation,
+        CancellationToken cancellationToken)
+    {
+        // Revalidate identities and either replay, resume, or atomically start one creation.
+        User actor = await LoadAndValidateActorAsync(
+            actorNic,
+            expectedActorRole.ToString(),
+            expectedActorRole == UserRole.Prosumer
+                ? [UserRole.Prosumer]
+                : [UserRole.Backoffice, UserRole.GridOperator],
+            session,
+            cancellationToken);
+        EnergyReservation? existing = await FindByCreationRequestHashAsync(
+            requestIdHash,
+            session,
+            cancellationToken);
+        if (existing is not null)
+        {
+            ValidateCreationFingerprint(existing, fingerprintHash);
+            if (existing.CapacityState != ReservationCapacityState.Held)
+            {
+                await LoadAndValidateTargetProsumerAsync(
+                    targetProsumerNic,
+                    session,
+                    cancellationToken);
+            }
+
+            await ValidateCreationReferencesAsync(existing, actor, serverNowUtc, session, cancellationToken);
+            await ResumeCreationHoldAsync(existing, session, cancellationToken);
+            return new ReservationCreationEntityResult(existing, IdempotencyReplayed: true);
+        }
+
+        await LoadAndValidateTargetProsumerAsync(
+            targetProsumerNic,
+            session,
+            cancellationToken);
+
+        EnergyBookingSlot slot = await LoadSlotAsync(slotId, session, cancellationToken);
+        SolarStationInfo station = await LoadStationAsync(slot.StationId, session, cancellationToken);
+        ValidateCreationTarget(actor, station, slot, requestedEnergyKwh, serverNowUtc);
+        await ValidateNoDuplicateOrOverlapAsync(
+            targetProsumerNic,
+            slot.Id,
+            slot.StartTimeUtc,
+            slot.EndTimeUtc,
+            excludedReservationId: null,
+            session,
+            cancellationToken);
+
+        EnergyReservation reservation = BuildPendingReservation(
+            actor,
+            targetProsumerNic,
+            station,
+            slot,
+            requestedEnergyKwh,
+            requestIdHash,
+            fingerprintHash,
+            serverNowUtc);
+
+        try
+        {
+            await InsertReservationAsync(reservation, session, cancellationToken);
+        }
+        catch (MongoWriteException exception)
+            when (useCompensation &&
+                  exception.WriteError.Category == ServerErrorCategory.DuplicateKey)
+        {
+            EnergyReservation? racedReplay = await FindByCreationRequestHashAsync(
+                requestIdHash,
+                session: null,
+                cancellationToken);
+            if (racedReplay is null)
+            {
+                throw new ConflictException(
+                    "The prosumer already has an active reservation for this slot.");
+            }
+
+            ValidateCreationFingerprint(racedReplay, fingerprintHash);
+            await ResumeCreationHoldAsync(racedReplay, session: null, cancellationToken);
+            return new ReservationCreationEntityResult(racedReplay, IdempotencyReplayed: true);
+        }
+
+        try
+        {
+            await ResumeCreationHoldAsync(reservation, session, cancellationToken);
+            return new ReservationCreationEntityResult(reservation, IdempotencyReplayed: false);
+        }
+        catch when (useCompensation)
+        {
+            await CleanupFailedCreationAsync(reservation, CancellationToken.None);
+            throw;
+        }
+    }
+
+    private async Task ResumeCreationHoldAsync(
+        EnergyReservation reservation,
+        IClientSessionHandle? session,
+        CancellationToken cancellationToken)
+    {
+        // Resume a persisted provisional create and make the embedded slot claim exactly once.
+        if (reservation.CapacityState == ReservationCapacityState.Held)
+        {
+            return;
+        }
+
+        if (reservation.CapacityState != ReservationCapacityState.HoldPending)
+        {
+            throw new ConflictException(
+                "The previous creation request is not in a resumable capacity state.");
+        }
+
+        await _capacityService.HoldCapacityAsync(reservation, session, cancellationToken);
+        FilterDefinition<EnergyReservation> filter = Builders<EnergyReservation>.Filter.And(
+            Builders<EnergyReservation>.Filter.Eq(item => item.Id, reservation.Id),
+            Builders<EnergyReservation>.Filter.Eq(
+                item => item.CapacityState,
+                ReservationCapacityState.HoldPending),
+            Builders<EnergyReservation>.Filter.Eq(
+                item => item.CreationRequestIdHash,
+                reservation.CreationRequestIdHash));
+        UpdateDefinition<EnergyReservation> update = Builders<EnergyReservation>.Update
+            .Set(item => item.CapacityState, ReservationCapacityState.Held)
+            .Set(item => item.CapacityClaimVersion, reservation.Version);
+        UpdateResult updateResult = session is null
+            ? await _context.Reservations.UpdateOneAsync(filter, update, cancellationToken: cancellationToken)
+            : await _context.Reservations.UpdateOneAsync(
+                session,
+                filter,
+                update,
+                cancellationToken: cancellationToken);
+
+        if (updateResult.ModifiedCount == 0)
+        {
+            EnergyReservation persisted = await LoadReservationAsync(
+                reservation.Id,
+                session,
+                cancellationToken);
+            if (persisted.CapacityState != ReservationCapacityState.Held)
+            {
+                throw new ConflictException(
+                    "The reservation creation state changed while capacity was being held.");
+            }
+        }
+
+        reservation.CapacityState = ReservationCapacityState.Held;
+        reservation.CapacityClaimVersion = reservation.Version;
+    }
+
+    private async Task CleanupFailedCreationAsync(
+        EnergyReservation reservation,
+        CancellationToken cancellationToken)
+    {
+        // Remove only an unallocated provisional reservation; otherwise retain it for safe retry repair.
+        IReadOnlyList<SlotCapacityClaimSnapshot> claims = await _capacityService.FindClaimsAsync(
+            reservation.Id,
+            session: null,
+            cancellationToken);
+        if (claims.Count != 0)
+        {
+            return;
+        }
+
+        FilterDefinition<EnergyReservation> filter = Builders<EnergyReservation>.Filter.And(
+            Builders<EnergyReservation>.Filter.Eq(item => item.Id, reservation.Id),
+            Builders<EnergyReservation>.Filter.Eq(
+                item => item.CapacityState,
+                ReservationCapacityState.HoldPending));
+        await _context.Reservations.DeleteOneAsync(filter, cancellationToken);
+    }
+
+    private async Task<User> LoadAndValidateActorAsync(
+        string actorNic,
+        string roleClaim,
+        IReadOnlyCollection<UserRole> allowedRoles,
+        IClientSessionHandle? session,
+        CancellationToken cancellationToken)
+    {
+        // Match authenticated claims to the current active user before authorizing a mutation.
+        string normalizedNic = NormalizeNic(actorNic, nameof(actorNic));
+        FilterDefinition<User> filter = Builders<User>.Filter.Eq(user => user.Nic, normalizedNic);
+        User? actor = session is null
+            ? await _context.Users.Find(filter).FirstOrDefaultAsync(cancellationToken)
+            : await _context.Users.Find(session, filter).FirstOrDefaultAsync(cancellationToken);
+
+        if (actor is null)
+        {
+            throw new UnauthorizedException("The authenticated user no longer exists.");
+        }
+
+        if (!Enum.TryParse(roleClaim, ignoreCase: false, out UserRole claimedRole) ||
+            claimedRole != actor.Role)
+        {
+            throw new ForbiddenException("The authenticated role does not match the current user record.");
+        }
+
+        if (actor.Status != UserStatus.Active)
+        {
+            throw new ForbiddenException("Only active users may create reservations.");
+        }
+
+        if (!allowedRoles.Contains(actor.Role))
+        {
+            throw new ForbiddenException("This user role cannot perform this reservation action.");
+        }
+
+        return actor;
+    }
+
+    private async Task<User> LoadAndValidateTargetProsumerAsync(
+        string targetProsumerNic,
+        IClientSessionHandle? session,
+        CancellationToken cancellationToken)
+    {
+        // Require the immutable reservation owner to be an existing active Prosumer.
+        string normalizedNic = NormalizeNic(targetProsumerNic, nameof(targetProsumerNic));
+        FilterDefinition<User> filter = Builders<User>.Filter.Eq(user => user.Nic, normalizedNic);
+        User? prosumer = session is null
+            ? await _context.Users.Find(filter).FirstOrDefaultAsync(cancellationToken)
+            : await _context.Users.Find(session, filter).FirstOrDefaultAsync(cancellationToken);
+
+        if (prosumer is null)
+        {
+            throw new NotFoundException("The target prosumer does not exist.");
+        }
+
+        if (prosumer.Role != UserRole.Prosumer || prosumer.Status != UserStatus.Active)
+        {
+            throw new ConflictException("The target user is not an eligible active prosumer.");
+        }
+
+        return prosumer;
+    }
+
+    private async Task ValidateCreationReferencesAsync(
+        EnergyReservation reservation,
+        User actor,
+        DateTime serverNowUtc,
+        IClientSessionHandle? session,
+        CancellationToken cancellationToken)
+    {
+        // Recheck replayed references and actor station scope without reallocating capacity.
+        if (reservation.CapacityState == ReservationCapacityState.Held)
+        {
+            ValidateStaffStationScope(actor, reservation.StationId);
+            return;
+        }
+
+        EnergyBookingSlot slot = await LoadSlotAsync(reservation.SlotId, session, cancellationToken);
+        SolarStationInfo station = await LoadStationAsync(reservation.StationId, session, cancellationToken);
+        if (!string.Equals(slot.StationId, station.Id, StringComparison.Ordinal))
+        {
+            throw new ConflictException("The selected slot does not belong to the selected station.");
+        }
+
+        ValidateStaffStationScope(actor, station.Id);
+        IReadOnlyList<SlotCapacityClaimSnapshot> claims =
+            await _capacityService.FindClaimsAsync(
+                reservation.Id,
+                session,
+                cancellationToken);
+        SlotCapacityClaimSnapshot? canonicalClaim = claims.SingleOrDefault(
+            claim => claim.SlotId == reservation.SlotId);
+        if (canonicalClaim is null)
+        {
+            ValidateCreationTarget(actor, station, slot, reservation.RequestedEnergyKwh, serverNowUtc);
+        }
+        else if (canonicalClaim.ReservationVersion != reservation.Version ||
+                 canonicalClaim.EnergyKwh != reservation.RequestedEnergyKwh)
+        {
+            throw new ConflictException(
+                "The interrupted reservation capacity claim requires reconciliation.");
+        }
+    }
+
+    private void ValidateCreationTarget(
+        User actor,
+        SolarStationInfo station,
+        EnergyBookingSlot slot,
+        decimal requestedEnergyKwh,
+        DateTime serverNowUtc)
+    {
+        // Enforce station, slot, schedule, horizon, unit, and staff-scope rules from current data.
+        if (!station.IsActive)
+        {
+            throw new ConflictException("Reservations cannot be created for an inactive station.");
+        }
+
+        if (!string.Equals(slot.StationId, station.Id, StringComparison.Ordinal))
+        {
+            throw new ConflictException("The selected slot does not belong to the selected station.");
+        }
+
+        ValidateStaffStationScope(actor, station.Id);
+        if (slot.AvailabilityStatus != SlotAvailabilityStatus.Available)
+        {
+            throw new ConflictException("The selected slot is not available for reservation.");
+        }
+
+        if (slot.StartTimeUtc <= serverNowUtc)
+        {
+            throw new ConflictException("The selected slot must start in the future.");
+        }
+
+        if (slot.StartTimeUtc > serverNowUtc.AddDays(_maximumBookingDaysAhead))
+        {
+            throw new ConflictException(
+                $"Reservations cannot be scheduled more than {_maximumBookingDaysAhead} days ahead.");
+        }
+
+        if (requestedEnergyKwh > slot.TotalCapacityKwh)
+        {
+            throw new ArgumentException(
+                "Requested energy cannot exceed the slot's total energy capacity.",
+                nameof(requestedEnergyKwh));
+        }
+
+        ValidateSlotFitsOperatingSchedule(station, slot.StartTimeUtc, slot.EndTimeUtc);
+    }
+
+    private static void ValidateStaffStationScope(User actor, string stationId)
+    {
+        // Limit Grid Operators to their assigned station while Backoffice remains globally scoped.
+        if (actor.Role == UserRole.GridOperator &&
+            !string.Equals(actor.AssignedStationId, stationId, StringComparison.Ordinal))
+        {
+            throw new ForbiddenException(
+                "Grid Operators may create reservations only for their assigned station.");
+        }
+    }
+
+    private async Task<EnergyBookingSlot> LoadSlotAsync(
+        string slotId,
+        IClientSessionHandle? session,
+        CancellationToken cancellationToken)
+    {
+        // Resolve the selected Member 2 slot without accepting duplicated client schedule data.
+        FilterDefinition<EnergyBookingSlot> filter =
+            Builders<EnergyBookingSlot>.Filter.Eq(slot => slot.Id, slotId);
+        EnergyBookingSlot? slot = session is null
+            ? await _context.Slots.Find(filter).FirstOrDefaultAsync(cancellationToken)
+            : await _context.Slots.Find(session, filter).FirstOrDefaultAsync(cancellationToken);
+        return slot ?? throw new NotFoundException("The selected slot does not exist.");
+    }
+
+    private async Task<SolarStationInfo> LoadStationAsync(
+        string stationId,
+        IClientSessionHandle? session,
+        CancellationToken cancellationToken)
+    {
+        // Resolve the slot's current station so activation and schedule are server-owned.
+        FilterDefinition<SolarStationInfo> filter =
+            Builders<SolarStationInfo>.Filter.Eq(station => station.Id, stationId);
+        SolarStationInfo? station = session is null
+            ? await _context.Stations.Find(filter).FirstOrDefaultAsync(cancellationToken)
+            : await _context.Stations.Find(session, filter).FirstOrDefaultAsync(cancellationToken);
+        return station ?? throw new NotFoundException("The selected station does not exist.");
+    }
+
+    private async Task<EnergyReservation?> FindByCreationRequestHashAsync(
+        string requestIdHash,
+        IClientSessionHandle? session,
+        CancellationToken cancellationToken)
+    {
+        // Find the durable creation result for a scoped idempotency key without storing the key itself.
+        FilterDefinition<EnergyReservation> filter =
+            Builders<EnergyReservation>.Filter.Eq(
+                reservation => reservation.CreationRequestIdHash,
+                requestIdHash);
+        return session is null
+            ? await _context.Reservations.Find(filter).FirstOrDefaultAsync(cancellationToken)
+            : await _context.Reservations.Find(session, filter).FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private async Task InsertReservationAsync(
+        EnergyReservation reservation,
+        IClientSessionHandle? session,
+        CancellationToken cancellationToken)
+    {
+        // Persist the Pending reservation through the caller's transaction when one is available.
+        if (session is null)
+        {
+            await _context.Reservations.InsertOneAsync(
+                reservation,
+                cancellationToken: cancellationToken);
+            return;
+        }
+
+        await _context.Reservations.InsertOneAsync(
+            session,
+            reservation,
+            cancellationToken: cancellationToken);
+    }
+
+    private static EnergyReservation BuildPendingReservation(
+        User actor,
+        string targetProsumerNic,
+        SolarStationInfo station,
+        EnergyBookingSlot slot,
+        decimal requestedEnergyKwh,
+        string requestIdHash,
+        string fingerprintHash,
+        DateTime serverNowUtc)
+    {
+        // Build server-owned identity, status, schedule snapshot, audit, and idempotency fields.
+        var reservation = new EnergyReservation
+        {
+            Id = ObjectId.GenerateNewId().ToString(),
+            ProsumerNic = targetProsumerNic,
+            StationId = station.Id,
+            SlotId = slot.Id,
+            ScheduledStartTimeUtc = slot.StartTimeUtc,
+            ScheduledEndTimeUtc = slot.EndTimeUtc,
+            RequestedEnergyKwh = requestedEnergyKwh,
+            Status = ReservationStatus.Pending,
+            Version = 1,
+            CapacityState = ReservationCapacityState.HoldPending,
+            CapacityClaimVersion = 0,
+            CreationRequestIdHash = requestIdHash,
+            CreationRequestFingerprintHash = fingerprintHash,
+            CreatedAtUtc = serverNowUtc,
+            CreatedByActorNic = actor.Nic,
+            UpdatedAtUtc = serverNowUtc,
+            UpdatedByActorNic = actor.Nic
+        };
+        reservation.StatusHistory.Add(new ReservationStatusHistoryEntry
+        {
+            FromStatus = null,
+            ToStatus = ReservationStatus.Pending,
+            ChangedAtUtc = serverNowUtc,
+            ActorNic = actor.Nic,
+            ActorRole = actor.Role,
+            Version = reservation.Version
+        });
+        return reservation;
+    }
+
+    private ReservationResponseDto MapToResponse(
+        EnergyReservation reservation,
+        User actor,
+        DateTime serverNowUtc)
+    {
+        // Project persisted state plus actor-scoped actions without exposing internal hashes or counters.
+        bool ownerProsumer = actor.Role == UserRole.Prosumer &&
+            string.Equals(actor.Nic, reservation.ProsumerNic, StringComparison.Ordinal);
+        bool noticeSatisfied = reservation.ScheduledStartTimeUtc - serverNowUtc >=
+            TimeSpan.FromHours(_minimumChangeNoticeHours);
+        bool mutable = StatusHoldsCapacity(reservation.Status);
+        bool backofficeCanDecide = actor.Role == UserRole.Backoffice &&
+            reservation.Status == ReservationStatus.Pending &&
+            reservation.ScheduledStartTimeUtc > serverNowUtc;
+        bool assignedGridOperator = actor.Role == UserRole.GridOperator &&
+            string.Equals(actor.AssignedStationId, reservation.StationId, StringComparison.Ordinal);
+
+        return new ReservationResponseDto
+        {
+            Id = reservation.Id,
+            ProsumerNic = reservation.ProsumerNic,
+            StationId = reservation.StationId,
+            SlotId = reservation.SlotId,
+            ScheduledStartTimeUtc = reservation.ScheduledStartTimeUtc,
+            ScheduledEndTimeUtc = reservation.ScheduledEndTimeUtc,
+            RequestedEnergyKwh = reservation.RequestedEnergyKwh,
+            Status = reservation.Status.ToString(),
+            Version = reservation.Version,
+            QrEligible = reservation.Status == ReservationStatus.Approved,
+            AllowedActions = new ReservationAllowedActionsDto
+            {
+                CanUpdate = ownerProsumer && mutable && noticeSatisfied,
+                CanCancel = ownerProsumer && mutable && noticeSatisfied,
+                CanApprove = backofficeCanDecide,
+                CanReject = backofficeCanDecide,
+                CanGetQr = ownerProsumer && reservation.Status == ReservationStatus.Approved,
+                CanVerifyQr = assignedGridOperator && reservation.Status == ReservationStatus.Approved,
+                CanComplete = false
+            },
+            CreatedAtUtc = reservation.CreatedAtUtc,
+            CreatedByActorNic = reservation.CreatedByActorNic,
+            UpdatedAtUtc = reservation.UpdatedAtUtc,
+            UpdatedByActorNic = reservation.UpdatedByActorNic,
+            ApprovedAtUtc = reservation.ApprovedAtUtc,
+            ApprovedByActorNic = reservation.ApprovedByActorNic,
+            RejectedAtUtc = reservation.RejectedAtUtc,
+            RejectedByActorNic = reservation.RejectedByActorNic,
+            RejectionReason = reservation.RejectionReason,
+            CancelledAtUtc = reservation.CancelledAtUtc,
+            CancelledByActorNic = reservation.CancelledByActorNic,
+            CancellationReason = reservation.CancellationReason,
+            CompletedAtUtc = reservation.CompletedAtUtc,
+            CompletedByActorNic = reservation.CompletedByActorNic,
+            CompletedVerificationId = reservation.CompletedVerificationId,
+            StatusHistory = reservation.StatusHistory
+                .Select(entry => new ReservationStatusHistoryEntryDto
+                {
+                    FromStatus = entry.FromStatus?.ToString(),
+                    ToStatus = entry.ToStatus.ToString(),
+                    ChangedAtUtc = entry.ChangedAtUtc,
+                    ActorNic = entry.ActorNic,
+                    ActorRole = entry.ActorRole.ToString(),
+                    Version = entry.Version,
+                    Reason = entry.Reason
+                })
+                .ToList()
+        };
+    }
+
+    private static void ValidateCreationFingerprint(
+        EnergyReservation reservation,
+        string fingerprintHash)
+    {
+        // Reject reuse of one idempotency key for a different target, slot, or quantity.
+        if (!string.Equals(
+                reservation.CreationRequestFingerprintHash,
+                fingerprintHash,
+                StringComparison.Ordinal))
+        {
+            throw new ConflictException(
+                "The Idempotency-Key was already used with a different reservation request.");
+        }
+    }
+
+    private static void ValidateSlotFitsOperatingSchedule(
+        SolarStationInfo station,
+        DateTime startUtc,
+        DateTime endUtc)
+    {
+        // Interpret Member 2's HH:mm station schedule in its documented Colombo time zone.
+        DateTime localStart = TimeZoneInfo.ConvertTimeFromUtc(startUtc, OperatingScheduleTimeZone);
+        DateTime localEnd = TimeZoneInfo.ConvertTimeFromUtc(endUtc, OperatingScheduleTimeZone);
+        if (localStart.Date != localEnd.Date)
+        {
+            throw new ConflictException("The slot must fit within one local operating day.");
+        }
+
+        StationOperatingSchedule? schedule = station.OperatingSchedule.SingleOrDefault(
+            item => item.DayOfWeek == localStart.DayOfWeek);
+        if (schedule is null || !schedule.IsOpen)
+        {
+            throw new ConflictException("The station is closed during the selected slot.");
+        }
+
+        if (!TryParseScheduleTime(schedule.OpeningTime, out TimeOnly openingTime) ||
+            !TryParseScheduleTime(schedule.ClosingTime, out TimeOnly closingTime))
+        {
+            throw new InvalidOperationException("The station operating schedule is invalid.");
+        }
+
+        TimeOnly slotStart = TimeOnly.FromDateTime(localStart);
+        TimeOnly slotEnd = TimeOnly.FromDateTime(localEnd);
+        if (slotStart < openingTime || slotEnd > closingTime)
+        {
+            throw new ConflictException("The slot must fit within the station operating schedule.");
+        }
+    }
+
+    private static bool TryParseScheduleTime(string? value, out TimeOnly result)
+    {
+        // Parse the strict HH:mm wall-clock format used by Member 2 station schedules.
+        return TimeOnly.TryParseExact(
+            value,
+            "HH:mm",
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out result);
+    }
+
+    private static string NormalizeNic(string? value, string parameterName)
+    {
+        // Normalize and validate the repository's Sri Lankan NIC identity format.
+        string normalized = value?.Trim().ToUpperInvariant() ?? string.Empty;
+        if (!NicPattern.IsMatch(normalized))
+        {
+            throw new ArgumentException(
+                "NIC must be 9 digits followed by V or X, or 12 digits.",
+                parameterName);
+        }
+
+        return normalized;
+    }
+
+    private static string NormalizeObjectId(string? value, string parameterName)
+    {
+        // Normalize the repository's MongoDB ObjectId string representation.
+        if (!ObjectId.TryParse(value?.Trim(), out ObjectId objectId))
+        {
+            throw new ArgumentException("A valid MongoDB ObjectId is required.", parameterName);
+        }
+
+        return objectId.ToString();
+    }
+
+    private static void ValidatePositiveEnergy(decimal value, string parameterName)
+    {
+        // Enforce the positive kWh quantity supported by the existing slot capacity model.
+        if (value <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                parameterName,
+                "Requested energy must be greater than zero.");
+        }
+    }
+
+    private static string NormalizeIdempotencyKey(string? value)
+    {
+        // Require a bounded printable retry key while retaining only its scoped hash.
+        string normalized = value?.Trim() ?? string.Empty;
+        if (normalized.Length is < MinimumIdempotencyKeyLength or > MaximumIdempotencyKeyLength ||
+            normalized.Any(char.IsControl))
+        {
+            throw new ArgumentException(
+                $"Idempotency-Key must contain {MinimumIdempotencyKeyLength} to " +
+                $"{MaximumIdempotencyKeyLength} printable characters.",
+                nameof(value));
+        }
+
+        return normalized;
+    }
+
+    private static string ComputeHash(string value)
+    {
+        // Produce a stable lowercase SHA-256 digest without persisting the raw key or fingerprint.
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)))
+            .ToLowerInvariant();
     }
 
     public async Task<EnergyReservation> LoadReservationAsync(

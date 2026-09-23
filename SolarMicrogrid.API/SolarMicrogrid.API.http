@@ -1,6 +1,37 @@
 @SolarMicrogrid.API_HostAddress = http://localhost:5076
+@accessToken = paste-a-development-jwt-here
+@slotId = 000000000000000000000000
+@targetProsumerNic = 000000000V
+@idempotencyKey = create-reservation-example-001
 
 GET {{SolarMicrogrid.API_HostAddress}}/weatherforecast/
 Accept: application/json
+
+###
+
+# Active Prosumer creates their own Pending reservation.
+POST {{SolarMicrogrid.API_HostAddress}}/api/reservations
+Authorization: Bearer {{accessToken}}
+Idempotency-Key: {{idempotencyKey}}
+Content-Type: application/json
+
+{
+  "slotId": "{{slotId}}",
+  "requestedEnergyKwh": 5.0
+}
+
+###
+
+# Active Backoffice or assigned Grid Operator creates for an eligible Prosumer.
+POST {{SolarMicrogrid.API_HostAddress}}/api/reservations/staff
+Authorization: Bearer {{accessToken}}
+Idempotency-Key: {{idempotencyKey}}-staff
+Content-Type: application/json
+
+{
+  "targetProsumerNic": "{{targetProsumerNic}}",
+  "slotId": "{{slotId}}",
+  "requestedEnergyKwh": 5.0
+}
 
 ###

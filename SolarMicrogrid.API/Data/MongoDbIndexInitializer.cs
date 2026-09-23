@@ -125,6 +125,19 @@ public sealed class MongoDbIndexInitializer(MongoDbContext dbContext) : IHostedS
         await dbContext.Reservations.Indexes.CreateManyAsync(
             reservationIndexes,
             cancellationToken: cancellationToken);
+
+        var schedulingGuardLeaseIndex = new CreateIndexModel<ReservationSchedulingGuard>(
+            Builders<ReservationSchedulingGuard>.IndexKeys.Ascending(
+                guard => guard.LeaseExpiresAtUtc),
+            new CreateIndexOptions
+            {
+                Name = "ix_reservation_scheduling_guards_lease_expiry",
+                ExpireAfter = TimeSpan.Zero
+            });
+
+        await dbContext.ReservationSchedulingGuards.Indexes.CreateOneAsync(
+            schedulingGuardLeaseIndex,
+            cancellationToken: cancellationToken);
     }
 
     public Task StopAsync(CancellationToken cancellationToken)

@@ -31,6 +31,8 @@ public sealed class ReservationResponseDto
 
     public bool QrEligible { get; set; }
 
+    public ReservationAllowedActionsDto AllowedActions { get; set; } = new();
+
     public DateTime CreatedAtUtc { get; set; }
 
     public string CreatedByActorNic { get; set; } = string.Empty;

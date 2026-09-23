@@ -151,7 +151,7 @@ A material update means a changed `SlotId` or changed `RequestedEnergyKwh`. The 
 
 | Capability | Prosumer | Backoffice | Grid Operator |
 | --- | --- | --- | --- |
-| Create reservation | Yes, for self only | No on-behalf-of flow in this contract | No |
+| Create reservation | Yes, for self only | Yes, for any eligible active Prosumer | Yes, for an eligible active Prosumer at the operator's assigned station |
 | List/view | Own reservations only | All reservations with filters | Reservations for assigned station only |
 | Update/reschedule | Own `Pending` or `Approved` reservation, subject to notice | No | No |
 | Cancel | Own `Pending` or `Approved` reservation, subject to notice | No administrative override in this contract | No |
@@ -167,8 +167,9 @@ Web versus Android does not change permissions. Authorization comes from JWT cla
 
 - `ActorNic` always comes from the authenticated `ClaimTypes.NameIdentifier` claim.
 - `ActorRole` always comes from the authenticated role claim and must match the current active user record where the action is security-sensitive.
-- Create/update/cancel request DTOs do not accept `ProsumerNic`, `ActorNic`, or role fields.
+- Prosumer create/update/cancel request DTOs do not accept `ProsumerNic`, `ActorNic`, or role fields.
 - On create, the API sets `ProsumerNic = ActorNic`; a Prosumer cannot create for another NIC.
+- Staff creation uses a separate DTO with `TargetProsumerNic`; the API still derives `ActorNic` and role from JWT claims, validates both current user records, and records the staff actor separately from the target owner.
 - On update/cancel, the API loads the reservation, compares its `ProsumerNic` to `ActorNic`, and never trusts a client-supplied target identity.
 - Backoffice action DTOs identify only the reservation; the target remains the immutable stored `ProsumerNic`.
 - Grid Operator scope is checked using the actor's stored `AssignedStationId` against the reservation's `StationId`.
@@ -181,7 +182,7 @@ Web versus Android does not change permissions. Authorization comes from JWT cla
 
 The API must validate, within the mutation transaction:
 
-1. Authenticated actor is an `Active` `Prosumer`.
+1. Authenticated actor is either an `Active` Prosumer creating for self, an `Active` Backoffice user, or an `Active` Grid Operator creating at their assigned station.
 2. `Idempotency-Key` is present and valid.
 3. `SlotId` is a valid ObjectId and the slot exists.
 4. Slot's station exists and is active.
@@ -190,6 +191,8 @@ The API must validate, within the mutation transaction:
 7. `RequestedEnergyKwh > 0` and does not exceed current `AvailableCapacityKwh`.
 8. No active exact duplicate or time overlap exists for this prosumer.
 9. Capacity conditional update and reservation insert both succeed atomically.
+
+Staff creation additionally requires that `TargetProsumerNic` resolves to an `Active` user whose stored role is `Prosumer`. Backoffice may use any active station. Grid Operator creation requires `User.AssignedStationId` to equal the slot's current `StationId`. The Prosumer route has no target-NIC property and always uses the authenticated NIC.
 
 ### Update/reschedule
 
@@ -246,7 +249,7 @@ The API must validate:
 - Different prosumers may reserve the same energy slot until its kWh availability is exhausted.
 - Client-side duplicate checks are advisory only; the server transaction is authoritative.
 
-Concurrent operations for one prosumer must be serialized with a transaction-scoped scheduling guard so that two requests cannot both pass an overlap query. The guard's persistence mechanism belongs to Component 3 and must not add fields to Member 1's `User` document without agreement.
+Concurrent operations for one prosumer are serialized with the Component 3-owned `ReservationSchedulingGuards` collection so that two requests cannot both pass an overlap query. Acquisition is an atomic missing-or-expired lease write keyed by normalized Prosumer NIC; release is conditional on the server-generated lease token. A TTL index removes abandoned leases, and the implementation never adds lock fields to Member 1's `User` document or relies on an in-memory lock.
 
 ## Concurrency, versioning, atomicity, and idempotency
 
@@ -264,7 +267,7 @@ The deployed MongoDB topology is not documented. The implemented strategy theref
 
 Every slot mutation is independently safe through one MongoDB compare-and-swap operation:
 
-- Hold filters by slot ID, `Available` status, exact current `AvailableCapacityKwh`, sufficient remaining energy, and absence of the reservation claim. The same update decrements capacity, records the claim, and derives slot status.
+- Hold filters by slot ID, matching station/start/end snapshot, `Available` status, exact current `AvailableCapacityKwh`, sufficient remaining energy, and absence of the reservation claim. The same update decrements capacity, records the claim, and derives slot status. An already-exact claim is accepted before snapshot revalidation so an interrupted post-hold creation can finish idempotently.
 - Same-slot quantity change filters by the exact existing reservation ID/version/kWh claim plus exact current availability. The same update changes only the delta and advances the claim version.
 - Release filters by the exact stored claim and exact current availability. The same update removes the claim and restores the claim's stored kWh—not a client-supplied quantity.
 - A repeated hold returns `AlreadyApplied`; a repeated release returns `AlreadyReleased` and cannot increment capacity twice.
@@ -286,7 +289,8 @@ Fallback is selected only for MongoDB's definitive transaction-not-supported `Il
 
 When transactions are unavailable, the service uses these durable compensation rules:
 
-- Create stores/uses one reservation identity and an idempotent slot claim. A post-hold failure releases that exact claim; reconciliation never invents a missing hold.
+- Create stores/uses one reservation identity and an idempotent slot claim. An uncertain post-hold failure retains that exact claim for the same-key retry; reconciliation never invents a missing hold.
+- Creation first persists a `Pending` reservation in internal `HoldPending` capacity state with the hashed key/fingerprint, then applies the idempotent slot claim and advances the reservation to `Held`. A retry resumes the same reservation identity. If a definite pre-hold failure occurs, only an unallocated provisional document is removed; an uncertain result with a persisted claim is retained for safe retry rather than risking a double allocation or release.
 - Moving slots holds the target first, performs a version-filtered reservation compare-and-swap, then releases the old claim. If the compare-and-swap fails or its result is uncertain, reconciliation reads the persisted reservation, retains its canonical slot claim, and releases only non-canonical claims.
 - A same-slot increase is held before the reservation compare-and-swap; a failed compare-and-swap reconciles back to the persisted quantity. A same-slot decrease is persisted before energy is freed, so failure preserves the original larger allocation.
 - Cancel/reject workflows will record release-pending/final state, remove the exact slot claim, then mark `Released`. A crash is repaired by `ReconcileCapacityAsync`; claim absence makes release retries harmless.
@@ -305,6 +309,8 @@ The following mutation routes require an `Idempotency-Key` header:
 
 Keys are scoped to authenticated actor NIC, HTTP method, canonical route/action, and key value.
 
+Creation keys must contain 8 through 200 printable characters. The database stores only a SHA-256 scope/key hash plus a canonical request-fingerprint hash; the raw key is never persisted.
+
 - Same key and same canonical request fingerprint: return the stored original HTTP status and response without rerunning capacity logic. The API may add `Idempotency-Replayed: true`.
 - Same key with a different request fingerprint: return 409.
 - New key against a now-final or stale reservation: validate normally and return the applicable 409; do not release/allocate again.
@@ -322,6 +328,14 @@ Property names below are C# names. ASP.NET Core serializes them as camelCase JSO
 | `RequestedEnergyKwh` | decimal | Yes | Must be positive and within available slot energy. |
 
 The request does not contain a prosumer NIC, station ID, status, time, or capacity result.
+
+### StaffCreateReservationRequestDto
+
+| Property | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `TargetProsumerNic` | string | Yes | Eligible Prosumer NIC; never used as the acting identity. |
+| `SlotId` | string | Yes | MongoDB ObjectId; Grid Operator scope is derived from its station. |
+| `RequestedEnergyKwh` | decimal | Yes | Positive kWh quantity under the same slot-capacity rules as self-create. |
 
 ### UpdateReservationRequestDto
 
@@ -393,6 +407,7 @@ The request does not contain a prosumer NIC, station ID, status, time, or capaci
 | `Status` | string | Enum name. |
 | `Version` | long | Required by the next mutation. |
 | `QrEligible` | bool | Derived: current status is `Approved`; final issuance rules remain Member 4-owned. |
+| `AllowedActions` | object | Server-derived actor-scoped booleans for update, cancel, approve, reject, QR retrieval/verification, and completion. |
 | `CreatedAtUtc` | UTC DateTime | Server timestamp. |
 | `UpdatedAtUtc` | UTC DateTime | Server timestamp. |
 | `LastStatusReason` | nullable string | Authorized, sanitized latest transition reason. |
@@ -418,6 +433,7 @@ All routes require JWT authentication. Both web and Android use the Prosumer mut
 | `GET /api/reservations` | Role-scoped list | 200 paged response | 400 invalid query; 401; 403 invalid filter scope |
 | `GET /api/reservations/{reservationId}` | Owner, Backoffice, or assigned Grid Operator | 200 | 400 invalid ID; 401; 403 role; 404 absent/out of scope |
 | `POST /api/reservations` | Prosumer self | 201 with `Location` and response DTO | 400; 401; 403; 404 slot/station; 409 duplicate/overlap/capacity/idempotency |
+| `POST /api/reservations/staff` | Backoffice globally; Grid Operator at assigned station | 201 with `Location` and response DTO | 400; 401; 403 role/station; 404 target/slot/station; 409 target eligibility/duplicate/overlap/capacity/idempotency |
 | `PUT /api/reservations/{reservationId}` | Owning Prosumer | 200 | 400; 401; 403; 404; 409 notice/status/version/overlap/capacity/idempotency |
 | `POST /api/reservations/{reservationId}/cancel` | Owning Prosumer | 200 | 400; 401; 403; 404; 409 notice/status/version/idempotency |
 | `POST /api/reservations/{reservationId}/approve` | Backoffice | 200 | 400; 401; 403; 404; 409 status/version/time/idempotency |
@@ -512,7 +528,7 @@ Station deactivation must remain blocked while future `Pending` or `Approved` re
 These items are not contradicted by repository code, but they cross ownership boundaries or are absent from the assignment details:
 
 1. **Energy decimal precision and rounding:** confirm allowed `RequestedEnergyKwh` scale, minimum increment, maximum, and rounding policy. Existing fields use Decimal128-backed `decimal` but specify no precision rule.
-2. **Approval owner:** this contract assigns `Pending -> Approved/Rejected` to Backoffice. Confirm that Grid Operator is not the approver.
+2. **Approval owner:** this contract assigns `Pending -> Approved/Rejected` to Backoffice. Staff creation does not grant Grid Operators approval permission; confirm that Grid Operator remains excluded from approval.
 3. **Grid Operator scope:** confirm that `User.AssignedStationId` is the authoritative single-station assignment and whether multiple-station assignment is needed.
 4. **Slot edits with active reservations:** confirm with Member 2 that schedule changes are rejected while `Pending`/`Approved` reservations reference the slot, and define the operational response when a slot is disabled.
 5. **Pending at start time:** decide whether an unapproved `Pending` reservation is automatically rejected, manually rejected, or handled by another documented process, and whether its now-unusable capacity remains consumed.

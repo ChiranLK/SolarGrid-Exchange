@@ -77,6 +77,14 @@ public sealed class ReservationCapacityService
                     "This reservation already holds a different allocation in the selected slot.");
             }
 
+            if (!string.Equals(slot.StationId, reservation.StationId, StringComparison.Ordinal) ||
+                slot.StartTimeUtc != reservation.ScheduledStartTimeUtc ||
+                slot.EndTimeUtc != reservation.ScheduledEndTimeUtc)
+            {
+                throw new ConflictException(
+                    "The selected slot station or schedule changed during reservation creation.");
+            }
+
             if (slot.AvailabilityStatus != SlotAvailabilityStatus.Available)
             {
                 throw new ConflictException("The selected slot is not available for reservation.");
@@ -109,6 +117,15 @@ public sealed class ReservationCapacityService
             FilterDefinition<EnergyBookingSlot> updateFilter =
                 Builders<EnergyBookingSlot>.Filter.And(
                     Builders<EnergyBookingSlot>.Filter.Eq(item => item.Id, reservation.SlotId),
+                    Builders<EnergyBookingSlot>.Filter.Eq(
+                        item => item.StationId,
+                        reservation.StationId),
+                    Builders<EnergyBookingSlot>.Filter.Eq(
+                        item => item.StartTimeUtc,
+                        reservation.ScheduledStartTimeUtc),
+                    Builders<EnergyBookingSlot>.Filter.Eq(
+                        item => item.EndTimeUtc,
+                        reservation.ScheduledEndTimeUtc),
                     Builders<EnergyBookingSlot>.Filter.Eq(
                         item => item.AvailabilityStatus,
                         SlotAvailabilityStatus.Available),
