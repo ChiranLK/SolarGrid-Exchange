@@ -90,6 +90,7 @@ public sealed class ReservationService
     private readonly ReservationCapacityService _capacityService;
     private readonly MongoTransactionRunner _transactionRunner;
     private readonly ReservationSchedulingGuardService _schedulingGuardService;
+    private readonly TimeProvider _timeProvider;
     private readonly int _maximumBookingDaysAhead;
     private readonly int _minimumChangeNoticeHours;
 
@@ -98,13 +99,15 @@ public sealed class ReservationService
         ReservationCapacityService capacityService,
         MongoTransactionRunner transactionRunner,
         ReservationSchedulingGuardService schedulingGuardService,
-        IOptions<BusinessRules> businessRulesOptions)
+        IOptions<BusinessRules> businessRulesOptions,
+        TimeProvider timeProvider)
     {
         // Reuse shared persistence and consistency services through dependency injection.
         _context = context;
         _capacityService = capacityService;
         _transactionRunner = transactionRunner;
         _schedulingGuardService = schedulingGuardService;
+        _timeProvider = timeProvider;
         BusinessRules rules = businessRulesOptions.Value;
         _maximumBookingDaysAhead = rules.MaxBookingDaysAhead;
         _minimumChangeNoticeHours = rules.MinChangeNoticeHours;
@@ -124,7 +127,7 @@ public sealed class ReservationService
             [UserRole.Prosumer, UserRole.Backoffice, UserRole.GridOperator],
             session: null,
             cancellationToken);
-        DateTime serverNowUtc = DateTime.UtcNow;
+        DateTime serverNowUtc = GetUtcNow();
         int page = Math.Max(query.Page, 1);
         int pageSize = Math.Clamp(query.PageSize, 1, MaximumPageSize);
         var filters = new List<FilterDefinition<EnergyReservation>>
@@ -271,7 +274,7 @@ public sealed class ReservationService
             cancellationToken);
         references.Stations.TryGetValue(reservation.StationId, out SolarStationInfo? station);
         references.Slots.TryGetValue(reservation.SlotId, out EnergyBookingSlot? slot);
-        return MapToResponse(reservation, actor, DateTime.UtcNow, station, slot);
+        return MapToResponse(reservation, actor, GetUtcNow(), station, slot);
     }
 
     public async Task<ReservationCreationResult> CreateOwnReservationAsync(
@@ -369,7 +372,7 @@ public sealed class ReservationService
 
         try
         {
-            DateTime serverNowUtc = DateTime.UtcNow;
+            DateTime serverNowUtc = GetUtcNow();
             EnergyReservation originalReservation = await LoadReservationAsync(
                 normalizedReservationId,
                 session: null,
@@ -528,7 +531,7 @@ public sealed class ReservationService
 
         try
         {
-            DateTime serverNowUtc = DateTime.UtcNow;
+            DateTime serverNowUtc = GetUtcNow();
             EnergyReservation originalReservation = await LoadReservationAsync(
                 normalizedReservationId,
                 session: null,
@@ -645,7 +648,7 @@ public sealed class ReservationService
 
         try
         {
-            DateTime serverNowUtc = DateTime.UtcNow;
+            DateTime serverNowUtc = GetUtcNow();
             ConsistencyExecutionResult<ReservationDecisionEntityResult> execution =
                 await _transactionRunner.ExecuteAsync(
                     (session, token) => ApproveReservationCoreAsync(
@@ -719,7 +722,7 @@ public sealed class ReservationService
 
         try
         {
-            DateTime serverNowUtc = DateTime.UtcNow;
+            DateTime serverNowUtc = GetUtcNow();
             EnergyReservation originalReservation = await LoadReservationAsync(
                 normalizedReservationId,
                 session: null,
@@ -1831,7 +1834,7 @@ public sealed class ReservationService
 
         try
         {
-            DateTime serverNowUtc = DateTime.UtcNow;
+            DateTime serverNowUtc = GetUtcNow();
             ConsistencyExecutionResult<ReservationCreationEntityResult> execution;
             try
             {
@@ -2788,7 +2791,7 @@ public sealed class ReservationService
             throw new ConflictException("The selected slot is not available for reservation.");
         }
 
-        if (requireBookableSlot && slot.StartTimeUtc <= DateTime.UtcNow)
+        if (requireBookableSlot && slot.StartTimeUtc <= GetUtcNow())
         {
             throw new ConflictException("Reservations require a slot that starts in the future.");
         }
@@ -3405,6 +3408,12 @@ public sealed class ReservationService
         }
 
         return value.ToUniversalTime();
+    }
+
+    private DateTime GetUtcNow()
+    {
+        // Read reservation time from the injectable server clock for deterministic boundaries.
+        return _timeProvider.GetUtcNow().UtcDateTime;
     }
 
     private static void ValidateObjectId(string? value, string parameterName)

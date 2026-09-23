@@ -8,4 +8,4 @@
 
 using System.Runtime.CompilerServices;
 
-[assembly: InternalsVisibleTo("SolarMicrogrid.API.PolicyTests")]
+[assembly: InternalsVisibleTo("SolarMicrogrid.API.Tests")]
