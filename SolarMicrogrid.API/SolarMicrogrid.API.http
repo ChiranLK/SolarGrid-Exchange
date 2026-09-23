@@ -2,6 +2,7 @@
 @token = replace-with-a-development-jwt
 @stationId = 000000000000000000000000
 @slotId = 000000000000000000000000
+@reservationId = 000000000000000000000000
 @targetProsumerNic = 000000000V
 @idempotencyKey = create-reservation-example-001
 
@@ -150,4 +151,16 @@ Content-Type: application/json
   "targetProsumerNic": "{{targetProsumerNic}}",
   "slotId": "{{slotId}}",
   "requestedEnergyKwh": 5.0
+}
+
+### Owner or authorized staff updates/reschedules a reservation
+PUT {{baseUrl}}/api/reservations/{{reservationId}}
+Authorization: Bearer {{token}}
+Idempotency-Key: update-reservation-example-001
+Content-Type: application/json
+
+{
+  "slotId": "{{slotId}}",
+  "requestedEnergyKwh": 7.5,
+  "expectedVersion": 1
 }

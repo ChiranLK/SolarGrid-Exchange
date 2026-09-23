@@ -85,6 +85,14 @@ public sealed class EnergyReservation
     [BsonIgnoreIfNull]
     public string? CreationRequestFingerprintHash { get; set; }
 
+    [BsonElement("last_update_request_id_hash")]
+    [BsonIgnoreIfNull]
+    public string? LastUpdateRequestIdHash { get; set; }
+
+    [BsonElement("last_update_request_fingerprint_hash")]
+    [BsonIgnoreIfNull]
+    public string? LastUpdateRequestFingerprintHash { get; set; }
+
     [BsonElement("created_at")]
     [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
     public DateTime CreatedAtUtc { get; set; }
