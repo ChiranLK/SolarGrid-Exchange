@@ -17,7 +17,13 @@ public sealed class ReservationResponseDto
 
     public string StationId { get; set; } = string.Empty;
 
+    public string? StationName { get; set; }
+
+    public string? StationAddress { get; set; }
+
     public string SlotId { get; set; } = string.Empty;
+
+    public string? SlotAvailabilityStatus { get; set; }
 
     public DateTime ScheduledStartTimeUtc { get; set; }
 

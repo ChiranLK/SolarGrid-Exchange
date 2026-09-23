@@ -30,6 +30,40 @@ public sealed class ReservationsController : ControllerBase
         _reservationService = reservationService;
     }
 
+    [HttpGet]
+    [Authorize(Roles =
+        $"{nameof(UserRole.Prosumer)},{nameof(UserRole.Backoffice)},{nameof(UserRole.GridOperator)}")]
+    public async Task<ActionResult<PagedReservationResponseDto>> GetReservations(
+        [FromQuery] ReservationListQueryDto query,
+        CancellationToken cancellationToken)
+    {
+        // Apply identity and station scope in the database query before returning paged DTOs.
+        (string actorNic, string actorRole) = GetRequiredActorClaims();
+        PagedReservationResponseDto result = await _reservationService.GetReservationsAsync(
+            actorNic,
+            actorRole,
+            query,
+            cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpGet("{reservationId}")]
+    [Authorize(Roles =
+        $"{nameof(UserRole.Prosumer)},{nameof(UserRole.Backoffice)},{nameof(UserRole.GridOperator)}")]
+    public async Task<ActionResult<ReservationResponseDto>> GetReservationById(
+        string reservationId,
+        CancellationToken cancellationToken)
+    {
+        // Resolve details through an object-scoped database filter to prevent cross-owner disclosure.
+        (string actorNic, string actorRole) = GetRequiredActorClaims();
+        ReservationResponseDto result = await _reservationService.GetReservationByIdAsync(
+            actorNic,
+            actorRole,
+            reservationId,
+            cancellationToken);
+        return Ok(result);
+    }
+
     [HttpPost]
     [Authorize(Roles = nameof(UserRole.Prosumer))]
     public async Task<ActionResult<ReservationResponseDto>> CreateOwnReservation(

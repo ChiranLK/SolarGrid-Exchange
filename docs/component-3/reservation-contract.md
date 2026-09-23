@@ -403,6 +403,7 @@ The request does not contain a prosumer NIC, station ID, status, time, or capaci
 
 | Property | Type | Default | Scope |
 | --- | --- | --- | --- |
+| `View` | `All`, `Pending`, `Current`, `ApprovedFuture`, or `History` | `All` | All roles within their authorized data scope. |
 | `Status` | nullable enum | null | All roles within their authorized data scope. |
 | `StationId` | nullable string | null | Backoffice; Grid Operator must match assigned station. |
 | `ProsumerNic` | nullable string | null | Backoffice only; ignored/rejected for other roles. |
@@ -412,6 +413,13 @@ The request does not contain a prosumer NIC, station ID, status, time, or capaci
 | `Page` | int | 1 | Minimum 1. |
 | `PageSize` | int | 20 | Range 1 through 100. |
 
+The view definitions are server-owned and use one request-time UTC value: `Pending` is a
+Pending reservation whose end is still in the future; `Current` is Approved and has started
+but not ended; `ApprovedFuture` is Approved and has not started; and `History` contains every
+Cancelled, Rejected, and Completed record plus Pending or Approved records whose end time has
+passed. `All` never removes final records. Filters combine with the selected view, and results
+use stable newest-first ordering by `CreatedAtUtc` and then reservation `Id`.
+
 ### ReservationResponseDto
 
 | Property | Type | Notes |
@@ -419,14 +427,16 @@ The request does not contain a prosumer NIC, station ID, status, time, or capaci
 | `Id` | string | Reservation ObjectId. |
 | `ProsumerNic` | string | Owner; only returned within authorized scope. |
 | `StationId` | string | Derived station identifier. |
+| `StationName` / `StationAddress` | nullable string | Batched current station display data; IDs and schedule snapshots remain available if the referenced station is unavailable. |
 | `SlotId` | string | Selected energy slot. |
+| `SlotAvailabilityStatus` | nullable string | Current slot display state when the referenced slot is available. |
 | `ScheduledStartTimeUtc` | UTC DateTime | Stable reservation schedule snapshot. |
 | `ScheduledEndTimeUtc` | UTC DateTime | Stable reservation schedule snapshot. |
 | `RequestedEnergyKwh` | decimal | Held/consumed energy allocation. |
 | `Status` | string | Enum name. |
 | `Version` | long | Required by the next mutation. |
 | `QrEligible` | bool | Derived: current status is `Approved`; final issuance rules remain Member 4-owned. |
-| `AllowedActions` | object | Server-derived actor-scoped booleans for update, cancel, approve, reject, QR retrieval/verification, and completion. |
+| `AllowedActions` | object | Server-derived actor-scoped booleans plus a reason for every unavailable update, cancel, approve, reject, QR retrieval/verification, and completion action. |
 | `CreatedAtUtc` | UTC DateTime | Server timestamp. |
 | `UpdatedAtUtc` | UTC DateTime | Server timestamp. |
 | `LastStatusReason` | nullable string | Authorized, sanitized latest transition reason. |
