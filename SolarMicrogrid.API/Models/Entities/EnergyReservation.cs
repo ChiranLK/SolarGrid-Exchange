@@ -93,6 +93,14 @@ public sealed class EnergyReservation
     [BsonIgnoreIfNull]
     public string? LastUpdateRequestFingerprintHash { get; set; }
 
+    [BsonElement("cancellation_request_id_hash")]
+    [BsonIgnoreIfNull]
+    public string? CancellationRequestIdHash { get; set; }
+
+    [BsonElement("cancellation_request_fingerprint_hash")]
+    [BsonIgnoreIfNull]
+    public string? CancellationRequestFingerprintHash { get; set; }
+
     [BsonElement("created_at")]
     [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
     public DateTime CreatedAtUtc { get; set; }

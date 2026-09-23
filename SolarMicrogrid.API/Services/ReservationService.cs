@@ -43,6 +43,10 @@ public sealed record ReservationUpdateResult(
     ReservationResponseDto Reservation,
     bool IdempotencyReplayed);
 
+public sealed record ReservationCancellationResult(
+    ReservationResponseDto Reservation,
+    bool IdempotencyReplayed);
+
 internal sealed record ReservationCreationEntityResult(
     EnergyReservation Reservation,
     bool IdempotencyReplayed);
@@ -52,6 +56,7 @@ public sealed class ReservationService
     private const string OperatingScheduleTimeZoneId = "Asia/Colombo";
     private const int MaximumIdempotencyKeyLength = 200;
     private const int MinimumIdempotencyKeyLength = 8;
+    private const int MaximumCancellationReasonLength = 500;
 
     private static readonly ReservationStatus[] CapacityHoldingStatuses =
         [ReservationStatus.Pending, ReservationStatus.Approved];
@@ -305,6 +310,225 @@ public sealed class ReservationService
         }
     }
 
+    public async Task<ReservationCancellationResult> CancelReservationAsync(
+        string actorNic,
+        string actorRoleClaim,
+        string reservationId,
+        CancelReservationRequestDto request,
+        string idempotencyKey,
+        CancellationToken cancellationToken)
+    {
+        // Cancel one authoritative reservation while serializing this Prosumer's schedule mutations.
+        ArgumentNullException.ThrowIfNull(request);
+        string normalizedReservationId = NormalizeObjectId(reservationId, nameof(reservationId));
+        string normalizedKey = NormalizeIdempotencyKey(idempotencyKey);
+        string? normalizedReason = NormalizeOptionalCancellationReason(request.Reason);
+        User initialActor = await LoadAndValidateActorAsync(
+            actorNic,
+            actorRoleClaim,
+            [UserRole.Prosumer, UserRole.Backoffice, UserRole.GridOperator],
+            session: null,
+            cancellationToken);
+        EnergyReservation initialReservation = await LoadReservationAsync(
+            normalizedReservationId,
+            session: null,
+            cancellationToken);
+        EnsureCancellationPermission(initialActor, initialReservation);
+
+        string requestIdHash = ComputeHash(
+            $"{initialActor.Nic}|POST|POST:/api/reservations/{normalizedReservationId}/cancel|" +
+            normalizedKey);
+        string fingerprintHash = ComputeHash(
+            $"{normalizedReservationId}|{request.ExpectedVersion}|{normalizedReason ?? string.Empty}");
+        ReservationSchedulingLease lease = await _schedulingGuardService.AcquireAsync(
+            initialReservation.ProsumerNic,
+            cancellationToken);
+
+        try
+        {
+            DateTime serverNowUtc = DateTime.UtcNow;
+            EnergyReservation originalReservation = await LoadReservationAsync(
+                normalizedReservationId,
+                session: null,
+                cancellationToken);
+            User actor = await LoadAndValidateActorAsync(
+                initialActor.Nic,
+                initialActor.Role.ToString(),
+                [UserRole.Prosumer, UserRole.Backoffice, UserRole.GridOperator],
+                session: null,
+                cancellationToken);
+            EnsureCancellationPermission(actor, originalReservation);
+
+            if (string.Equals(
+                    originalReservation.CancellationRequestIdHash,
+                    requestIdHash,
+                    StringComparison.Ordinal))
+            {
+                ValidateCancellationReplay(originalReservation, fingerprintHash);
+                CapacityReconciliationResult reconciliation = await ReconcileCapacityAsync(
+                    originalReservation.Id,
+                    cancellationToken);
+                if (!reconciliation.IsConsistent ||
+                    reconciliation.CapacityState != ReservationCapacityState.Released)
+                {
+                    throw new ConflictException(
+                        "The cancelled reservation capacity requires operator reconciliation.");
+                }
+
+                originalReservation = await LoadReservationAsync(
+                    originalReservation.Id,
+                    session: null,
+                    cancellationToken);
+                return new ReservationCancellationResult(
+                    MapToResponse(originalReservation, actor, serverNowUtc),
+                    IdempotencyReplayed: true);
+            }
+
+            EnsureExpectedVersion(originalReservation, request.ExpectedVersion);
+            if (!StatusHoldsCapacity(originalReservation.Status))
+            {
+                throw new ConflictException(
+                    "Only pending or approved reservations may be cancelled.");
+            }
+
+            if (originalReservation.CapacityState != ReservationCapacityState.Held)
+            {
+                throw new ConflictException(
+                    "The reservation capacity state must be reconciled before it can be cancelled.");
+            }
+
+            EnsureMinimumCancellationNotice(originalReservation, serverNowUtc);
+            EnsureTransitionAllowed(originalReservation.Status, ReservationStatus.Cancelled);
+            EnergyReservation proposedReservation = BuildCancelledReservation(
+                originalReservation,
+                actor,
+                normalizedReason,
+                requestIdHash,
+                fingerprintHash,
+                serverNowUtc);
+            ConsistencyExecutionResult<EnergyReservation> execution =
+                await CancelCapacitySafelyAsync(
+                    originalReservation,
+                    proposedReservation,
+                    (session, token) => PersistCancellationCompareAndSwapAsync(
+                        originalReservation,
+                        proposedReservation,
+                        session,
+                        token),
+                    cancellationToken);
+
+            return new ReservationCancellationResult(
+                MapToResponse(execution.Value, actor, serverNowUtc),
+                IdempotencyReplayed: false);
+        }
+        finally
+        {
+            await _schedulingGuardService.ReleaseAsync(lease, CancellationToken.None);
+        }
+    }
+
+    private static void EnsureCancellationPermission(User actor, EnergyReservation reservation)
+    {
+        // Enforce hidden owner scope plus global Backoffice and assigned-station Grid Operator scope.
+        if (actor.Role == UserRole.Prosumer)
+        {
+            if (!string.Equals(actor.Nic, reservation.ProsumerNic, StringComparison.Ordinal))
+            {
+                throw new NotFoundException("The reservation does not exist.");
+            }
+
+            return;
+        }
+
+        if (actor.Role == UserRole.Backoffice)
+        {
+            return;
+        }
+
+        if (actor.Role == UserRole.GridOperator &&
+            string.Equals(actor.AssignedStationId, reservation.StationId, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        throw new ForbiddenException(
+            "This staff user is not authorized to cancel the reservation.");
+    }
+
+    private void EnsureMinimumCancellationNotice(
+        EnergyReservation reservation,
+        DateTime serverNowUtc)
+    {
+        // Treat the exact configured notice boundary as valid against the stored start time.
+        TimeSpan remaining = reservation.ScheduledStartTimeUtc - serverNowUtc;
+        if (remaining < TimeSpan.FromHours(_minimumChangeNoticeHours))
+        {
+            throw new ConflictException(
+                $"Reservations require at least {_minimumChangeNoticeHours} hours' notice to cancel.");
+        }
+    }
+
+    private static EnergyReservation BuildCancelledReservation(
+        EnergyReservation originalReservation,
+        User actor,
+        string? reason,
+        string requestIdHash,
+        string fingerprintHash,
+        DateTime serverNowUtc)
+    {
+        // Preserve immutable reservation data and create one server-owned cancellation transition.
+        long resultingVersion = checked(originalReservation.Version + 1);
+        var proposed = new EnergyReservation
+        {
+            Id = originalReservation.Id,
+            ProsumerNic = originalReservation.ProsumerNic,
+            StationId = originalReservation.StationId,
+            SlotId = originalReservation.SlotId,
+            ScheduledStartTimeUtc = originalReservation.ScheduledStartTimeUtc,
+            ScheduledEndTimeUtc = originalReservation.ScheduledEndTimeUtc,
+            RequestedEnergyKwh = originalReservation.RequestedEnergyKwh,
+            Status = ReservationStatus.Cancelled,
+            Version = resultingVersion,
+            CapacityState = ReservationCapacityState.ReleasePending,
+            CapacityClaimVersion = originalReservation.CapacityClaimVersion,
+            CreationRequestIdHash = originalReservation.CreationRequestIdHash,
+            CreationRequestFingerprintHash = originalReservation.CreationRequestFingerprintHash,
+            LastUpdateRequestIdHash = originalReservation.LastUpdateRequestIdHash,
+            LastUpdateRequestFingerprintHash = originalReservation.LastUpdateRequestFingerprintHash,
+            CancellationRequestIdHash = requestIdHash,
+            CancellationRequestFingerprintHash = fingerprintHash,
+            CreatedAtUtc = originalReservation.CreatedAtUtc,
+            CreatedByActorNic = originalReservation.CreatedByActorNic,
+            UpdatedAtUtc = serverNowUtc,
+            UpdatedByActorNic = actor.Nic,
+            ApprovedAtUtc = originalReservation.ApprovedAtUtc,
+            ApprovedByActorNic = originalReservation.ApprovedByActorNic,
+            RejectedAtUtc = originalReservation.RejectedAtUtc,
+            RejectedByActorNic = originalReservation.RejectedByActorNic,
+            RejectionReason = originalReservation.RejectionReason,
+            CancelledAtUtc = serverNowUtc,
+            CancelledByActorNic = actor.Nic,
+            CancellationReason = reason,
+            CompletedAtUtc = originalReservation.CompletedAtUtc,
+            CompletedByActorNic = originalReservation.CompletedByActorNic,
+            CompletedVerificationId = originalReservation.CompletedVerificationId,
+            StatusHistory = originalReservation.StatusHistory
+                .Select(CloneStatusHistoryEntry)
+                .ToList()
+        };
+        proposed.StatusHistory.Add(new ReservationStatusHistoryEntry
+        {
+            FromStatus = originalReservation.Status,
+            ToStatus = ReservationStatus.Cancelled,
+            ChangedAtUtc = serverNowUtc,
+            ActorNic = actor.Nic,
+            ActorRole = actor.Role,
+            Version = resultingVersion,
+            Reason = reason
+        });
+        return proposed;
+    }
+
     private static void EnsureUpdatePermission(User actor, EnergyReservation reservation)
     {
         // Enforce owner visibility and the explicit Backoffice/assigned-Grid-Operator staff scopes.
@@ -436,6 +660,9 @@ public sealed class ReservationService
             CreationRequestFingerprintHash = originalReservation.CreationRequestFingerprintHash,
             LastUpdateRequestIdHash = requestIdHash,
             LastUpdateRequestFingerprintHash = fingerprintHash,
+            CancellationRequestIdHash = originalReservation.CancellationRequestIdHash,
+            CancellationRequestFingerprintHash =
+                originalReservation.CancellationRequestFingerprintHash,
             CreatedAtUtc = originalReservation.CreatedAtUtc,
             CreatedByActorNic = originalReservation.CreatedByActorNic,
             UpdatedAtUtc = serverNowUtc,
@@ -577,6 +804,138 @@ public sealed class ReservationService
             "The reservation changed while it was being updated. Reload it and try again.");
     }
 
+    private async Task<EnergyReservation> PersistCancellationCompareAndSwapAsync(
+        EnergyReservation originalReservation,
+        EnergyReservation proposedReservation,
+        IClientSessionHandle? session,
+        CancellationToken cancellationToken)
+    {
+        // Win cancellation only while the exact active version still owns its held allocation.
+        FilterDefinition<EnergyReservation> filter = Builders<EnergyReservation>.Filter.And(
+            Builders<EnergyReservation>.Filter.Eq(item => item.Id, originalReservation.Id),
+            Builders<EnergyReservation>.Filter.Eq(item => item.Version, originalReservation.Version),
+            Builders<EnergyReservation>.Filter.Eq(item => item.Status, originalReservation.Status),
+            Builders<EnergyReservation>.Filter.Eq(item => item.SlotId, originalReservation.SlotId),
+            Builders<EnergyReservation>.Filter.Eq(
+                item => item.RequestedEnergyKwh,
+                originalReservation.RequestedEnergyKwh),
+            Builders<EnergyReservation>.Filter.Eq(
+                item => item.CapacityState,
+                ReservationCapacityState.Held));
+        ReservationStatusHistoryEntry transition = proposedReservation.StatusHistory[^1];
+        UpdateDefinition<EnergyReservation> update = Builders<EnergyReservation>.Update.Combine(
+            Builders<EnergyReservation>.Update.Set(
+                item => item.Status,
+                ReservationStatus.Cancelled),
+            Builders<EnergyReservation>.Update.Set(item => item.Version, proposedReservation.Version),
+            Builders<EnergyReservation>.Update.Set(
+                item => item.CapacityState,
+                ReservationCapacityState.ReleasePending),
+            Builders<EnergyReservation>.Update.Set(
+                item => item.CancellationRequestIdHash,
+                proposedReservation.CancellationRequestIdHash),
+            Builders<EnergyReservation>.Update.Set(
+                item => item.CancellationRequestFingerprintHash,
+                proposedReservation.CancellationRequestFingerprintHash),
+            Builders<EnergyReservation>.Update.Set(
+                item => item.UpdatedAtUtc,
+                proposedReservation.UpdatedAtUtc),
+            Builders<EnergyReservation>.Update.Set(
+                item => item.UpdatedByActorNic,
+                proposedReservation.UpdatedByActorNic),
+            Builders<EnergyReservation>.Update.Set(
+                item => item.CancelledAtUtc,
+                proposedReservation.CancelledAtUtc),
+            Builders<EnergyReservation>.Update.Set(
+                item => item.CancelledByActorNic,
+                proposedReservation.CancelledByActorNic),
+            proposedReservation.CancellationReason is null
+                ? Builders<EnergyReservation>.Update.Unset(item => item.CancellationReason)
+                : Builders<EnergyReservation>.Update.Set(
+                    item => item.CancellationReason,
+                    proposedReservation.CancellationReason),
+            Builders<EnergyReservation>.Update.Push(item => item.StatusHistory, transition));
+        var options = new FindOneAndUpdateOptions<EnergyReservation>
+        {
+            ReturnDocument = ReturnDocument.After
+        };
+        EnergyReservation? cancelled = session is null
+            ? await _context.Reservations.FindOneAndUpdateAsync(
+                filter,
+                update,
+                options,
+                cancellationToken)
+            : await _context.Reservations.FindOneAndUpdateAsync(
+                session,
+                filter,
+                update,
+                options,
+                cancellationToken);
+
+        return cancelled ?? throw new ConflictException(
+            "The reservation changed while it was being cancelled. Reload it and try again.");
+    }
+
+    private async Task<EnergyReservation> MarkCancellationReleasedAsync(
+        EnergyReservation cancelledReservation,
+        IClientSessionHandle? session,
+        CancellationToken cancellationToken)
+    {
+        // Finalize release metadata only for the cancellation version that removed the claim.
+        FilterDefinition<EnergyReservation> filter = Builders<EnergyReservation>.Filter.And(
+            Builders<EnergyReservation>.Filter.Eq(item => item.Id, cancelledReservation.Id),
+            Builders<EnergyReservation>.Filter.Eq(item => item.Version, cancelledReservation.Version),
+            Builders<EnergyReservation>.Filter.Eq(item => item.Status, ReservationStatus.Cancelled),
+            Builders<EnergyReservation>.Filter.Eq(
+                item => item.CapacityState,
+                ReservationCapacityState.ReleasePending),
+            Builders<EnergyReservation>.Filter.Eq(
+                item => item.CancellationRequestIdHash,
+                cancelledReservation.CancellationRequestIdHash));
+        UpdateDefinition<EnergyReservation> update = Builders<EnergyReservation>.Update
+            .Set(item => item.CapacityState, ReservationCapacityState.Released)
+            .Set(item => item.CapacityClaimVersion, 0);
+        var options = new FindOneAndUpdateOptions<EnergyReservation>
+        {
+            ReturnDocument = ReturnDocument.After
+        };
+        EnergyReservation? finalized = session is null
+            ? await _context.Reservations.FindOneAndUpdateAsync(
+                filter,
+                update,
+                options,
+                cancellationToken)
+            : await _context.Reservations.FindOneAndUpdateAsync(
+                session,
+                filter,
+                update,
+                options,
+                cancellationToken);
+
+        if (finalized is not null)
+        {
+            return finalized;
+        }
+
+        EnergyReservation current = await LoadReservationAsync(
+            cancelledReservation.Id,
+            session,
+            cancellationToken);
+        if (current.Status == ReservationStatus.Cancelled &&
+            current.Version == cancelledReservation.Version &&
+            current.CapacityState == ReservationCapacityState.Released &&
+            string.Equals(
+                current.CancellationRequestIdHash,
+                cancelledReservation.CancellationRequestIdHash,
+                StringComparison.Ordinal))
+        {
+            return current;
+        }
+
+        throw new ConflictException(
+            "The reservation changed while capacity release was being finalized.");
+    }
+
     private static void ValidateUpdateFingerprint(
         EnergyReservation reservation,
         string fingerprintHash)
@@ -589,6 +948,22 @@ public sealed class ReservationService
         {
             throw new ConflictException(
                 "The Idempotency-Key was already used with a different reservation update.");
+        }
+    }
+
+    private static void ValidateCancellationReplay(
+        EnergyReservation reservation,
+        string fingerprintHash)
+    {
+        // Return only the matching completed cancellation when one retry key is reused.
+        if (reservation.Status != ReservationStatus.Cancelled ||
+            !string.Equals(
+                reservation.CancellationRequestFingerprintHash,
+                fingerprintHash,
+                StringComparison.Ordinal))
+        {
+            throw new ConflictException(
+                "The Idempotency-Key was already used with a different cancellation request.");
         }
     }
 
@@ -1159,6 +1534,7 @@ public sealed class ReservationService
         bool assignedGridOperator = actor.Role == UserRole.GridOperator &&
             string.Equals(actor.AssignedStationId, reservation.StationId, StringComparison.Ordinal);
         bool staffCanUpdate = actor.Role == UserRole.Backoffice || assignedGridOperator;
+        bool staffCanCancel = actor.Role == UserRole.Backoffice || assignedGridOperator;
 
         return new ReservationResponseDto
         {
@@ -1175,7 +1551,7 @@ public sealed class ReservationService
             AllowedActions = new ReservationAllowedActionsDto
             {
                 CanUpdate = (ownerProsumer || staffCanUpdate) && mutable && noticeSatisfied,
-                CanCancel = ownerProsumer && mutable && noticeSatisfied,
+                CanCancel = (ownerProsumer || staffCanCancel) && mutable && noticeSatisfied,
                 CanApprove = backofficeCanDecide,
                 CanReject = backofficeCanDecide,
                 CanGetQr = ownerProsumer && reservation.Status == ReservationStatus.Approved,
@@ -1318,6 +1694,20 @@ public sealed class ReservationService
             throw new ArgumentException(
                 $"Idempotency-Key must contain {MinimumIdempotencyKeyLength} to " +
                 $"{MaximumIdempotencyKeyLength} printable characters.",
+                nameof(value));
+        }
+
+        return normalized;
+    }
+
+    private static string? NormalizeOptionalCancellationReason(string? value)
+    {
+        // Store a trimmed optional audit reason and enforce the DTO's maximum length in the domain layer.
+        string? normalized = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        if (normalized?.Length > MaximumCancellationReasonLength)
+        {
+            throw new ArgumentException(
+                $"Cancellation reason cannot exceed {MaximumCancellationReasonLength} characters.",
                 nameof(value));
         }
 
@@ -1747,6 +2137,80 @@ public sealed class ReservationService
                 }
 
                 return value;
+            },
+            cancellationToken);
+    }
+
+    private async Task<ConsistencyExecutionResult<EnergyReservation>> CancelCapacitySafelyAsync(
+        EnergyReservation originalReservation,
+        EnergyReservation proposedReservation,
+        Func<IClientSessionHandle?, CancellationToken, Task<EnergyReservation>>
+            persistReservationCompareAndSwap,
+        CancellationToken cancellationToken)
+    {
+        // Commit status and exact claim release atomically, or reconcile an ordered standalone fallback.
+        ArgumentNullException.ThrowIfNull(originalReservation);
+        ArgumentNullException.ThrowIfNull(proposedReservation);
+        ArgumentNullException.ThrowIfNull(persistReservationCompareAndSwap);
+
+        return await _transactionRunner.ExecuteAsync(
+            async (session, token) =>
+            {
+                // Make one versioned cancellation win before releasing its exact claim in the transaction.
+                EnergyReservation cancelled = await persistReservationCompareAndSwap(session, token);
+                CapacityMutationResult release = await ReleaseHeldCapacityAsync(
+                    originalReservation,
+                    session,
+                    token);
+                if (release.Outcome != CapacityMutationOutcome.Applied)
+                {
+                    throw new ConflictException(
+                        "The reservation allocation was already absent and requires reconciliation.");
+                }
+
+                return await MarkCancellationReleasedAsync(cancelled, session, token);
+            },
+            async token =>
+            {
+                // On standalone MongoDB, persist final status first so completion cannot win afterward.
+                EnergyReservation cancelled = await persistReservationCompareAndSwap(null, token);
+                try
+                {
+                    await ReleaseHeldCapacityAsync(originalReservation, session: null, token);
+                    return await MarkCancellationReleasedAsync(cancelled, session: null, token);
+                }
+                catch
+                {
+                    try
+                    {
+                        CapacityReconciliationResult reconciliation = await ReconcileCapacityAsync(
+                            originalReservation.Id,
+                            token);
+                        EnergyReservation persisted = await LoadReservationAsync(
+                            originalReservation.Id,
+                            session: null,
+                            token);
+                        bool cancellationPersisted =
+                            persisted.Status == ReservationStatus.Cancelled &&
+                            persisted.Version == proposedReservation.Version &&
+                            string.Equals(
+                                persisted.CancellationRequestIdHash,
+                                proposedReservation.CancellationRequestIdHash,
+                                StringComparison.Ordinal);
+                        if (reconciliation.IsConsistent &&
+                            reconciliation.CapacityState == ReservationCapacityState.Released &&
+                            cancellationPersisted)
+                        {
+                            return persisted;
+                        }
+                    }
+                    catch
+                    {
+                        // Preserve the original failure when best-effort reconciliation cannot finish.
+                    }
+
+                    throw;
+                }
             },
             cancellationToken);
     }
