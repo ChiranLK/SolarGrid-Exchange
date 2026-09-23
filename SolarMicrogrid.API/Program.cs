@@ -1,3 +1,11 @@
+/*
+ * Program.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Configures the central API, MongoDB/JWT infrastructure, and scoped
+ *           domain services including Component 3 reservation consistency.
+ * -----------------------------------------------------------------------------
+ */
+
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
@@ -79,6 +87,9 @@ builder.Services.AddControllers();
 
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<StationService>();
+builder.Services.AddScoped<MongoTransactionRunner>();
+builder.Services.AddScoped<ReservationCapacityService>();
+builder.Services.AddScoped<ReservationService>();
 
 builder.Services.AddOpenApi();
 

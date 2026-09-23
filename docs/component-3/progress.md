@@ -6,7 +6,7 @@ Branch inspected: `feature/reservation-workflow` at `970f578`
 
 Scope of this update: repository inspection, branch verification, and documentation only
 
-Latest implementation update: 2026-09-23 at branch `HEAD` `3a0c838` plus uncommitted Component 3 domain changes
+Latest implementation update: 2026-09-23 at branch `HEAD` `89fe8b5` plus uncommitted Component 3 service-foundation changes
 
 ## Component 3 requirements
 
@@ -96,14 +96,17 @@ No SQLite database, Room dependency, Android database helper/DAO, schema, migrat
 | File/integration point | Current state |
 | --- | --- |
 | `Models/Entities/EnergyReservation.cs` | Implemented reservation/status/history entities with ObjectId references, NIC ownership, UTC schedule/audit timestamps, Decimal128 kWh quantity, staff/action audit fields, versioning, and a hashed creation-request identifier. |
-| `Services/ReservationService.cs` | Zero-byte scaffold; no business logic. |
+| `Services/ReservationService.cs` | Foundation implemented: reference loading, active-status definition, duplicate/overlap validation, lifecycle/version guards, active-station query, capacity orchestration, safe reschedule ordering, and durable reconciliation. Full CRUD/status workflows are still pending. |
+| `Services/ReservationCapacityService.cs` | Added bounded compare-and-swap holds, same-slot adjustments, exact-claim releases, idempotent retries, and claim discovery for repair. |
+| `Services/MongoTransactionRunner.cs` | Added transaction-preferred execution with fallback only for MongoDB's definitive unsupported-transaction response. |
 | `Controllers/ReservationsController.cs` | Zero-byte scaffold; no REST endpoints or authorization. |
 | Reservation DTOs | Added separate create, staff-create, update, cancel, approve, reject, query, list, detail, status-history, and paged-response contracts under `Models/DTOs/Reservations`. |
 | `Data/MongoDbContext.cs` | `EnergyReservations` is now an active typed collection. |
 | `Data/MongoDbIndexInitializer.cs` | Added prosumer/schedule, slot/status, station/status/schedule, status/schedule, unique creation-request hash, and active prosumer/slot duplicate-protection indexes. |
+| `Models/Entities/EnergyBookingSlot.cs` | Preserves Member 2 fields and adds a minimal embedded allocation ledger plus lookup index so reservation releases are exact and repeat-safe. |
 | `Settings/MongoSettings.cs` and `appsettings.json` | Define `EnergyReservations` as the intended collection name. |
 | `Settings/BusinessRulesSettings.cs` | Defines 7-day booking horizon and 12-hour change notice defaults, but uses class name `BusinessRules`, is not registered, and is not consumed. |
-| `Program.cs` | Validates the reservation collection name but does not register reservation options/service. |
+| `Program.cs` | Registers `MongoTransactionRunner`, `ReservationCapacityService`, and `ReservationService` using the existing scoped-service pattern. Business-rule options remain unbound. |
 | `Services/StationService.cs` | Deliberately blocks station deactivation until Component 3 supplies queryable active-reservation statuses/fields. |
 | API request examples | No reservation requests exist in either the current file or `origin/develop`. |
 | Tests and clients | No reservation tests, web integration, Android integration, or SQLite synchronization code exists. |
@@ -132,7 +135,7 @@ Ownership below comes from the task brief; commit/file evidence describes what i
 #### Member 4: dashboard, history/search, QR verification, completion, deployment
 
 - `DashboardController.cs` is a zero-byte scaffold.
-- No reservation history/search endpoint, QR model/payload/verification code, completion workflow, deployment configuration, or related tests are present.
+- A fresh remote fetch found no reservation history/search endpoint, QR model/payload/verification code, completion workflow, deployment configuration, or related tests in Member 4's available branch or other team refs.
 - The only commits associated with the apparent Member 4 branch/author (`Havindu`/`YourName`) update `.gitignore`; ownership identity should be confirmed in the missing team plan.
 - Component 3 dependency: agree on reservation IDs/statuses, search fields, QR payload/expiry/anti-replay contract, completion transition, and dashboard projection needs before freezing the reservation schema.
 
@@ -140,22 +143,22 @@ Ownership below comes from the task brief; commit/file evidence describes what i
 
 1. Obtain and record the official Component 3 use cases, field definitions, status machine, role matrix, endpoints, UI requirements, and marking rubric.
 2. Bring this feature branch up to date with the agreed `develop` baseline using a non-destructive team-approved integration step; do not reimplement Member 2's newer work.
-3. Bind the business-rule settings and register `ReservationService` after implementing it.
-4. Implement authenticated REST endpoints and central service rules for the confirmed workflow.
-5. Implement the persistent idempotency receipt/scheduling guard and make slot capacity allocation/release transactionally atomic for create, edit/reschedule, reject, cancel, and completion.
-6. Confirm and implement the staff on-behalf-of role/route or remove the extension DTO if the team retains the original self-create-only contract.
-7. Replace Member 2's station-deactivation blocker with an active-reservation query now that active statuses and fields are defined.
-8. Supply history/search and QR/completion integrations to Member 4 without taking ownership of their UI/dashboard/deployment work.
-9. Add web and Android REST integrations only after their actual projects/frameworks are available; do not invent client frameworks.
-10. Add automated service/controller/integration/concurrency tests and sanitized manual request examples.
+3. Bind the seven-day/twelve-hour business-rule settings.
+4. Implement create/update/cancel/approve/reject workflows on top of the foundation, including persistent idempotency receipts and version-filtered reservation writes.
+5. Implement authenticated REST endpoints and register/use the final request-to-service mappings.
+6. Add the durable per-prosumer scheduling guard required to serialize otherwise concurrent cross-slot overlap checks.
+7. Confirm and implement the staff on-behalf-of role/route or remove the extension DTO if the team retains the original self-create-only contract.
+8. Integrate `HasActiveReservationsForStationAsync` into Member 2's station-deactivation transaction/check after the branch is synchronized.
+9. Supply history/search and QR/completion integrations to Member 4 without taking ownership of their UI/dashboard/deployment work.
+10. Add web/Android clients, topology-specific integration/concurrency/failure-injection tests, and sanitized manual API examples.
 
 ## Dependencies
 
 - **Missing source artifacts:** official assignment/team-plan documents, web project, Android project, and Member 1's Android session/SQLite implementation.
-- **Branch baseline:** committed `HEAD` `3a0c838` matches `origin/feature/reservation-workflow`. It is 1 commit ahead and 16 commits behind local `origin/develop`; the common base is `970f578`. No merge/rebase was performed.
+- **Branch baseline:** committed `HEAD` `89fe8b5` matches `origin/feature/reservation-workflow`. It is 2 commits ahead and 16 commits behind local `origin/develop`; the common base is `970f578`. No merge/rebase was performed.
 - **Member 1 contract:** authenticated active-user lookup, role/status enforcement, prosumer endpoints, and mobile session/token persistence.
-- **Member 2 contract:** latest station/slot implementation and a shared atomic capacity update strategy.
-- **Member 4 contract:** reservation history/search representation, QR issuance/verification boundary, completion transition, and deployment expectations.
+- **Member 2 contract:** the shared slot entity now has a minimal allocation ledger and atomic capacity service; Member 2 must integrate active-reservation schedule/deactivation checks after branch synchronization.
+- **Member 4 contract:** no completion implementation exists in available refs; reservation history/search representation, QR issuance/verification boundary, completion transition, and deployment expectations remain dependencies.
 - **Runtime/configuration:** the system has no installed SDK. A temporary .NET 10.0.401 SDK was used for compilation; usable MongoDB/JWT development configuration is still needed for runtime verification. Secret values must remain outside committed configuration.
 - **Schema decisions:** lifecycle/status and UTC decisions are now documented and mapped. Energy decimal precision/rounding, staff on-behalf-of authorization, completion accounting, and Member 4 QR details still require confirmation.
 
@@ -172,12 +175,13 @@ Ownership below comes from the task brief; commit/file evidence describes what i
 | Web inspection | BLOCKED/ABSENT: no web application is tracked, so its framework and API integration cannot be verified. |
 | Android inspection | BLOCKED/ABSENT: no Android application is tracked, so Java/Kotlin, XML/Compose, REST integration, session, and SQLite cannot be verified. |
 | MongoDB inspection | PASS (static): reservation collection mapping, BSON attributes, references, UTC fields, Decimal128 energy quantity, versioning, and query/duplicate indexes are implemented. No live database connection was attempted. |
-| Reservation domain/DTO implementation | PASS (compile verified): entity/status/history, request/query/response DTOs, collection mapping, and indexes are implemented. Service/controller/business rules remain pending. |
+| Reservation domain/DTO implementation | PASS (compile verified): entity/status/history/capacity state, request/query/response DTOs, collection mapping, and indexes are implemented. |
+| Reservation service foundation | PASS (compile verified): conditional claim-based hold/adjust/release, lifecycle/version/reference/overlap guards, transaction selection, compensation/reconciliation, and safe reschedule ordering are implemented and registered. Full endpoint workflows remain pending. |
 | Automated tests | BLOCKED/ABSENT: no test project exists. |
 | Current-branch backend build | BLOCKED BY PRE-EXISTING BASELINE: compilation reaches source analysis but fails because this branch lacks Member 2's `PagedStationResponseDto` and `NearbyStationResponseDto`; both already exist on `origin/develop`. No Component 3 error was reported before those failures. |
-| Component 3 integration build | PASS: overlaid the Component 3 changes onto a temporary `origin/develop` tree and built with temporary .NET SDK 10.0.401: 0 warnings, 0 errors. No merge or tracked Member 2 file copy was performed. |
-| Assignment comment condition | PASS (static): every new/modified C# file has the required header block; every method modified in context/index initialization has a leading explanatory inline comment. |
-| Manual API verification | NOT RUN: reservation endpoints/services do not exist yet and no live MongoDB verification configuration was used. |
+| Component 3 integration build | PASS: overlaid the Component 3 domain/service changes onto a temporary `origin/develop` tree and built with temporary .NET SDK 10.0.401: 0 warnings, 0 errors. Member 2's latest `SlotService` compiles with the allocation-ledger extension. No merge or tracked Member 2 implementation copy was performed. |
+| Assignment comment condition | PASS (static): every new/modified C# file has the required header block and every added/modified method begins with an explanatory inline comment. |
+| Manual API/runtime verification | NOT RUN: reservation controller/workflows are not implemented and no live MongoDB topology/configuration was available. Transaction and standalone compensation paths require integration/failure-injection tests. |
 | Secret review | ATTENTION: a non-empty JWT key is present in tracked base settings; value not reproduced. Ownership/rotation/removal needs confirmation. |
 
 ## Assignment evidence needed

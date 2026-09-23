@@ -62,7 +62,11 @@ public sealed class MongoDbIndexInitializer(MongoDbContext dbContext) : IHostedS
                 {
                     Name = "ux_slots_station_start_end",
                     Unique = true
-                })
+                }),
+            new(
+                Builders<EnergyBookingSlot>.IndexKeys.Ascending(
+                    "capacity_allocations.reservation_id"),
+                new CreateIndexOptions { Name = "ix_slots_capacity_allocation_reservation" })
         };
 
         await dbContext.Slots.Indexes.CreateManyAsync(

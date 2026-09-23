@@ -22,6 +22,17 @@ public enum ReservationStatus
     Completed
 }
 
+public enum ReservationCapacityState
+{
+    Unallocated,
+    HoldPending,
+    Held,
+    ReleasePending,
+    Released,
+    Consumed,
+    CompensationRequired
+}
+
 [BsonIgnoreExtraElements]
 public sealed class EnergyReservation
 {
@@ -58,6 +69,13 @@ public sealed class EnergyReservation
 
     [BsonElement("version")]
     public long Version { get; set; } = 1;
+
+    [BsonElement("capacity_state")]
+    [BsonRepresentation(BsonType.String)]
+    public ReservationCapacityState CapacityState { get; set; } = ReservationCapacityState.Unallocated;
+
+    [BsonElement("capacity_claim_version")]
+    public long CapacityClaimVersion { get; set; }
 
     [BsonElement("creation_request_id_hash")]
     [BsonIgnoreIfNull]

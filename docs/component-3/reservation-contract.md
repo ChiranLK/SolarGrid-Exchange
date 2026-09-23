@@ -55,6 +55,8 @@ The current repository model has these distinct quantities:
 
 Component 3 therefore reserves `RequestedEnergyKwh` as a positive decimal quantity. It must not create a physical slot-count field unless Member 2 introduces a separate count model and contract.
 
+The implemented shared capacity mechanism adds a minimal `CapacityAllocations` ledger to each `EnergyBookingSlot`. Each entry stores only reservation ObjectId, reservation version, allocated kWh, and allocation UTC time. It does not duplicate the reservation, user, station, or slot document. The ledger is the authoritative evidence for how much a particular reservation may release; request payloads and reservation quantities alone never increment slot availability.
+
 Capacity invariants:
 
 ```text
@@ -101,6 +103,8 @@ Values are stored as strings, following the existing user and slot enum conventi
 | `RequestedEnergyKwh` | Decimal128-backed `decimal` | Yes | Positive energy allocation; must fit target slot availability. |
 | `Status` | string enum | Yes | Initial value is `Pending`. |
 | `Version` | `long` | Yes | Starts at 1 and increments once per successful material mutation or status transition. |
+| `CapacityState` | string enum | Yes | Internal consistency state: `Unallocated`, `HoldPending`, `Held`, `ReleasePending`, `Released`, `Consumed`, or `CompensationRequired`. |
+| `CapacityClaimVersion` | `long` | Yes | Version of the canonical slot allocation claim; not client-controlled. |
 | `CreatedAtUtc` | UTC `DateTime` | Yes | Set from server time. |
 | `CreatedByActorNic` | string | Yes | Authenticated NIC; normally identical to `ProsumerNic`. |
 | `UpdatedAtUtc` | UTC `DateTime` | Yes | Time of last successful mutation. |
@@ -256,7 +260,17 @@ Concurrent operations for one prosumer must be serialized with a transaction-sco
 
 ### Atomic capacity handling
 
-Reservation writes and slot-capacity changes must run in one MongoDB transaction. A transaction includes, as applicable:
+The deployed MongoDB topology is not documented. The implemented strategy therefore prefers a supported transaction and has an explicit standalone-server compensation path. It never uses an in-memory lock as the consistency boundary.
+
+Every slot mutation is independently safe through one MongoDB compare-and-swap operation:
+
+- Hold filters by slot ID, `Available` status, exact current `AvailableCapacityKwh`, sufficient remaining energy, and absence of the reservation claim. The same update decrements capacity, records the claim, and derives slot status.
+- Same-slot quantity change filters by the exact existing reservation ID/version/kWh claim plus exact current availability. The same update changes only the delta and advances the claim version.
+- Release filters by the exact stored claim and exact current availability. The same update removes the claim and restores the claim's stored kWh—not a client-supplied quantity.
+- A repeated hold returns `AlreadyApplied`; a repeated release returns `AlreadyReleased` and cannot increment capacity twice.
+- Compare-and-swap contention reloads and retries a bounded number of times. It never falls through to an unconditional write.
+
+`MongoTransactionRunner` runs multi-document reservation work with snapshot read concern, primary read preference, and majority write concern. A transaction includes, as applicable:
 
 - Acquire/update the prosumer schedule guard.
 - Claim or replay the idempotency receipt.
@@ -268,7 +282,18 @@ Reservation writes and slot-capacity changes must run in one MongoDB transaction
 
 A target capacity decrement uses a conditional filter equivalent to `AvailableCapacityKwh >= requiredIncrease`. Updates use only the delta. Slot moves reserve the new slot and release the old slot in the same transaction. No client may call a capacity adjustment endpoint separately.
 
-The deployment must support MongoDB multi-document transactions. If it does not, implementation is blocked until the team selects a transaction-capable MongoDB configuration; a best-effort two-write sequence is not acceptable.
+Fallback is selected only for MongoDB's definitive transaction-not-supported `IllegalOperation` response. Network failures, unknown commit results, and other errors are not blindly replayed as fallback operations.
+
+When transactions are unavailable, the service uses these durable compensation rules:
+
+- Create stores/uses one reservation identity and an idempotent slot claim. A post-hold failure releases that exact claim; reconciliation never invents a missing hold.
+- Moving slots holds the target first, performs a version-filtered reservation compare-and-swap, then releases the old claim. If the compare-and-swap fails or its result is uncertain, reconciliation reads the persisted reservation, retains its canonical slot claim, and releases only non-canonical claims.
+- A same-slot increase is held before the reservation compare-and-swap; a failed compare-and-swap reconciles back to the persisted quantity. A same-slot decrease is persisted before energy is freed, so failure preserves the original larger allocation.
+- Cancel/reject workflows will record release-pending/final state, remove the exact slot claim, then mark `Released`. A crash is repaired by `ReconcileCapacityAsync`; claim absence makes release retries harmless.
+- Completed reservations retain their canonical claim as consumed capacity and use `Consumed`, not `Released`.
+- `CompensationRequired` records an inconsistency that cannot be repaired safely without operator review. The repair path never allocates missing capacity speculatively.
+
+This compensation strategy is safe but can temporarily over-reserve capacity between steps. Transaction-capable replica-set or sharded deployments remain strongly preferred.
 
 ### Idempotency
 
@@ -450,7 +475,7 @@ Whether QR verification should automatically complete instead of using the separ
 | User identity, JWT claims, role/status, activation | Member 1 | Component 3 reads authenticated NIC/role and active user state; it does not duplicate users. |
 | Android session/token and SQLite cache | Member 1 | Android sends JWT and caches server DTOs only; cached state cannot authorize a mutation. |
 | Station details, active state, location, operating schedule | Member 2 | Component 3 references station IDs and validates current station state. |
-| Slot schedule, total/available kWh, availability state | Member 2 | Component 3 references the existing slot model and changes capacity only through an agreed shared atomic service/domain operation. |
+| Slot schedule, total/available kWh, availability state | Member 2 | Component 3 references the existing slot model; the shared slot entity now carries a minimal reservation allocation ledger used only by the atomic capacity service. |
 | Reservation entity, lifecycle, ownership, time/notice rules, energy allocation transaction, idempotency/versioning | Member 3 | Single source of truth used by both clients and Member 4 integrations. |
 | Reservation read/search contract | Member 3 API contract; Member 4 dashboard/UI consumption | Member 4 does not query MongoDB directly or reimplement lifecycle filters. |
 | QR issue/format/signing/verification/replay controls | Member 4 | Must bind to Component 3 reservation ID/version/status and assigned station. |
@@ -495,7 +520,7 @@ These items are not contradicted by repository code, but they cross ownership bo
 7. **QR details:** Member 4 must confirm token format, expiry, one-time replay store, display/check-in window, and whether verify and complete remain separate operations.
 8. **Error machine codes:** decide whether the shared API error body will remain `{status,message}` or gain a stable optional `code` across all components.
 9. **Reason limits:** confirm the proposed 500-character cancellation/rejection reason maximum and any audit-retention requirements.
-10. **MongoDB deployment:** confirm that development/test/production MongoDB configurations support multi-document transactions.
+10. **MongoDB deployment:** confirm whether development/test/production use a transaction-capable replica set/sharded cluster or the implemented standalone compensation mode; run topology-specific integration and failure-injection tests before release.
 11. **Administrative override:** this contract provides no Backoffice emergency update/cancel and no bypass of the seven-day/twelve-hour rules. Any override requires a separately authorized and audited team decision.
 12. **Missing clients:** supply the actual web and Android projects before implementation so their framework, language, XML/Compose choice, session contract, and navigation patterns can be followed rather than guessed.
 
