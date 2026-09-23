@@ -55,6 +55,10 @@ public sealed record ReservationRejectionResult(
     ReservationResponseDto Reservation,
     bool IdempotencyReplayed);
 
+internal sealed record ReservationDisplayReferences(
+    IReadOnlyDictionary<string, SolarStationInfo> Stations,
+    IReadOnlyDictionary<string, EnergyBookingSlot> Slots);
+
 internal sealed record ReservationCreationEntityResult(
     EnergyReservation Reservation,
     bool IdempotencyReplayed);
@@ -66,6 +70,7 @@ internal sealed record ReservationDecisionEntityResult(
 
 public sealed class ReservationService
 {
+    private const int MaximumPageSize = 100;
     private const string OperatingScheduleTimeZoneId = "Asia/Colombo";
     private const int MaximumIdempotencyKeyLength = 200;
     private const int MinimumIdempotencyKeyLength = 8;
@@ -103,6 +108,170 @@ public sealed class ReservationService
         BusinessRules rules = businessRulesOptions.Value;
         _maximumBookingDaysAhead = rules.MaxBookingDaysAhead;
         _minimumChangeNoticeHours = rules.MinChangeNoticeHours;
+    }
+
+    public async Task<PagedReservationResponseDto> GetReservationsAsync(
+        string actorNic,
+        string actorRoleClaim,
+        ReservationListQueryDto query,
+        CancellationToken cancellationToken)
+    {
+        // Build one server-side role scope and combine it with every requested list filter.
+        ArgumentNullException.ThrowIfNull(query);
+        User actor = await LoadAndValidateActorAsync(
+            actorNic,
+            actorRoleClaim,
+            [UserRole.Prosumer, UserRole.Backoffice, UserRole.GridOperator],
+            session: null,
+            cancellationToken);
+        DateTime serverNowUtc = DateTime.UtcNow;
+        int page = Math.Max(query.Page, 1);
+        int pageSize = Math.Clamp(query.PageSize, 1, MaximumPageSize);
+        var filters = new List<FilterDefinition<EnergyReservation>>
+        {
+            BuildReadScopeFilter(actor),
+            BuildViewFilter(query.View, serverNowUtc)
+        };
+
+        if (query.Status.HasValue)
+        {
+            filters.Add(Builders<EnergyReservation>.Filter.Eq(
+                reservation => reservation.Status,
+                query.Status.Value));
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.StationId))
+        {
+            string stationId = NormalizeObjectId(query.StationId, nameof(query.StationId));
+            if (actor.Role == UserRole.GridOperator &&
+                !string.Equals(actor.AssignedStationId, stationId, StringComparison.Ordinal))
+            {
+                throw new ForbiddenException(
+                    "Grid Operators may filter reservations only for their assigned station.");
+            }
+
+            filters.Add(Builders<EnergyReservation>.Filter.Eq(
+                reservation => reservation.StationId,
+                stationId));
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.ProsumerNic))
+        {
+            if (actor.Role != UserRole.Backoffice)
+            {
+                throw new ForbiddenException(
+                    "Only Backoffice users may filter reservations by Prosumer NIC.");
+            }
+
+            string prosumerNic = NormalizeNic(query.ProsumerNic, nameof(query.ProsumerNic));
+            filters.Add(Builders<EnergyReservation>.Filter.Eq(
+                reservation => reservation.ProsumerNic,
+                prosumerNic));
+        }
+
+        DateTime? fromUtc = query.FromUtc.HasValue
+            ? NormalizeUtc(query.FromUtc.Value, nameof(query.FromUtc))
+            : null;
+        DateTime? toUtc = query.ToUtc.HasValue
+            ? NormalizeUtc(query.ToUtc.Value, nameof(query.ToUtc))
+            : null;
+        if (fromUtc.HasValue && toUtc.HasValue && fromUtc.Value > toUtc.Value)
+        {
+            throw new ArgumentException("FromUtc cannot be later than ToUtc.", nameof(query));
+        }
+
+        if (fromUtc.HasValue)
+        {
+            filters.Add(Builders<EnergyReservation>.Filter.Gte(
+                reservation => reservation.ScheduledStartTimeUtc,
+                fromUtc.Value));
+        }
+
+        if (toUtc.HasValue)
+        {
+            filters.Add(Builders<EnergyReservation>.Filter.Lte(
+                reservation => reservation.ScheduledStartTimeUtc,
+                toUtc.Value));
+        }
+
+        string? search = NormalizeOptionalSearch(query.Search);
+        if (search is not null)
+        {
+            if (actor.Role != UserRole.Backoffice)
+            {
+                throw new ForbiddenException("Only Backoffice users may search reservations.");
+            }
+
+            filters.Add(await BuildSearchFilterAsync(search, cancellationToken));
+        }
+
+        FilterDefinition<EnergyReservation> filter = Builders<EnergyReservation>.Filter.And(filters);
+        long totalCount = await _context.Reservations.CountDocumentsAsync(
+            filter,
+            cancellationToken: cancellationToken);
+        long skip = (long)(page - 1) * pageSize;
+        List<EnergyReservation> reservations = skip > int.MaxValue
+            ? []
+            : await _context.Reservations
+                .Find(filter)
+                .SortByDescending(reservation => reservation.CreatedAtUtc)
+                .ThenByDescending(reservation => reservation.Id)
+                .Skip((int)skip)
+                .Limit(pageSize)
+                .ToListAsync(cancellationToken);
+        ReservationDisplayReferences references = await LoadDisplayReferencesAsync(
+            reservations,
+            cancellationToken);
+
+        return new PagedReservationResponseDto
+        {
+            Items = reservations
+                .Select(reservation => MapToListItem(
+                    reservation,
+                    actor,
+                    serverNowUtc,
+                    references))
+                .ToList(),
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize,
+            TotalPages = ReservationReadPolicy.CalculateTotalPages(totalCount, pageSize)
+        };
+    }
+
+    public async Task<ReservationResponseDto> GetReservationByIdAsync(
+        string actorNic,
+        string actorRoleClaim,
+        string reservationId,
+        CancellationToken cancellationToken)
+    {
+        // Include ownership or assigned-station scope in the direct lookup to enforce object access.
+        string normalizedReservationId = NormalizeObjectId(reservationId, nameof(reservationId));
+        User actor = await LoadAndValidateActorAsync(
+            actorNic,
+            actorRoleClaim,
+            [UserRole.Prosumer, UserRole.Backoffice, UserRole.GridOperator],
+            session: null,
+            cancellationToken);
+        FilterDefinition<EnergyReservation> filter = Builders<EnergyReservation>.Filter.And(
+            Builders<EnergyReservation>.Filter.Eq(
+                reservation => reservation.Id,
+                normalizedReservationId),
+            BuildReadScopeFilter(actor));
+        EnergyReservation? reservation = await _context.Reservations
+            .Find(filter)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (reservation is null)
+        {
+            throw new NotFoundException("The reservation does not exist.");
+        }
+
+        ReservationDisplayReferences references = await LoadDisplayReferencesAsync(
+            [reservation],
+            cancellationToken);
+        references.Stations.TryGetValue(reservation.StationId, out SolarStationInfo? station);
+        references.Slots.TryGetValue(reservation.SlotId, out EnergyBookingSlot? slot);
+        return MapToResponse(reservation, actor, DateTime.UtcNow, station, slot);
     }
 
     public async Task<ReservationCreationResult> CreateOwnReservationAsync(
@@ -1949,7 +2118,7 @@ public sealed class ReservationService
 
         if (actor.Status != UserStatus.Active)
         {
-            throw new ForbiddenException("Only active users may create reservations.");
+            throw new ForbiddenException("Only active users may use reservation operations.");
         }
 
         if (!allowedRoles.Contains(actor.Role))
@@ -2188,50 +2357,157 @@ public sealed class ReservationService
         return reservation;
     }
 
-    private ReservationResponseDto MapToResponse(
-        EnergyReservation reservation,
-        User actor,
+    private static FilterDefinition<EnergyReservation> BuildReadScopeFilter(User actor)
+    {
+        // Translate the current persisted role into a MongoDB ownership/station predicate.
+        if (actor.Role == UserRole.GridOperator &&
+            !ObjectId.TryParse(actor.AssignedStationId, out _))
+        {
+            throw new ForbiddenException(
+                "The Grid Operator does not have a valid assigned station.");
+        }
+
+        return Builders<EnergyReservation>.Filter.Where(
+            ReservationReadPolicy.BuildScopePredicate(actor));
+    }
+
+    private static FilterDefinition<EnergyReservation> BuildViewFilter(
+        ReservationListView view,
         DateTime serverNowUtc)
     {
-        // Project persisted state plus actor-scoped actions without exposing internal hashes or counters.
-        bool ownerProsumer = actor.Role == UserRole.Prosumer &&
-            string.Equals(actor.Nic, reservation.ProsumerNic, StringComparison.Ordinal);
-        bool noticeSatisfied = reservation.ScheduledStartTimeUtc - serverNowUtc >=
-            TimeSpan.FromHours(_minimumChangeNoticeHours);
-        bool mutable = StatusHoldsCapacity(reservation.Status);
-        bool assignedGridOperator = actor.Role == UserRole.GridOperator &&
-            string.Equals(actor.AssignedStationId, reservation.StationId, StringComparison.Ordinal);
-        bool pendingDecisionAvailable = reservation.Status == ReservationStatus.Pending &&
-            reservation.ScheduledStartTimeUtc > serverNowUtc;
-        bool staffCanApprove =
-            (actor.Role == UserRole.Backoffice || assignedGridOperator) &&
-            pendingDecisionAvailable;
-        bool backofficeCanReject = actor.Role == UserRole.Backoffice && pendingDecisionAvailable;
-        bool staffCanUpdate = actor.Role == UserRole.Backoffice || assignedGridOperator;
-        bool staffCanCancel = actor.Role == UserRole.Backoffice || assignedGridOperator;
+        // Keep pending/current/future/history definitions centralized for every client.
+        return Builders<EnergyReservation>.Filter.Where(
+            ReservationReadPolicy.BuildViewPredicate(view, serverNowUtc));
+    }
 
-        return new ReservationResponseDto
+    private async Task<FilterDefinition<EnergyReservation>> BuildSearchFilterAsync(
+        string search,
+        CancellationToken cancellationToken)
+    {
+        // Integrate Backoffice identifier and station-name search without widening actor scope.
+        var pattern = new BsonRegularExpression(Regex.Escape(search), "i");
+        List<string> matchingStationIds = await _context.Stations
+            .Find(Builders<SolarStationInfo>.Filter.Or(
+                Builders<SolarStationInfo>.Filter.Regex(station => station.Name, pattern),
+                Builders<SolarStationInfo>.Filter.Regex(station => station.Address, pattern)))
+            .Project(station => station.Id)
+            .ToListAsync(cancellationToken);
+        var searchFilters = new List<FilterDefinition<EnergyReservation>>
+        {
+            Builders<EnergyReservation>.Filter.Regex(
+                reservation => reservation.ProsumerNic,
+                pattern)
+        };
+
+        if (ObjectId.TryParse(search, out _))
+        {
+            searchFilters.Add(Builders<EnergyReservation>.Filter.Eq(
+                reservation => reservation.Id,
+                search));
+            searchFilters.Add(Builders<EnergyReservation>.Filter.Eq(
+                reservation => reservation.StationId,
+                search));
+            searchFilters.Add(Builders<EnergyReservation>.Filter.Eq(
+                reservation => reservation.SlotId,
+                search));
+        }
+
+        if (matchingStationIds.Count > 0)
+        {
+            searchFilters.Add(Builders<EnergyReservation>.Filter.In(
+                reservation => reservation.StationId,
+                matchingStationIds));
+        }
+
+        return Builders<EnergyReservation>.Filter.Or(searchFilters);
+    }
+
+    private async Task<ReservationDisplayReferences> LoadDisplayReferencesAsync(
+        IReadOnlyCollection<EnergyReservation> reservations,
+        CancellationToken cancellationToken)
+    {
+        // Batch station and slot display lookups so paged responses avoid per-item database calls.
+        if (reservations.Count == 0)
+        {
+            return new ReservationDisplayReferences(
+                new Dictionary<string, SolarStationInfo>(),
+                new Dictionary<string, EnergyBookingSlot>());
+        }
+
+        string[] stationIds = reservations
+            .Select(reservation => reservation.StationId)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        string[] slotIds = reservations
+            .Select(reservation => reservation.SlotId)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        Task<List<SolarStationInfo>> stationTask = _context.Stations
+            .Find(Builders<SolarStationInfo>.Filter.In(station => station.Id, stationIds))
+            .ToListAsync(cancellationToken);
+        Task<List<EnergyBookingSlot>> slotTask = _context.Slots
+            .Find(Builders<EnergyBookingSlot>.Filter.In(slot => slot.Id, slotIds))
+            .ToListAsync(cancellationToken);
+        await Task.WhenAll(stationTask, slotTask);
+
+        return new ReservationDisplayReferences(
+            stationTask.Result.ToDictionary(station => station.Id, StringComparer.Ordinal),
+            slotTask.Result.ToDictionary(slot => slot.Id, StringComparer.Ordinal));
+    }
+
+    private ReservationListItemResponseDto MapToListItem(
+        EnergyReservation reservation,
+        User actor,
+        DateTime serverNowUtc,
+        ReservationDisplayReferences references)
+    {
+        // Return a compact DTO with display metadata and the same action policy as details.
+        references.Stations.TryGetValue(reservation.StationId, out SolarStationInfo? station);
+        references.Slots.TryGetValue(reservation.SlotId, out EnergyBookingSlot? slot);
+        return new ReservationListItemResponseDto
         {
             Id = reservation.Id,
             ProsumerNic = reservation.ProsumerNic,
             StationId = reservation.StationId,
+            StationName = station?.Name,
+            StationAddress = station?.Address,
             SlotId = reservation.SlotId,
+            SlotAvailabilityStatus = slot?.AvailabilityStatus.ToString(),
             ScheduledStartTimeUtc = reservation.ScheduledStartTimeUtc,
             ScheduledEndTimeUtc = reservation.ScheduledEndTimeUtc,
             RequestedEnergyKwh = reservation.RequestedEnergyKwh,
             Status = reservation.Status.ToString(),
             Version = reservation.Version,
             QrEligible = reservation.Status == ReservationStatus.Approved,
-            AllowedActions = new ReservationAllowedActionsDto
-            {
-                CanUpdate = (ownerProsumer || staffCanUpdate) && mutable && noticeSatisfied,
-                CanCancel = (ownerProsumer || staffCanCancel) && mutable && noticeSatisfied,
-                CanApprove = staffCanApprove,
-                CanReject = backofficeCanReject,
-                CanGetQr = ownerProsumer && reservation.Status == ReservationStatus.Approved,
-                CanVerifyQr = assignedGridOperator && reservation.Status == ReservationStatus.Approved,
-                CanComplete = false
-            },
+            AllowedActions = BuildAllowedActions(reservation, actor, serverNowUtc),
+            UpdatedAtUtc = reservation.UpdatedAtUtc
+        };
+    }
+
+    private ReservationResponseDto MapToResponse(
+        EnergyReservation reservation,
+        User actor,
+        DateTime serverNowUtc,
+        SolarStationInfo? station = null,
+        EnergyBookingSlot? slot = null)
+    {
+        // Project persisted state plus actor-scoped actions without exposing internal hashes or counters.
+        return new ReservationResponseDto
+        {
+            Id = reservation.Id,
+            ProsumerNic = reservation.ProsumerNic,
+            StationId = reservation.StationId,
+            StationName = station?.Name,
+            StationAddress = station?.Address,
+            SlotId = reservation.SlotId,
+            SlotAvailabilityStatus = slot?.AvailabilityStatus.ToString(),
+            ScheduledStartTimeUtc = reservation.ScheduledStartTimeUtc,
+            ScheduledEndTimeUtc = reservation.ScheduledEndTimeUtc,
+            RequestedEnergyKwh = reservation.RequestedEnergyKwh,
+            Status = reservation.Status.ToString(),
+            Version = reservation.Version,
+            QrEligible = reservation.Status == ReservationStatus.Approved,
+            AllowedActions = BuildAllowedActions(reservation, actor, serverNowUtc),
             CreatedAtUtc = reservation.CreatedAtUtc,
             CreatedByActorNic = reservation.CreatedByActorNic,
             UpdatedAtUtc = reservation.UpdatedAtUtc,
@@ -2260,6 +2536,19 @@ public sealed class ReservationService
                 })
                 .ToList()
         };
+    }
+
+    private ReservationAllowedActionsDto BuildAllowedActions(
+        EnergyReservation reservation,
+        User actor,
+        DateTime serverNowUtc)
+    {
+        // Explain every unavailable actor-scoped action from current status, time, and role state.
+        return ReservationReadPolicy.BuildAllowedActions(
+            reservation,
+            actor,
+            serverNowUtc,
+            _minimumChangeNoticeHours);
     }
 
     private static void ValidateCreationFingerprint(
@@ -2345,6 +2634,18 @@ public sealed class ReservationService
         }
 
         return objectId.ToString();
+    }
+
+    private static string? NormalizeOptionalSearch(string? value)
+    {
+        // Trim optional search text and retain the DTO's bounded public contract in the service.
+        string? normalized = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        if (normalized?.Length > 100)
+        {
+            throw new ArgumentException("Search cannot exceed 100 characters.", nameof(value));
+        }
+
+        return normalized;
     }
 
     private static void ValidatePositiveEnergy(decimal value, string parameterName)

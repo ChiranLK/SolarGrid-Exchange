@@ -102,6 +102,23 @@ public sealed class MongoDbIndexInitializer(MongoDbContext dbContext) : IHostedS
                     .Ascending(reservation => reservation.ScheduledStartTimeUtc),
                 new CreateIndexOptions { Name = "ix_reservations_status_start" }),
             new(
+                Builders<EnergyReservation>.IndexKeys
+                    .Ascending(reservation => reservation.ProsumerNic)
+                    .Descending(reservation => reservation.CreatedAtUtc)
+                    .Descending(reservation => reservation.Id),
+                new CreateIndexOptions { Name = "ix_reservations_prosumer_created_id" }),
+            new(
+                Builders<EnergyReservation>.IndexKeys
+                    .Ascending(reservation => reservation.StationId)
+                    .Descending(reservation => reservation.CreatedAtUtc)
+                    .Descending(reservation => reservation.Id),
+                new CreateIndexOptions { Name = "ix_reservations_station_created_id" }),
+            new(
+                Builders<EnergyReservation>.IndexKeys
+                    .Descending(reservation => reservation.CreatedAtUtc)
+                    .Descending(reservation => reservation.Id),
+                new CreateIndexOptions { Name = "ix_reservations_created_id" }),
+            new(
                 Builders<EnergyReservation>.IndexKeys.Ascending(
                     reservation => reservation.CreationRequestIdHash),
                 new CreateIndexOptions

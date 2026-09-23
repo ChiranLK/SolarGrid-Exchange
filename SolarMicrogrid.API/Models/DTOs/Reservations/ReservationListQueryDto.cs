@@ -11,8 +11,20 @@ using SolarMicrogrid.API.Models.Entities;
 
 namespace SolarMicrogrid.API.Models.DTOs.Reservations;
 
+public enum ReservationListView
+{
+    All,
+    Pending,
+    Current,
+    ApprovedFuture,
+    History
+}
+
 public sealed class ReservationListQueryDto
 {
+    [EnumDataType(typeof(ReservationListView))]
+    public ReservationListView View { get; set; } = ReservationListView.All;
+
     [EnumDataType(typeof(ReservationStatus))]
     public ReservationStatus? Status { get; set; }
 
