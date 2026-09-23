@@ -164,3 +164,14 @@ Content-Type: application/json
   "requestedEnergyKwh": 7.5,
   "expectedVersion": 1
 }
+
+### Owner, Backoffice, or assigned Grid Operator cancels a reservation
+POST {{baseUrl}}/api/reservations/{{reservationId}}/cancel
+Authorization: Bearer {{token}}
+Idempotency-Key: cancel-reservation-example-001
+Content-Type: application/json
+
+{
+  "expectedVersion": 1,
+  "reason": "Plans changed before the notice cutoff."
+}

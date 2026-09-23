@@ -135,8 +135,8 @@ An exact active duplicate must also be protected against races. The implementati
 | `Approved` | Material update | Owning Prosumer | Change to `Pending`; increment version; invalidate old QR eligibility | Apply only the delta/move; capacity remains held by the updated reservation. |
 | `Pending` | Approve | Backoffice | `Approved`; increment version | None; capacity is already held. |
 | `Pending` | Reject | Backoffice | `Rejected`; increment version | Release held energy once. |
-| `Pending` | Cancel | Owning Prosumer | `Cancelled`; increment version | Release held energy once. |
-| `Approved` | Cancel | Owning Prosumer | `Cancelled`; increment version; invalidate QR eligibility | Release held energy once. |
+| `Pending` | Cancel | Owner or authorized staff | `Cancelled`; increment version | Release held energy once. |
+| `Approved` | Cancel | Owner or authorized staff | `Cancelled`; increment version; invalidate QR eligibility | Release held energy once. |
 | `Approved` | Complete after current QR verification | Assigned Grid Operator through Member 4 flow | `Completed`; increment version | Do not restore consumed energy to bookable capacity. |
 | `Rejected`, `Cancelled`, or `Completed` | Any mutation | Any actor | Reject as final-state conflict | None. |
 
@@ -154,7 +154,7 @@ A material update means a changed `SlotId` or changed `RequestedEnergyKwh`. The 
 | Create reservation | Yes, for self only | Yes, for any eligible active Prosumer | Yes, for an eligible active Prosumer at the operator's assigned station |
 | List/view | Own reservations only | All reservations with filters | Reservations for assigned station only |
 | Update/reschedule | Own `Pending` or `Approved` reservation, subject to notice | Yes, on behalf of the owner without bypassing rules | Yes, only when both current and destination stations match the assigned station |
-| Cancel | Own `Pending` or `Approved` reservation, subject to notice | No administrative override in this contract | No |
+| Cancel | Own `Pending` or `Approved` reservation, subject to notice | Yes, on behalf of the owner without bypassing rules | Yes, only at the operator's assigned station and without bypassing rules |
 | Approve/reject | No | Yes, `Pending` only | No |
 | Obtain/display QR | Own current `Approved` reservation | Read eligibility only | No |
 | Verify QR | No | No | Yes, only for assigned station |
@@ -170,7 +170,7 @@ Web versus Android does not change permissions. Authorization comes from JWT cla
 - Prosumer create/update/cancel request DTOs do not accept `ProsumerNic`, `ActorNic`, or role fields.
 - On create, the API sets `ProsumerNic = ActorNic`; a Prosumer cannot create for another NIC.
 - Staff creation uses a separate DTO with `TargetProsumerNic`; the API still derives `ActorNic` and role from JWT claims, validates both current user records, and records the staff actor separately from the target owner.
-- On update/cancel, the API loads the reservation, compares its `ProsumerNic` to `ActorNic`, and never trusts a client-supplied target identity.
+- On update/cancel, the API loads the reservation, applies owner or explicit staff scope, and never trusts a client-supplied target identity.
 - Staff update uses the stored immutable `ProsumerNic`; the request cannot replace the owner. Backoffice is globally scoped, while a Grid Operator must match both the reservation's current station and the proposed slot's station.
 - Backoffice action DTOs identify only the reservation; the target remains the immutable stored `ProsumerNic`.
 - Grid Operator scope is checked using the actor's stored `AssignedStationId` against the reservation's `StationId`.
@@ -217,11 +217,14 @@ Staff updates apply the same notice, horizon, status, overlap, capacity, version
 
 The API must validate:
 
-1. Actor is the owning active Prosumer.
+1. Actor is the owning active Prosumer, active Backoffice user, or active Grid Operator assigned to the reservation station.
 2. Reservation is `Pending` or `Approved`.
 3. `ExpectedVersion` matches.
 4. Existing `ScheduledStartTimeUtc - serverNowUtc >= 12 hours`.
-5. Status change and capacity release commit once in the same transaction.
+5. The required `Idempotency-Key` is scoped to the actor, route, reservation, expected version, and normalized reason.
+6. Status change and exact capacity-claim release commit once in the same transaction when supported.
+
+Staff cancellation follows the same status, version, notice, idempotency, and capacity rules as owner cancellation. Another Prosumer receives a hidden-scope 404; an unassigned Grid Operator receives 403. Backoffice has global reservation scope but no emergency cutoff override.
 
 ### Approve and reject
 
@@ -296,7 +299,8 @@ When transactions are unavailable, the service uses these durable compensation r
 - Creation first persists a `Pending` reservation in internal `HoldPending` capacity state with the hashed key/fingerprint, then applies the idempotent slot claim and advances the reservation to `Held`. A retry resumes the same reservation identity. If a definite pre-hold failure occurs, only an unallocated provisional document is removed; an uncertain result with a persisted claim is retained for safe retry rather than risking a double allocation or release.
 - Moving slots holds the target first, performs a version-filtered reservation compare-and-swap, then releases the old claim. If the compare-and-swap fails or its result is uncertain, reconciliation reads the persisted reservation, retains its canonical slot claim, and releases only non-canonical claims.
 - A same-slot increase is held before the reservation compare-and-swap; a failed compare-and-swap reconciles back to the persisted quantity. A same-slot decrease is persisted before energy is freed, so failure preserves the original larger allocation.
-- Cancel/reject workflows will record release-pending/final state, remove the exact slot claim, then mark `Released`. A crash is repaired by `ReconcileCapacityAsync`; claim absence makes release retries harmless.
+- Cancellation records `Cancelled` plus `ReleasePending` through a status/version/capacity-state compare-and-swap, removes the exact slot claim, then marks `Released`. The compare-and-swap means concurrent completion cannot also win. A crash is repaired by `ReconcileCapacityAsync`; claim absence makes release retries harmless. Reusing the same cancellation key/fingerprint returns the persisted cancellation summary after reconciliation, while another request receives a final-state or stale-version conflict.
+- Reject will use the same exact-claim release pattern when its workflow is implemented.
 - Completed reservations retain their canonical claim as consumed capacity and use `Consumed`, not `Released`.
 - `CompensationRequired` records an inconsistency that cannot be repaired safely without operator review. The repair path never allocates missing capacity speculatively.
 
@@ -355,7 +359,7 @@ The request does not contain a prosumer NIC, station ID, status, time, or capaci
 | Property | Type | Required | Notes |
 | --- | --- | --- | --- |
 | `ExpectedVersion` | long | Yes | Optimistic concurrency token. |
-| `Reason` | string | No | Trimmed, sanitized audit note; proposed maximum 500 characters. |
+| `Reason` | string | No | Trimmed audit note; maximum 500 characters. |
 
 ### ApproveReservationRequestDto
 
@@ -440,7 +444,7 @@ All routes require JWT authentication. Both web and Android use the Prosumer mut
 | `POST /api/reservations` | Prosumer self | 201 with `Location` and response DTO | 400; 401; 403; 404 slot/station; 409 duplicate/overlap/capacity/idempotency |
 | `POST /api/reservations/staff` | Backoffice globally; Grid Operator at assigned station | 201 with `Location` and response DTO | 400; 401; 403 role/station; 404 target/slot/station; 409 target eligibility/duplicate/overlap/capacity/idempotency |
 | `PUT /api/reservations/{reservationId}` | Owning Prosumer, Backoffice, or Grid Operator scoped to current and destination station | 200 | 400; 401; 403; 404; 409 notice/status/version/overlap/capacity/idempotency |
-| `POST /api/reservations/{reservationId}/cancel` | Owning Prosumer | 200 | 400; 401; 403; 404; 409 notice/status/version/idempotency |
+| `POST /api/reservations/{reservationId}/cancel` | Owning Prosumer, Backoffice, or Grid Operator assigned to the reservation station | 200 | 400; 401; 403; 404; 409 notice/status/version/idempotency |
 | `POST /api/reservations/{reservationId}/approve` | Backoffice | 200 | 400; 401; 403; 404; 409 status/version/time/idempotency |
 | `POST /api/reservations/{reservationId}/reject` | Backoffice | 200 | 400; 401; 403; 404; 409 status/version/time/idempotency |
 | `GET /api/reservations/{reservationId}/qr` | Owning Prosumer, Member 4 implementation | 200 QR response | 401; 403; 404; 409 not eligible |

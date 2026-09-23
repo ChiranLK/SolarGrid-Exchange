@@ -91,6 +91,28 @@ public sealed class ReservationsController : ControllerBase
         return Ok(result.Reservation);
     }
 
+    [HttpPost("{reservationId}/cancel")]
+    [Authorize(Roles =
+        $"{nameof(UserRole.Prosumer)},{nameof(UserRole.Backoffice)},{nameof(UserRole.GridOperator)}")]
+    public async Task<ActionResult<ReservationResponseDto>> CancelReservation(
+        string reservationId,
+        [FromBody] CancelReservationRequestDto request,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
+        CancellationToken cancellationToken)
+    {
+        // Pass actor claims, expected version, and optional reason to the capacity-safe cancellation workflow.
+        (string actorNic, string actorRole) = GetRequiredActorClaims();
+        ReservationCancellationResult result = await _reservationService.CancelReservationAsync(
+            actorNic,
+            actorRole,
+            reservationId,
+            request,
+            idempotencyKey ?? string.Empty,
+            cancellationToken);
+        SetReplayHeader(result.IdempotencyReplayed);
+        return Ok(result.Reservation);
+    }
+
     private (string ActorNic, string ActorRole) GetRequiredActorClaims()
     {
         // Reject an authenticated principal that lacks the repository's required NIC or role claims.
@@ -106,7 +128,7 @@ public sealed class ReservationsController : ControllerBase
 
     private void SetReplayHeader(bool replayed)
     {
-        // Tell clients that a safe retry returned the existing creation result.
+        // Tell clients that a safe retry returned the existing mutation result.
         if (replayed)
         {
             Response.Headers["Idempotency-Replayed"] = "true";
