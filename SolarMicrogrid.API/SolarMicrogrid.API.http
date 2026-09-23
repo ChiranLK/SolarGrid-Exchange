@@ -1,17 +1,137 @@
-@SolarMicrogrid.API_HostAddress = http://localhost:5076
-@accessToken = paste-a-development-jwt-here
+@baseUrl = http://localhost:5076
+@token = replace-with-a-development-jwt
+@stationId = 000000000000000000000000
 @slotId = 000000000000000000000000
 @targetProsumerNic = 000000000V
 @idempotencyKey = create-reservation-example-001
 
-GET {{SolarMicrogrid.API_HostAddress}}/weatherforecast/
+### List stations
+GET {{baseUrl}}/api/stations?page=1&pageSize=20&isActive=true
+Authorization: Bearer {{token}}
 Accept: application/json
 
-###
+### Get station by ID
+GET {{baseUrl}}/api/stations/{{stationId}}
+Authorization: Bearer {{token}}
+Accept: application/json
 
-# Active Prosumer creates their own Pending reservation.
-POST {{SolarMicrogrid.API_HostAddress}}/api/reservations
-Authorization: Bearer {{accessToken}}
+### Get nearby stations
+GET {{baseUrl}}/api/stations/nearby?latitude=6.9271&longitude=79.8612&radiusKm=25&maximumResults=20
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Create station (Backoffice)
+POST {{baseUrl}}/api/stations
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Colombo Solar Hub",
+  "description": "Development request example",
+  "address": "Colombo",
+  "latitude": 6.9271,
+  "longitude": 79.8612,
+  "energyGenerationCapacityKw": 250,
+  "batteryStorageCapacityKwh": 500,
+  "operatingSchedule": [
+    {
+      "dayOfWeek": "Monday",
+      "isOpen": true,
+      "openingTime": "08:00",
+      "closingTime": "18:00"
+    }
+  ]
+}
+
+### Update station (Backoffice)
+PUT {{baseUrl}}/api/stations/{{stationId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Colombo Solar Hub",
+  "description": "Updated development request example",
+  "address": "Colombo",
+  "latitude": 6.9271,
+  "longitude": 79.8612,
+  "energyGenerationCapacityKw": 300,
+  "batteryStorageCapacityKwh": 600,
+  "operatingSchedule": [
+    {
+      "dayOfWeek": "Monday",
+      "isOpen": true,
+      "openingTime": "08:00",
+      "closingTime": "18:00"
+    }
+  ]
+}
+
+### Activate station (Backoffice)
+PATCH {{baseUrl}}/api/stations/{{stationId}}/activate
+Authorization: Bearer {{token}}
+
+### Deactivate station (Backoffice)
+PATCH {{baseUrl}}/api/stations/{{stationId}}/deactivate
+Authorization: Bearer {{token}}
+
+### List slots for station
+GET {{baseUrl}}/api/stations/{{stationId}}/slots?page=1&pageSize=20
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### List available slots
+GET {{baseUrl}}/api/stations/{{stationId}}/slots/available?page=1&pageSize=20
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Get slot by ID
+GET {{baseUrl}}/api/slots/{{slotId}}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Create slot (Backoffice; route StationId is authoritative)
+POST {{baseUrl}}/api/stations/{{stationId}}/slots
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "startTimeUtc": "2027-01-04T04:00:00Z",
+  "endTimeUtc": "2027-01-04T05:00:00Z",
+  "totalCapacityKwh": 100
+}
+
+### Update slot (Backoffice)
+PUT {{baseUrl}}/api/slots/{{slotId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "startTimeUtc": "2027-01-04T04:30:00Z",
+  "endTimeUtc": "2027-01-04T05:30:00Z",
+  "totalCapacityKwh": 120
+}
+
+### Disable slot (Backoffice)
+PATCH {{baseUrl}}/api/slots/{{slotId}}/availability
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "Unavailable"
+}
+
+### Enable slot (Backoffice)
+PATCH {{baseUrl}}/api/slots/{{slotId}}/availability
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "Available"
+}
+
+### Active Prosumer creates their own Pending reservation
+POST {{baseUrl}}/api/reservations
+Authorization: Bearer {{token}}
 Idempotency-Key: {{idempotencyKey}}
 Content-Type: application/json
 
@@ -20,11 +140,9 @@ Content-Type: application/json
   "requestedEnergyKwh": 5.0
 }
 
-###
-
-# Active Backoffice or assigned Grid Operator creates for an eligible Prosumer.
-POST {{SolarMicrogrid.API_HostAddress}}/api/reservations/staff
-Authorization: Bearer {{accessToken}}
+### Active Backoffice or assigned Grid Operator creates for an eligible Prosumer
+POST {{baseUrl}}/api/reservations/staff
+Authorization: Bearer {{token}}
 Idempotency-Key: {{idempotencyKey}}-staff
 Content-Type: application/json
 
@@ -33,5 +151,3 @@ Content-Type: application/json
   "slotId": "{{slotId}}",
   "requestedEnergyKwh": 5.0
 }
-
-###
