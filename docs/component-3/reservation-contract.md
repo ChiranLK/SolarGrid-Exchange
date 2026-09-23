@@ -153,7 +153,7 @@ A material update means a changed `SlotId` or changed `RequestedEnergyKwh`. The 
 | --- | --- | --- | --- |
 | Create reservation | Yes, for self only | Yes, for any eligible active Prosumer | Yes, for an eligible active Prosumer at the operator's assigned station |
 | List/view | Own reservations only | All reservations with filters | Reservations for assigned station only |
-| Update/reschedule | Own `Pending` or `Approved` reservation, subject to notice | No | No |
+| Update/reschedule | Own `Pending` or `Approved` reservation, subject to notice | Yes, on behalf of the owner without bypassing rules | Yes, only when both current and destination stations match the assigned station |
 | Cancel | Own `Pending` or `Approved` reservation, subject to notice | No administrative override in this contract | No |
 | Approve/reject | No | Yes, `Pending` only | No |
 | Obtain/display QR | Own current `Approved` reservation | Read eligibility only | No |
@@ -171,6 +171,7 @@ Web versus Android does not change permissions. Authorization comes from JWT cla
 - On create, the API sets `ProsumerNic = ActorNic`; a Prosumer cannot create for another NIC.
 - Staff creation uses a separate DTO with `TargetProsumerNic`; the API still derives `ActorNic` and role from JWT claims, validates both current user records, and records the staff actor separately from the target owner.
 - On update/cancel, the API loads the reservation, compares its `ProsumerNic` to `ActorNic`, and never trusts a client-supplied target identity.
+- Staff update uses the stored immutable `ProsumerNic`; the request cannot replace the owner. Backoffice is globally scoped, while a Grid Operator must match both the reservation's current station and the proposed slot's station.
 - Backoffice action DTOs identify only the reservation; the target remains the immutable stored `ProsumerNic`.
 - Grid Operator scope is checked using the actor's stored `AssignedStationId` against the reservation's `StationId`.
 - Audit fields record the actor, while `ProsumerNic` continues to identify the reservation owner.
@@ -198,7 +199,7 @@ Staff creation additionally requires that `TargetProsumerNic` resolves to an `Ac
 
 The API must validate:
 
-1. Actor is the owning active Prosumer.
+1. Actor is the owning active Prosumer, active Backoffice user, or active Grid Operator assigned to both the current and proposed station.
 2. Reservation is `Pending` or `Approved`.
 3. `ExpectedVersion` matches the stored version.
 4. Existing `ScheduledStartTimeUtc - serverNowUtc >= 12 hours`.
@@ -209,6 +210,8 @@ The API must validate:
 9. If prior status was `Approved`, status becomes `Pending`; the resulting version makes every QR tied to the prior version invalid.
 
 The notice check is intentionally against the old scheduled start. Moving a reservation farther into the future does not bypass the twelve-hour rule.
+
+Staff updates apply the same notice, horizon, status, overlap, capacity, version, and idempotency rules as owner updates. Staff have no emergency bypass. Another Prosumer receives a hidden-scope 404; unauthorized staff receive 403.
 
 ### Cancel
 
@@ -315,6 +318,8 @@ Creation keys must contain 8 through 200 printable characters. The database stor
 - Same key with a different request fingerprint: return 409.
 - New key against a now-final or stale reservation: validate normally and return the applicable 409; do not release/allocate again.
 - A mutation is not reported successful until its idempotency receipt, reservation change, and capacity change have committed together.
+
+The implemented update path stores the latest scoped update-key hash and canonical request-fingerprint hash on the reservation in the same version-filtered mutation. An immediate same-key/same-request retry reconciles any interrupted fallback capacity step and returns the current saved summary without allocating twice; a changed fingerprint returns 409. Once a later successful update replaces these latest-update fields, replaying an older request fails the normal stale-version check rather than mutating capacity again.
 
 ## DTO contracts
 
@@ -434,7 +439,7 @@ All routes require JWT authentication. Both web and Android use the Prosumer mut
 | `GET /api/reservations/{reservationId}` | Owner, Backoffice, or assigned Grid Operator | 200 | 400 invalid ID; 401; 403 role; 404 absent/out of scope |
 | `POST /api/reservations` | Prosumer self | 201 with `Location` and response DTO | 400; 401; 403; 404 slot/station; 409 duplicate/overlap/capacity/idempotency |
 | `POST /api/reservations/staff` | Backoffice globally; Grid Operator at assigned station | 201 with `Location` and response DTO | 400; 401; 403 role/station; 404 target/slot/station; 409 target eligibility/duplicate/overlap/capacity/idempotency |
-| `PUT /api/reservations/{reservationId}` | Owning Prosumer | 200 | 400; 401; 403; 404; 409 notice/status/version/overlap/capacity/idempotency |
+| `PUT /api/reservations/{reservationId}` | Owning Prosumer, Backoffice, or Grid Operator scoped to current and destination station | 200 | 400; 401; 403; 404; 409 notice/status/version/overlap/capacity/idempotency |
 | `POST /api/reservations/{reservationId}/cancel` | Owning Prosumer | 200 | 400; 401; 403; 404; 409 notice/status/version/idempotency |
 | `POST /api/reservations/{reservationId}/approve` | Backoffice | 200 | 400; 401; 403; 404; 409 status/version/time/idempotency |
 | `POST /api/reservations/{reservationId}/reject` | Backoffice | 200 | 400; 401; 403; 404; 409 status/version/time/idempotency |
@@ -537,7 +542,7 @@ These items are not contradicted by repository code, but they cross ownership bo
 8. **Error machine codes:** decide whether the shared API error body will remain `{status,message}` or gain a stable optional `code` across all components.
 9. **Reason limits:** confirm the proposed 500-character cancellation/rejection reason maximum and any audit-retention requirements.
 10. **MongoDB deployment:** confirm whether development/test/production use a transaction-capable replica set/sharded cluster or the implemented standalone compensation mode; run topology-specific integration and failure-injection tests before release.
-11. **Administrative override:** this contract provides no Backoffice emergency update/cancel and no bypass of the seven-day/twelve-hour rules. Any override requires a separately authorized and audited team decision.
+11. **Administrative override:** Backoffice and assigned Grid Operators may perform ordinary on-behalf-of updates, but there is no emergency update/cancel or bypass of the seven-day/twelve-hour rules. Any override requires a separately authorized and audited team decision.
 12. **Missing clients:** supply the actual web and Android projects before implementation so their framework, language, XML/Compose choice, session contract, and navigation patterns can be followed rather than guessed.
 
 Suggested commit message if this document is later committed by the user:

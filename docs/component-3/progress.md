@@ -95,11 +95,11 @@ No SQLite database, Room dependency, Android database helper/DAO, schema, migrat
 
 | File/integration point | Current state |
 | --- | --- |
-| `Models/Entities/EnergyReservation.cs` | Implemented reservation/status/history entities with ObjectId references, NIC ownership, UTC schedule/audit timestamps, Decimal128 kWh quantity, staff/action audit fields, versioning, and hashed creation-key/fingerprint identifiers. |
-| `Services/ReservationService.cs` | Foundation plus creation workflow implemented: claims-to-current-user validation, self/staff permissions, target eligibility, station/slot/schedule/horizon/quantity checks, overlap protection, Pending creation, idempotent capacity hold/resume, allowed-action projection, and transaction/compensation orchestration. Update/cancel/approve/reject remain pending. |
+| `Models/Entities/EnergyReservation.cs` | Implements reservation/status/history entities with ObjectId references, NIC ownership, UTC schedule/audit timestamps, Decimal128 kWh quantity, staff/action audit fields, versioning, hashed creation identifiers, and latest-update idempotency/fingerprint fields. |
+| `Services/ReservationService.cs` | Foundation plus create and update/reschedule workflows implemented: current-user/owner/staff authorization, eligibility, notice/horizon/schedule/quantity/overlap validation, versioned audit changes, Approved-to-Pending reset, idempotent replay, same-slot delta handling, target-first moves, transaction/compensation, and allowed-action projection. Cancel/approve/reject remain pending. |
 | `Services/ReservationCapacityService.cs` | Added bounded compare-and-swap holds, same-slot adjustments, exact-claim releases, idempotent retries, and claim discovery for repair. |
 | `Services/MongoTransactionRunner.cs` | Added transaction-preferred execution with fallback only for MongoDB's definitive unsupported-transaction response. |
-| `Controllers/ReservationsController.cs` | Implements authenticated `POST /api/reservations` and `POST /api/reservations/staff`; reads only actor claims/header/body and delegates all rules to the service. |
+| `Controllers/ReservationsController.cs` | Implements authenticated self/staff creation and owner/authorized-staff `PUT /api/reservations/{reservationId}` update; reads only claims/header/editable DTO fields and delegates rules to the service. |
 | Reservation DTOs | Added separate create, staff-create, update, cancel, approve, reject, query, list, detail, status-history, paged-response, and server-derived allowed-action contracts under `Models/DTOs/Reservations`. |
 | `Data/MongoDbContext.cs` | Exposes typed `EnergyReservations` and Component 3-owned `ReservationSchedulingGuards` collections. |
 | `Data/MongoDbIndexInitializer.cs` | Adds reservation query/duplicate/idempotency indexes, allocation-claim lookup, and scheduling-lease TTL cleanup. |
@@ -108,12 +108,12 @@ No SQLite database, Room dependency, Android database helper/DAO, schema, migrat
 | `Settings/BusinessRulesSettings.cs` | Defines the seven-day booking horizon and twelve-hour change notice; options are now bound and startup-validated, and creation consumes the horizon setting. |
 | `Program.cs` | Registers transaction, capacity, scheduling-guard, and reservation services; binds business rules and activates shared exception middleware. |
 | `Services/StationService.cs` | Deliberately blocks station deactivation until Component 3 supplies queryable active-reservation statuses/fields. |
-| API request examples | `SolarMicrogrid.API.http` contains sanitized Prosumer self-create and staff on-behalf-of examples with JWT and idempotency headers. |
+| API request examples | `SolarMicrogrid.API.http` contains sanitized self-create, staff-create, and owner/staff update examples with JWT, idempotency, and expected-version inputs. |
 | Tests and clients | No reservation tests, web integration, Android integration, or SQLite synchronization code exists. |
 
-The original zero-byte reservation files were introduced as scaffolds in commit `14c0fc4`. The domain/persistence foundation and reservation creation API are now implemented; the remaining lifecycle mutations still use their DTO scaffolds only.
+The original zero-byte reservation files were introduced as scaffolds in commit `14c0fc4`. The domain/persistence foundation plus create and update/reschedule APIs are now implemented; the remaining lifecycle mutations still use their DTO scaffolds only.
 
-The explicit creation task superseded the earlier self-create-only contract: Backoffice may create for any eligible active Prosumer, while Grid Operator creation is restricted to the actor's stored assigned station. Staff creation does not grant either role update/cancel rights and does not grant Grid Operators approval rights.
+The explicit creation/update tasks superseded the earlier self-only contract: Backoffice may create and update on behalf of an eligible Prosumer, while Grid Operator actions are restricted to their stored assigned station. Staff receive no notice/horizon bypass, no cancel permission from this increment, and Grid Operators still do not receive approval permission.
 
 ### Team ownership evidence and boundaries
 
@@ -142,17 +142,16 @@ Ownership below comes from the task brief; commit/file evidence describes what i
 ## Missing implementation
 
 1. Obtain and record the official Component 3 use cases, field definitions, status machine, role matrix, endpoints, UI requirements, and marking rubric.
-2. Bring this feature branch up to date with the agreed `develop` baseline using a non-destructive team-approved integration step; do not reimplement Member 2's newer work.
-3. Implement update/cancel/approve/reject workflows with version-filtered writes and the same mutation-idempotency guarantees.
-4. Implement authenticated list/detail and remaining mutation endpoints.
-5. Integrate `HasActiveReservationsForStationAsync` into Member 2's station-deactivation transaction/check after the branch is synchronized.
-6. Supply history/search and QR/completion integrations to Member 4 without taking ownership of their UI/dashboard/deployment work.
-7. Add web/Android clients plus topology-specific integration, concurrency, idempotency, and failure-injection tests.
+2. Implement cancel/approve/reject workflows with version-filtered writes and the same mutation-idempotency guarantees.
+3. Implement authenticated list/detail and remaining mutation endpoints.
+4. Integrate `HasActiveReservationsForStationAsync` into Member 2's station-deactivation transaction/check.
+5. Supply history/search and QR/completion integrations to Member 4 without taking ownership of their UI/dashboard/deployment work.
+6. Add web/Android clients plus topology-specific integration, concurrency, idempotency, and failure-injection tests.
 
 ## Dependencies
 
 - **Missing source artifacts:** official assignment/team-plan documents, web project, Android project, and Member 1's Android session/SQLite implementation.
-- **Branch baseline:** committed `HEAD` `76aebc0` matches `origin/feature/reservation-workflow`. It is 3 commits ahead and 16 commits behind local `origin/develop`; the creation changes described here are currently uncommitted. No merge/rebase was performed.
+- **Branch baseline:** pull request #26 merged the creation foundation into `develop` at `9a49b54`. Local committed `HEAD` `31197ab` matches `origin/feature/reservation-workflow` and contains the same integrated source; `origin/develop` is one merge commit ahead. The update/reschedule changes described here are currently uncommitted.
 - **Member 1 contract:** authenticated active-user lookup, role/status enforcement, prosumer endpoints, and mobile session/token persistence.
 - **Member 2 contract:** the shared slot entity now has a minimal allocation ledger and atomic capacity service; Member 2 must integrate active-reservation schedule/deactivation checks after branch synchronization.
 - **Member 4 contract:** no completion implementation exists in available refs; reservation history/search representation, QR issuance/verification boundary, completion transition, and deployment expectations remain dependencies.
@@ -174,11 +173,13 @@ Ownership below comes from the task brief; commit/file evidence describes what i
 | MongoDB inspection | PASS (static): reservation collection mapping, BSON attributes, references, UTC fields, Decimal128 energy quantity, versioning, query/duplicate indexes, allocation claims, and per-Prosumer scheduling leases are implemented. No live database connection was attempted. |
 | Reservation domain/DTO implementation | PASS (compile verified): entity/status/history/capacity state, request/query/response DTOs, collection mapping, and indexes are implemented. |
 | Reservation creation API | PASS (compile verified): Prosumer self-create and Backoffice/assigned-Grid-Operator staff create validate current identities, eligibility, references, schedule, inclusive seven-day horizon, quantity, duplicate/overlap, atomic availability, Pending state, exact-once hold, hashed idempotency, and actor-derived allowed actions. |
-| Automated tests | BLOCKED/ABSENT: no test project exists. |
-| Current-branch backend build | BLOCKED BY PRE-EXISTING BASELINE: compilation reaches source analysis but fails because this branch lacks Member 2's `PagedStationResponseDto` and `NearbyStationResponseDto`; both already exist on `origin/develop`. No Component 3 error was reported before those failures. |
-| Component 3 integration build | PASS: overlaid all Component 3 changes onto a temporary `origin/develop` tree and built with .NET SDK 10.0.401: 0 compilation errors. NuGet emitted one vulnerability-data warning because the sandbox could not reach `api.nuget.org`. Member 2's latest `SlotService` compiles with the allocation-ledger extension. No merge or tracked Member 2 implementation copy was performed, and the temporary tree was removed. |
+| Reservation update API | PASS (compile/static verification): owner, Backoffice, and assigned-Grid-Operator update enforce editable status, current-start twelve-hour notice with inclusive boundary, target schedule/horizon/capacity/overlap rules, expected version, server-owned fields, Approved-to-Pending reset, same-slot deltas, target-first moves, audit data, and safe replay. |
+| Focused update checks | PASS (8/8 source-path assertions): valid route/workflow, inclusive exactly-twelve-hours expression, less-than-twelve rejection, unavailable destination, duplicate/overlap call, expected-version/CAS filter, target-first/reconciliation failure path, and retry reconciliation are present. |
+| Automated tests | BLOCKED/ABSENT: no test project exists. A temporary compiled policy harness was attempted but restore could not obtain `Microsoft.Extensions.Logging.Abstractions` because NuGet is unreachable; the temporary harness and artifacts were removed. |
+| Current-branch backend build | PASS: merged Member 2 and Component 3 source builds with .NET SDK 10.0.401 with 0 compilation errors. NuGet emits one `NU1900` warning because vulnerability metadata cannot be reached. |
+| Component 3 integration build | PASS: pull request #26 conflict resolution retained both Member 2 station/slot registrations/examples and Component 3 services; the merged source and this update increment compile together. |
 | Assignment comment condition | PASS (static): every new/modified C# file has the required header block and every added/modified method begins with an explanatory inline comment. |
-| Manual API/runtime verification | NOT RUN: no live MongoDB topology, configured users/stations/slots, or safe JWT development secret was available. Transaction and standalone compensation paths still require integration/failure-injection tests. |
+| Manual API/runtime verification | BLOCKED: Docker CLI exists but its daemon is not running; no `mongod`/`mongosh`, configured users/stations/slots, or safe JWT development secret is available. Valid update, unavailable target, duplicate/overlap, and rollback paths are statically traced but still require live transaction and standalone failure-injection tests. |
 | Secret review | ATTENTION: a non-empty JWT key is present in tracked base settings; value not reproduced. Ownership/rotation/removal needs confirmation. |
 
 ## Assignment evidence needed

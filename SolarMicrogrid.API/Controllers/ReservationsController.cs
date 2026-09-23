@@ -69,6 +69,28 @@ public sealed class ReservationsController : ControllerBase
         return Created($"/api/reservations/{result.Reservation.Id}", result.Reservation);
     }
 
+    [HttpPut("{reservationId}")]
+    [Authorize(Roles =
+        $"{nameof(UserRole.Prosumer)},{nameof(UserRole.Backoffice)},{nameof(UserRole.GridOperator)}")]
+    public async Task<ActionResult<ReservationResponseDto>> UpdateReservation(
+        string reservationId,
+        [FromBody] UpdateReservationRequestDto request,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
+        CancellationToken cancellationToken)
+    {
+        // Pass only authenticated actor claims and client-editable fields to the update workflow.
+        (string actorNic, string actorRole) = GetRequiredActorClaims();
+        ReservationUpdateResult result = await _reservationService.UpdateReservationAsync(
+            actorNic,
+            actorRole,
+            reservationId,
+            request,
+            idempotencyKey ?? string.Empty,
+            cancellationToken);
+        SetReplayHeader(result.IdempotencyReplayed);
+        return Ok(result.Reservation);
+    }
+
     private (string ActorNic, string ActorRole) GetRequiredActorClaims()
     {
         // Reject an authenticated principal that lacks the repository's required NIC or role claims.
