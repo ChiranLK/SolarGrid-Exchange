@@ -399,11 +399,12 @@ public sealed class SlotService
             filter &= Builders<EnergyBookingSlot>.Filter.Ne(slot => slot.Id, excludedSlotId);
         }
 
-        bool overlaps = await _context.Slots
+        EnergyBookingSlot? overlappingSlot = await _context.Slots
             .Find(filter)
-            .AnyAsync(cancellationToken);
+            .Limit(1)
+            .FirstOrDefaultAsync(cancellationToken);
 
-        if (overlaps)
+        if (overlappingSlot is not null)
         {
             throw new ConflictException("The slot overlaps another slot for this station.");
         }
