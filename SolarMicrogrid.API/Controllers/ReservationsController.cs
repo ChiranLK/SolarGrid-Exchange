@@ -1,0 +1,93 @@
+/*
+ * ReservationsController.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Exposes authenticated Component 3 reservation REST operations while
+ *           delegating identity, permission, validation, and capacity rules to
+ *           ReservationService.
+ * -----------------------------------------------------------------------------
+ */
+
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using SolarMicrogrid.API.Exceptions;
+using SolarMicrogrid.API.Models.DTOs.Reservations;
+using SolarMicrogrid.API.Models.Entities;
+using SolarMicrogrid.API.Services;
+
+namespace SolarMicrogrid.API.Controllers;
+
+[ApiController]
+[Authorize]
+[Route("api/reservations")]
+public sealed class ReservationsController : ControllerBase
+{
+    private readonly ReservationService _reservationService;
+
+    public ReservationsController(ReservationService reservationService)
+    {
+        // Keep the controller thin by delegating the complete workflow to the domain service.
+        _reservationService = reservationService;
+    }
+
+    [HttpPost]
+    [Authorize(Roles = nameof(UserRole.Prosumer))]
+    public async Task<ActionResult<ReservationResponseDto>> CreateOwnReservation(
+        [FromBody] CreateReservationRequestDto request,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
+        CancellationToken cancellationToken)
+    {
+        // Read actor claims only; the request cannot select a different reservation owner.
+        (string actorNic, string actorRole) = GetRequiredActorClaims();
+        ReservationCreationResult result = await _reservationService.CreateOwnReservationAsync(
+            actorNic,
+            actorRole,
+            request,
+            idempotencyKey ?? string.Empty,
+            cancellationToken);
+        SetReplayHeader(result.IdempotencyReplayed);
+        return Created($"/api/reservations/{result.Reservation.Id}", result.Reservation);
+    }
+
+    [HttpPost("staff")]
+    [Authorize(Roles = $"{nameof(UserRole.Backoffice)},{nameof(UserRole.GridOperator)}")]
+    public async Task<ActionResult<ReservationResponseDto>> CreateReservationForProsumer(
+        [FromBody] StaffCreateReservationRequestDto request,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
+        CancellationToken cancellationToken)
+    {
+        // Pass the authenticated staff actor and proposed target to service-level authorization.
+        (string actorNic, string actorRole) = GetRequiredActorClaims();
+        ReservationCreationResult result =
+            await _reservationService.CreateReservationForProsumerAsync(
+                actorNic,
+                actorRole,
+                request,
+                idempotencyKey ?? string.Empty,
+                cancellationToken);
+        SetReplayHeader(result.IdempotencyReplayed);
+        return Created($"/api/reservations/{result.Reservation.Id}", result.Reservation);
+    }
+
+    private (string ActorNic, string ActorRole) GetRequiredActorClaims()
+    {
+        // Reject an authenticated principal that lacks the repository's required NIC or role claims.
+        string? actorNic = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        string? actorRole = User.FindFirstValue(ClaimTypes.Role);
+        if (string.IsNullOrWhiteSpace(actorNic) || string.IsNullOrWhiteSpace(actorRole))
+        {
+            throw new UnauthorizedException("The access token is missing required identity claims.");
+        }
+
+        return (actorNic, actorRole);
+    }
+
+    private void SetReplayHeader(bool replayed)
+    {
+        // Tell clients that a safe retry returned the existing creation result.
+        if (replayed)
+        {
+            Response.Headers["Idempotency-Replayed"] = "true";
+        }
+    }
+}
