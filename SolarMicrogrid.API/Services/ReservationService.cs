@@ -47,8 +47,21 @@ public sealed record ReservationCancellationResult(
     ReservationResponseDto Reservation,
     bool IdempotencyReplayed);
 
+public sealed record ReservationApprovalResult(
+    ReservationResponseDto Reservation,
+    bool IdempotencyReplayed);
+
+public sealed record ReservationRejectionResult(
+    ReservationResponseDto Reservation,
+    bool IdempotencyReplayed);
+
 internal sealed record ReservationCreationEntityResult(
     EnergyReservation Reservation,
+    bool IdempotencyReplayed);
+
+internal sealed record ReservationDecisionEntityResult(
+    EnergyReservation Reservation,
+    User Actor,
     bool IdempotencyReplayed);
 
 public sealed class ReservationService
@@ -56,7 +69,7 @@ public sealed class ReservationService
     private const string OperatingScheduleTimeZoneId = "Asia/Colombo";
     private const int MaximumIdempotencyKeyLength = 200;
     private const int MinimumIdempotencyKeyLength = 8;
-    private const int MaximumCancellationReasonLength = 500;
+    private const int MaximumAuditReasonLength = 500;
 
     private static readonly ReservationStatus[] CapacityHoldingStatuses =
         [ReservationStatus.Pending, ReservationStatus.Approved];
@@ -407,7 +420,7 @@ public sealed class ReservationService
                 fingerprintHash,
                 serverNowUtc);
             ConsistencyExecutionResult<EnergyReservation> execution =
-                await CancelCapacitySafelyAsync(
+                await ReleaseCapacityForFinalTransitionSafelyAsync(
                     originalReservation,
                     proposedReservation,
                     (session, token) => PersistCancellationCompareAndSwapAsync(
@@ -415,6 +428,7 @@ public sealed class ReservationService
                         proposedReservation,
                         session,
                         token),
+                    MarkCancellationReleasedAsync,
                     cancellationToken);
 
             return new ReservationCancellationResult(
@@ -425,6 +439,495 @@ public sealed class ReservationService
         {
             await _schedulingGuardService.ReleaseAsync(lease, CancellationToken.None);
         }
+    }
+
+    public async Task<ReservationApprovalResult> ApproveReservationAsync(
+        string actorNic,
+        string actorRoleClaim,
+        string reservationId,
+        ApproveReservationRequestDto request,
+        string idempotencyKey,
+        CancellationToken cancellationToken)
+    {
+        // Approve one Pending reservation after transaction-scoped reference and held-claim validation.
+        ArgumentNullException.ThrowIfNull(request);
+        string normalizedReservationId = NormalizeObjectId(reservationId, nameof(reservationId));
+        string normalizedKey = NormalizeIdempotencyKey(idempotencyKey);
+        User initialActor = await LoadAndValidateActorAsync(
+            actorNic,
+            actorRoleClaim,
+            [UserRole.Backoffice, UserRole.GridOperator],
+            session: null,
+            cancellationToken);
+        EnergyReservation initialReservation = await LoadReservationAsync(
+            normalizedReservationId,
+            session: null,
+            cancellationToken);
+        EnsureApprovalPermission(initialActor, initialReservation);
+
+        string requestIdHash = ComputeHash(
+            $"{initialActor.Nic}|POST|POST:/api/reservations/{normalizedReservationId}/approve|" +
+            normalizedKey);
+        string fingerprintHash = ComputeHash(
+            $"{normalizedReservationId}|{request.ExpectedVersion}");
+        ReservationSchedulingLease lease = await _schedulingGuardService.AcquireAsync(
+            initialReservation.ProsumerNic,
+            cancellationToken);
+
+        try
+        {
+            DateTime serverNowUtc = DateTime.UtcNow;
+            ConsistencyExecutionResult<ReservationDecisionEntityResult> execution =
+                await _transactionRunner.ExecuteAsync(
+                    (session, token) => ApproveReservationCoreAsync(
+                        initialActor.Nic,
+                        initialActor.Role,
+                        normalizedReservationId,
+                        request.ExpectedVersion,
+                        requestIdHash,
+                        fingerprintHash,
+                        serverNowUtc,
+                        session,
+                        token),
+                    token => ApproveReservationCoreAsync(
+                        initialActor.Nic,
+                        initialActor.Role,
+                        normalizedReservationId,
+                        request.ExpectedVersion,
+                        requestIdHash,
+                        fingerprintHash,
+                        serverNowUtc,
+                        session: null,
+                        token),
+                    cancellationToken);
+
+            return new ReservationApprovalResult(
+                MapToResponse(
+                    execution.Value.Reservation,
+                    execution.Value.Actor,
+                    serverNowUtc),
+                execution.Value.IdempotencyReplayed);
+        }
+        finally
+        {
+            await _schedulingGuardService.ReleaseAsync(lease, CancellationToken.None);
+        }
+    }
+
+    public async Task<ReservationRejectionResult> RejectReservationAsync(
+        string actorNic,
+        string actorRoleClaim,
+        string reservationId,
+        RejectReservationRequestDto request,
+        string idempotencyKey,
+        CancellationToken cancellationToken)
+    {
+        // Reject one Pending reservation while serializing the exact capacity release and audit write.
+        ArgumentNullException.ThrowIfNull(request);
+        string normalizedReservationId = NormalizeObjectId(reservationId, nameof(reservationId));
+        string normalizedKey = NormalizeIdempotencyKey(idempotencyKey);
+        string normalizedReason = NormalizeRequiredRejectionReason(request.Reason);
+        User initialActor = await LoadAndValidateActorAsync(
+            actorNic,
+            actorRoleClaim,
+            [UserRole.Backoffice],
+            session: null,
+            cancellationToken);
+        EnergyReservation initialReservation = await LoadReservationAsync(
+            normalizedReservationId,
+            session: null,
+            cancellationToken);
+        EnsureRejectionPermission(initialActor);
+
+        string requestIdHash = ComputeHash(
+            $"{initialActor.Nic}|POST|POST:/api/reservations/{normalizedReservationId}/reject|" +
+            normalizedKey);
+        string fingerprintHash = ComputeHash(
+            $"{normalizedReservationId}|{request.ExpectedVersion}|{normalizedReason}");
+        ReservationSchedulingLease lease = await _schedulingGuardService.AcquireAsync(
+            initialReservation.ProsumerNic,
+            cancellationToken);
+
+        try
+        {
+            DateTime serverNowUtc = DateTime.UtcNow;
+            EnergyReservation originalReservation = await LoadReservationAsync(
+                normalizedReservationId,
+                session: null,
+                cancellationToken);
+            User actor = await LoadAndValidateActorAsync(
+                initialActor.Nic,
+                initialActor.Role.ToString(),
+                [UserRole.Backoffice],
+                session: null,
+                cancellationToken);
+            EnsureRejectionPermission(actor);
+
+            if (string.Equals(
+                    originalReservation.RejectionRequestIdHash,
+                    requestIdHash,
+                    StringComparison.Ordinal))
+            {
+                ValidateRejectionReplay(originalReservation, fingerprintHash);
+                CapacityReconciliationResult reconciliation = await ReconcileCapacityAsync(
+                    originalReservation.Id,
+                    cancellationToken);
+                if (!reconciliation.IsConsistent ||
+                    reconciliation.CapacityState != ReservationCapacityState.Released)
+                {
+                    throw new ConflictException(
+                        "The rejected reservation capacity requires operator reconciliation.");
+                }
+
+                originalReservation = await LoadReservationAsync(
+                    originalReservation.Id,
+                    session: null,
+                    cancellationToken);
+                return new ReservationRejectionResult(
+                    MapToResponse(originalReservation, actor, serverNowUtc),
+                    IdempotencyReplayed: true);
+            }
+
+            EnsureExpectedVersion(originalReservation, request.ExpectedVersion);
+            EnsurePendingDecisionState(originalReservation, "rejected");
+            EnsureDecisionTimeInFuture(originalReservation, serverNowUtc);
+            EnsureTransitionAllowed(originalReservation.Status, ReservationStatus.Rejected);
+            EnergyReservation proposedReservation = BuildRejectedReservation(
+                originalReservation,
+                actor,
+                normalizedReason,
+                requestIdHash,
+                fingerprintHash,
+                serverNowUtc);
+            ConsistencyExecutionResult<EnergyReservation> execution =
+                await ReleaseCapacityForFinalTransitionSafelyAsync(
+                    originalReservation,
+                    proposedReservation,
+                    (session, token) => PersistRejectionCompareAndSwapAsync(
+                        originalReservation,
+                        proposedReservation,
+                        session,
+                        token),
+                    MarkRejectionReleasedAsync,
+                    cancellationToken);
+
+            return new ReservationRejectionResult(
+                MapToResponse(execution.Value, actor, serverNowUtc),
+                IdempotencyReplayed: false);
+        }
+        finally
+        {
+            await _schedulingGuardService.ReleaseAsync(lease, CancellationToken.None);
+        }
+    }
+
+    private async Task<ReservationDecisionEntityResult> ApproveReservationCoreAsync(
+        string actorNic,
+        UserRole actorRole,
+        string reservationId,
+        long expectedVersion,
+        string requestIdHash,
+        string fingerprintHash,
+        DateTime serverNowUtc,
+        IClientSessionHandle? session,
+        CancellationToken cancellationToken)
+    {
+        // Re-read every approval dependency in the same transaction snapshot when transactions are available.
+        User actor = await LoadAndValidateActorAsync(
+            actorNic,
+            actorRole.ToString(),
+            [UserRole.Backoffice, UserRole.GridOperator],
+            session,
+            cancellationToken);
+        EnergyReservation reservation = await LoadReservationAsync(
+            reservationId,
+            session,
+            cancellationToken);
+        EnsureApprovalPermission(actor, reservation);
+
+        if (string.Equals(
+                reservation.ApprovalRequestIdHash,
+                requestIdHash,
+                StringComparison.Ordinal))
+        {
+            ValidateApprovalReplay(reservation, fingerprintHash);
+            return new ReservationDecisionEntityResult(
+                reservation,
+                actor,
+                IdempotencyReplayed: true);
+        }
+
+        EnsureExpectedVersion(reservation, expectedVersion);
+        EnsurePendingDecisionState(reservation, "approved");
+        EnsureDecisionTimeInFuture(reservation, serverNowUtc);
+        await ValidateApprovalReferencesAndCapacityAsync(
+            reservation,
+            serverNowUtc,
+            session,
+            cancellationToken);
+        EnsureTransitionAllowed(reservation.Status, ReservationStatus.Approved);
+        EnergyReservation approved = await PersistApprovalCompareAndSwapAsync(
+            reservation,
+            actor,
+            requestIdHash,
+            fingerprintHash,
+            serverNowUtc,
+            session,
+            cancellationToken);
+        return new ReservationDecisionEntityResult(
+            approved,
+            actor,
+            IdempotencyReplayed: false);
+    }
+
+    private static void EnsureApprovalPermission(User actor, EnergyReservation reservation)
+    {
+        // Allow Backoffice globally and Grid Operators only for their assigned reservation station.
+        if (actor.Role == UserRole.Backoffice)
+        {
+            return;
+        }
+
+        if (actor.Role == UserRole.GridOperator &&
+            string.Equals(actor.AssignedStationId, reservation.StationId, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        throw new ForbiddenException("This staff user is not authorized to approve the reservation.");
+    }
+
+    private static void EnsureRejectionPermission(User actor)
+    {
+        // Keep rejection within the contract's Backoffice-only decision scope.
+        if (actor.Role != UserRole.Backoffice)
+        {
+            throw new ForbiddenException("Only Backoffice users may reject reservations.");
+        }
+    }
+
+    private static void EnsurePendingDecisionState(
+        EnergyReservation reservation,
+        string action)
+    {
+        // Require one Pending reservation with an intact held allocation before a staff decision.
+        if (reservation.Status != ReservationStatus.Pending)
+        {
+            throw new ConflictException($"Only pending reservations may be {action}.");
+        }
+
+        if (reservation.CapacityState != ReservationCapacityState.Held)
+        {
+            throw new ConflictException(
+                $"The reservation capacity state must be reconciled before it can be {action}.");
+        }
+    }
+
+    private static void EnsureDecisionTimeInFuture(
+        EnergyReservation reservation,
+        DateTime serverNowUtc)
+    {
+        // Prevent approval or rejection once the stored reservation start has arrived.
+        if (reservation.ScheduledStartTimeUtc <= serverNowUtc)
+        {
+            throw new ConflictException(
+                "Reservations cannot be approved or rejected after their scheduled start.");
+        }
+    }
+
+    private async Task ValidateApprovalReferencesAndCapacityAsync(
+        EnergyReservation reservation,
+        DateTime serverNowUtc,
+        IClientSessionHandle? session,
+        CancellationToken cancellationToken)
+    {
+        // Confirm active ownership, unchanged references, schedule validity, and one exact held claim.
+        await LoadAndValidateTargetProsumerAsync(
+            reservation.ProsumerNic,
+            session,
+            cancellationToken);
+        ReservationReferenceSet references = await LoadAndValidateReferencesAsync(
+            reservation,
+            requireActiveStation: true,
+            requireBookableSlot: false,
+            session,
+            cancellationToken);
+        ValidateSlotFitsOperatingSchedule(
+            references.Station,
+            references.Slot.StartTimeUtc,
+            references.Slot.EndTimeUtc);
+        if (references.Slot.StartTimeUtc <= serverNowUtc)
+        {
+            throw new ConflictException("Only future reservations may be approved.");
+        }
+
+        if (references.Slot.StartTimeUtc > serverNowUtc.AddDays(_maximumBookingDaysAhead))
+        {
+            throw new ConflictException(
+                $"Reservations cannot be approved more than {_maximumBookingDaysAhead} days ahead.");
+        }
+
+        if (references.Slot.AvailableCapacityKwh < 0 ||
+            references.Slot.AvailableCapacityKwh > references.Slot.TotalCapacityKwh)
+        {
+            throw new ConflictException("The slot capacity ledger is invalid.");
+        }
+
+        IReadOnlyList<SlotCapacityClaimSnapshot> claims = await _capacityService.FindClaimsAsync(
+            reservation.Id,
+            session,
+            cancellationToken);
+        long expectedClaimVersion = reservation.CapacityClaimVersion > 0
+            ? reservation.CapacityClaimVersion
+            : reservation.Version;
+        bool exactClaimHeld = claims.Count == 1 &&
+            string.Equals(claims[0].SlotId, reservation.SlotId, StringComparison.Ordinal) &&
+            claims[0].EnergyKwh == reservation.RequestedEnergyKwh &&
+            claims[0].ReservationVersion == expectedClaimVersion;
+        if (!exactClaimHeld)
+        {
+            throw new ConflictException(
+                "The reservation does not have one valid held-capacity claim for approval.");
+        }
+
+        await ValidateNoDuplicateOrOverlapAsync(
+            reservation.ProsumerNic,
+            reservation.SlotId,
+            reservation.ScheduledStartTimeUtc,
+            reservation.ScheduledEndTimeUtc,
+            reservation.Id,
+            session,
+            cancellationToken);
+    }
+
+    private async Task<EnergyReservation> PersistApprovalCompareAndSwapAsync(
+        EnergyReservation originalReservation,
+        User actor,
+        string requestIdHash,
+        string fingerprintHash,
+        DateTime serverNowUtc,
+        IClientSessionHandle? session,
+        CancellationToken cancellationToken)
+    {
+        // Approve only the exact Pending version that still owns its held allocation.
+        long resultingVersion = checked(originalReservation.Version + 1);
+        FilterDefinition<EnergyReservation> filter = Builders<EnergyReservation>.Filter.And(
+            Builders<EnergyReservation>.Filter.Eq(item => item.Id, originalReservation.Id),
+            Builders<EnergyReservation>.Filter.Eq(item => item.Version, originalReservation.Version),
+            Builders<EnergyReservation>.Filter.Eq(item => item.Status, ReservationStatus.Pending),
+            Builders<EnergyReservation>.Filter.Eq(item => item.SlotId, originalReservation.SlotId),
+            Builders<EnergyReservation>.Filter.Eq(
+                item => item.RequestedEnergyKwh,
+                originalReservation.RequestedEnergyKwh),
+            Builders<EnergyReservation>.Filter.Eq(
+                item => item.CapacityState,
+                ReservationCapacityState.Held));
+        var transition = new ReservationStatusHistoryEntry
+        {
+            FromStatus = ReservationStatus.Pending,
+            ToStatus = ReservationStatus.Approved,
+            ChangedAtUtc = serverNowUtc,
+            ActorNic = actor.Nic,
+            ActorRole = actor.Role,
+            Version = resultingVersion
+        };
+        UpdateDefinition<EnergyReservation> update = Builders<EnergyReservation>.Update.Combine(
+            Builders<EnergyReservation>.Update.Set(item => item.Status, ReservationStatus.Approved),
+            Builders<EnergyReservation>.Update.Set(item => item.Version, resultingVersion),
+            Builders<EnergyReservation>.Update.Set(item => item.UpdatedAtUtc, serverNowUtc),
+            Builders<EnergyReservation>.Update.Set(item => item.UpdatedByActorNic, actor.Nic),
+            Builders<EnergyReservation>.Update.Set(item => item.ApprovedAtUtc, serverNowUtc),
+            Builders<EnergyReservation>.Update.Set(item => item.ApprovedByActorNic, actor.Nic),
+            Builders<EnergyReservation>.Update.Set(item => item.ApprovalRequestIdHash, requestIdHash),
+            Builders<EnergyReservation>.Update.Set(
+                item => item.ApprovalRequestFingerprintHash,
+                fingerprintHash),
+            Builders<EnergyReservation>.Update.Push(item => item.StatusHistory, transition));
+        var options = new FindOneAndUpdateOptions<EnergyReservation>
+        {
+            ReturnDocument = ReturnDocument.After
+        };
+        EnergyReservation? approved = session is null
+            ? await _context.Reservations.FindOneAndUpdateAsync(
+                filter,
+                update,
+                options,
+                cancellationToken)
+            : await _context.Reservations.FindOneAndUpdateAsync(
+                session,
+                filter,
+                update,
+                options,
+                cancellationToken);
+
+        return approved ?? throw new ConflictException(
+            "The reservation changed while it was being approved. Reload it and try again.");
+    }
+
+    private static EnergyReservation BuildRejectedReservation(
+        EnergyReservation originalReservation,
+        User actor,
+        string reason,
+        string requestIdHash,
+        string fingerprintHash,
+        DateTime serverNowUtc)
+    {
+        // Preserve immutable data and create one audited Pending-to-Rejected proposal.
+        long resultingVersion = checked(originalReservation.Version + 1);
+        var proposed = new EnergyReservation
+        {
+            Id = originalReservation.Id,
+            ProsumerNic = originalReservation.ProsumerNic,
+            StationId = originalReservation.StationId,
+            SlotId = originalReservation.SlotId,
+            ScheduledStartTimeUtc = originalReservation.ScheduledStartTimeUtc,
+            ScheduledEndTimeUtc = originalReservation.ScheduledEndTimeUtc,
+            RequestedEnergyKwh = originalReservation.RequestedEnergyKwh,
+            Status = ReservationStatus.Rejected,
+            Version = resultingVersion,
+            CapacityState = ReservationCapacityState.ReleasePending,
+            CapacityClaimVersion = originalReservation.CapacityClaimVersion,
+            CreationRequestIdHash = originalReservation.CreationRequestIdHash,
+            CreationRequestFingerprintHash = originalReservation.CreationRequestFingerprintHash,
+            LastUpdateRequestIdHash = originalReservation.LastUpdateRequestIdHash,
+            LastUpdateRequestFingerprintHash = originalReservation.LastUpdateRequestFingerprintHash,
+            CancellationRequestIdHash = originalReservation.CancellationRequestIdHash,
+            CancellationRequestFingerprintHash =
+                originalReservation.CancellationRequestFingerprintHash,
+            ApprovalRequestIdHash = originalReservation.ApprovalRequestIdHash,
+            ApprovalRequestFingerprintHash = originalReservation.ApprovalRequestFingerprintHash,
+            RejectionRequestIdHash = requestIdHash,
+            RejectionRequestFingerprintHash = fingerprintHash,
+            CreatedAtUtc = originalReservation.CreatedAtUtc,
+            CreatedByActorNic = originalReservation.CreatedByActorNic,
+            UpdatedAtUtc = serverNowUtc,
+            UpdatedByActorNic = actor.Nic,
+            ApprovedAtUtc = originalReservation.ApprovedAtUtc,
+            ApprovedByActorNic = originalReservation.ApprovedByActorNic,
+            RejectedAtUtc = serverNowUtc,
+            RejectedByActorNic = actor.Nic,
+            RejectionReason = reason,
+            CancelledAtUtc = originalReservation.CancelledAtUtc,
+            CancelledByActorNic = originalReservation.CancelledByActorNic,
+            CancellationReason = originalReservation.CancellationReason,
+            CompletedAtUtc = originalReservation.CompletedAtUtc,
+            CompletedByActorNic = originalReservation.CompletedByActorNic,
+            CompletedVerificationId = originalReservation.CompletedVerificationId,
+            StatusHistory = originalReservation.StatusHistory
+                .Select(CloneStatusHistoryEntry)
+                .ToList()
+        };
+        proposed.StatusHistory.Add(new ReservationStatusHistoryEntry
+        {
+            FromStatus = ReservationStatus.Pending,
+            ToStatus = ReservationStatus.Rejected,
+            ChangedAtUtc = serverNowUtc,
+            ActorNic = actor.Nic,
+            ActorRole = actor.Role,
+            Version = resultingVersion,
+            Reason = reason
+        });
+        return proposed;
     }
 
     private static void EnsureCancellationPermission(User actor, EnergyReservation reservation)
@@ -497,6 +1000,10 @@ public sealed class ReservationService
             LastUpdateRequestFingerprintHash = originalReservation.LastUpdateRequestFingerprintHash,
             CancellationRequestIdHash = requestIdHash,
             CancellationRequestFingerprintHash = fingerprintHash,
+            ApprovalRequestIdHash = originalReservation.ApprovalRequestIdHash,
+            ApprovalRequestFingerprintHash = originalReservation.ApprovalRequestFingerprintHash,
+            RejectionRequestIdHash = originalReservation.RejectionRequestIdHash,
+            RejectionRequestFingerprintHash = originalReservation.RejectionRequestFingerprintHash,
             CreatedAtUtc = originalReservation.CreatedAtUtc,
             CreatedByActorNic = originalReservation.CreatedByActorNic,
             UpdatedAtUtc = serverNowUtc,
@@ -663,6 +1170,10 @@ public sealed class ReservationService
             CancellationRequestIdHash = originalReservation.CancellationRequestIdHash,
             CancellationRequestFingerprintHash =
                 originalReservation.CancellationRequestFingerprintHash,
+            ApprovalRequestIdHash = originalReservation.ApprovalRequestIdHash,
+            ApprovalRequestFingerprintHash = originalReservation.ApprovalRequestFingerprintHash,
+            RejectionRequestIdHash = originalReservation.RejectionRequestIdHash,
+            RejectionRequestFingerprintHash = originalReservation.RejectionRequestFingerprintHash,
             CreatedAtUtc = originalReservation.CreatedAtUtc,
             CreatedByActorNic = originalReservation.CreatedByActorNic,
             UpdatedAtUtc = serverNowUtc,
@@ -936,6 +1447,134 @@ public sealed class ReservationService
             "The reservation changed while capacity release was being finalized.");
     }
 
+    private async Task<EnergyReservation> PersistRejectionCompareAndSwapAsync(
+        EnergyReservation originalReservation,
+        EnergyReservation proposedReservation,
+        IClientSessionHandle? session,
+        CancellationToken cancellationToken)
+    {
+        // Win rejection only while the exact Pending version still owns its held allocation.
+        FilterDefinition<EnergyReservation> filter = Builders<EnergyReservation>.Filter.And(
+            Builders<EnergyReservation>.Filter.Eq(item => item.Id, originalReservation.Id),
+            Builders<EnergyReservation>.Filter.Eq(item => item.Version, originalReservation.Version),
+            Builders<EnergyReservation>.Filter.Eq(item => item.Status, ReservationStatus.Pending),
+            Builders<EnergyReservation>.Filter.Eq(item => item.SlotId, originalReservation.SlotId),
+            Builders<EnergyReservation>.Filter.Eq(
+                item => item.RequestedEnergyKwh,
+                originalReservation.RequestedEnergyKwh),
+            Builders<EnergyReservation>.Filter.Eq(
+                item => item.CapacityState,
+                ReservationCapacityState.Held));
+        ReservationStatusHistoryEntry transition = proposedReservation.StatusHistory[^1];
+        UpdateDefinition<EnergyReservation> update = Builders<EnergyReservation>.Update.Combine(
+            Builders<EnergyReservation>.Update.Set(item => item.Status, ReservationStatus.Rejected),
+            Builders<EnergyReservation>.Update.Set(item => item.Version, proposedReservation.Version),
+            Builders<EnergyReservation>.Update.Set(
+                item => item.CapacityState,
+                ReservationCapacityState.ReleasePending),
+            Builders<EnergyReservation>.Update.Set(
+                item => item.RejectionRequestIdHash,
+                proposedReservation.RejectionRequestIdHash),
+            Builders<EnergyReservation>.Update.Set(
+                item => item.RejectionRequestFingerprintHash,
+                proposedReservation.RejectionRequestFingerprintHash),
+            Builders<EnergyReservation>.Update.Set(
+                item => item.UpdatedAtUtc,
+                proposedReservation.UpdatedAtUtc),
+            Builders<EnergyReservation>.Update.Set(
+                item => item.UpdatedByActorNic,
+                proposedReservation.UpdatedByActorNic),
+            Builders<EnergyReservation>.Update.Set(
+                item => item.RejectedAtUtc,
+                proposedReservation.RejectedAtUtc),
+            Builders<EnergyReservation>.Update.Set(
+                item => item.RejectedByActorNic,
+                proposedReservation.RejectedByActorNic),
+            Builders<EnergyReservation>.Update.Set(
+                item => item.RejectionReason,
+                proposedReservation.RejectionReason),
+            Builders<EnergyReservation>.Update.Push(item => item.StatusHistory, transition));
+        var options = new FindOneAndUpdateOptions<EnergyReservation>
+        {
+            ReturnDocument = ReturnDocument.After
+        };
+        EnergyReservation? rejected = session is null
+            ? await _context.Reservations.FindOneAndUpdateAsync(
+                filter,
+                update,
+                options,
+                cancellationToken)
+            : await _context.Reservations.FindOneAndUpdateAsync(
+                session,
+                filter,
+                update,
+                options,
+                cancellationToken);
+
+        return rejected ?? throw new ConflictException(
+            "The reservation changed while it was being rejected. Reload it and try again.");
+    }
+
+    private async Task<EnergyReservation> MarkRejectionReleasedAsync(
+        EnergyReservation rejectedReservation,
+        IClientSessionHandle? session,
+        CancellationToken cancellationToken)
+    {
+        // Finalize released capacity only for the rejection version that removed the exact claim.
+        FilterDefinition<EnergyReservation> filter = Builders<EnergyReservation>.Filter.And(
+            Builders<EnergyReservation>.Filter.Eq(item => item.Id, rejectedReservation.Id),
+            Builders<EnergyReservation>.Filter.Eq(item => item.Version, rejectedReservation.Version),
+            Builders<EnergyReservation>.Filter.Eq(item => item.Status, ReservationStatus.Rejected),
+            Builders<EnergyReservation>.Filter.Eq(
+                item => item.CapacityState,
+                ReservationCapacityState.ReleasePending),
+            Builders<EnergyReservation>.Filter.Eq(
+                item => item.RejectionRequestIdHash,
+                rejectedReservation.RejectionRequestIdHash));
+        UpdateDefinition<EnergyReservation> update = Builders<EnergyReservation>.Update
+            .Set(item => item.CapacityState, ReservationCapacityState.Released)
+            .Set(item => item.CapacityClaimVersion, 0);
+        var options = new FindOneAndUpdateOptions<EnergyReservation>
+        {
+            ReturnDocument = ReturnDocument.After
+        };
+        EnergyReservation? finalized = session is null
+            ? await _context.Reservations.FindOneAndUpdateAsync(
+                filter,
+                update,
+                options,
+                cancellationToken)
+            : await _context.Reservations.FindOneAndUpdateAsync(
+                session,
+                filter,
+                update,
+                options,
+                cancellationToken);
+
+        if (finalized is not null)
+        {
+            return finalized;
+        }
+
+        EnergyReservation current = await LoadReservationAsync(
+            rejectedReservation.Id,
+            session,
+            cancellationToken);
+        if (current.Status == ReservationStatus.Rejected &&
+            current.Version == rejectedReservation.Version &&
+            current.CapacityState == ReservationCapacityState.Released &&
+            string.Equals(
+                current.RejectionRequestIdHash,
+                rejectedReservation.RejectionRequestIdHash,
+                StringComparison.Ordinal))
+        {
+            return current;
+        }
+
+        throw new ConflictException(
+            "The reservation changed while rejected capacity release was being finalized.");
+    }
+
     private static void ValidateUpdateFingerprint(
         EnergyReservation reservation,
         string fingerprintHash)
@@ -964,6 +1603,38 @@ public sealed class ReservationService
         {
             throw new ConflictException(
                 "The Idempotency-Key was already used with a different cancellation request.");
+        }
+    }
+
+    private static void ValidateApprovalReplay(
+        EnergyReservation reservation,
+        string fingerprintHash)
+    {
+        // Return only the matching Approved result for a repeated approval key.
+        if (reservation.Status != ReservationStatus.Approved ||
+            !string.Equals(
+                reservation.ApprovalRequestFingerprintHash,
+                fingerprintHash,
+                StringComparison.Ordinal))
+        {
+            throw new ConflictException(
+                "The Idempotency-Key was already used with a different approval request.");
+        }
+    }
+
+    private static void ValidateRejectionReplay(
+        EnergyReservation reservation,
+        string fingerprintHash)
+    {
+        // Return only the matching Rejected result for a repeated rejection key.
+        if (reservation.Status != ReservationStatus.Rejected ||
+            !string.Equals(
+                reservation.RejectionRequestFingerprintHash,
+                fingerprintHash,
+                StringComparison.Ordinal))
+        {
+            throw new ConflictException(
+                "The Idempotency-Key was already used with a different rejection request.");
         }
     }
 
@@ -1528,11 +2199,14 @@ public sealed class ReservationService
         bool noticeSatisfied = reservation.ScheduledStartTimeUtc - serverNowUtc >=
             TimeSpan.FromHours(_minimumChangeNoticeHours);
         bool mutable = StatusHoldsCapacity(reservation.Status);
-        bool backofficeCanDecide = actor.Role == UserRole.Backoffice &&
-            reservation.Status == ReservationStatus.Pending &&
-            reservation.ScheduledStartTimeUtc > serverNowUtc;
         bool assignedGridOperator = actor.Role == UserRole.GridOperator &&
             string.Equals(actor.AssignedStationId, reservation.StationId, StringComparison.Ordinal);
+        bool pendingDecisionAvailable = reservation.Status == ReservationStatus.Pending &&
+            reservation.ScheduledStartTimeUtc > serverNowUtc;
+        bool staffCanApprove =
+            (actor.Role == UserRole.Backoffice || assignedGridOperator) &&
+            pendingDecisionAvailable;
+        bool backofficeCanReject = actor.Role == UserRole.Backoffice && pendingDecisionAvailable;
         bool staffCanUpdate = actor.Role == UserRole.Backoffice || assignedGridOperator;
         bool staffCanCancel = actor.Role == UserRole.Backoffice || assignedGridOperator;
 
@@ -1552,8 +2226,8 @@ public sealed class ReservationService
             {
                 CanUpdate = (ownerProsumer || staffCanUpdate) && mutable && noticeSatisfied,
                 CanCancel = (ownerProsumer || staffCanCancel) && mutable && noticeSatisfied,
-                CanApprove = backofficeCanDecide,
-                CanReject = backofficeCanDecide,
+                CanApprove = staffCanApprove,
+                CanReject = backofficeCanReject,
                 CanGetQr = ownerProsumer && reservation.Status == ReservationStatus.Approved,
                 CanVerifyQr = assignedGridOperator && reservation.Status == ReservationStatus.Approved,
                 CanComplete = false
@@ -1704,10 +2378,29 @@ public sealed class ReservationService
     {
         // Store a trimmed optional audit reason and enforce the DTO's maximum length in the domain layer.
         string? normalized = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-        if (normalized?.Length > MaximumCancellationReasonLength)
+        if (normalized?.Length > MaximumAuditReasonLength)
         {
             throw new ArgumentException(
-                $"Cancellation reason cannot exceed {MaximumCancellationReasonLength} characters.",
+                $"Cancellation reason cannot exceed {MaximumAuditReasonLength} characters.",
+                nameof(value));
+        }
+
+        return normalized;
+    }
+
+    private static string NormalizeRequiredRejectionReason(string? value)
+    {
+        // Require a trimmed bounded staff audit reason independently of controller model validation.
+        string normalized = value?.Trim() ?? string.Empty;
+        if (normalized.Length == 0)
+        {
+            throw new ArgumentException("Rejection reason is required.", nameof(value));
+        }
+
+        if (normalized.Length > MaximumAuditReasonLength)
+        {
+            throw new ArgumentException(
+                $"Rejection reason cannot exceed {MaximumAuditReasonLength} characters.",
                 nameof(value));
         }
 
@@ -2141,23 +2834,27 @@ public sealed class ReservationService
             cancellationToken);
     }
 
-    private async Task<ConsistencyExecutionResult<EnergyReservation>> CancelCapacitySafelyAsync(
+    private async Task<ConsistencyExecutionResult<EnergyReservation>>
+        ReleaseCapacityForFinalTransitionSafelyAsync(
         EnergyReservation originalReservation,
         EnergyReservation proposedReservation,
         Func<IClientSessionHandle?, CancellationToken, Task<EnergyReservation>>
             persistReservationCompareAndSwap,
+        Func<EnergyReservation, IClientSessionHandle?, CancellationToken, Task<EnergyReservation>>
+            finalizeRelease,
         CancellationToken cancellationToken)
     {
-        // Commit status and exact claim release atomically, or reconcile an ordered standalone fallback.
+        // Commit a final status and exact claim release atomically, or reconcile an ordered fallback.
         ArgumentNullException.ThrowIfNull(originalReservation);
         ArgumentNullException.ThrowIfNull(proposedReservation);
         ArgumentNullException.ThrowIfNull(persistReservationCompareAndSwap);
+        ArgumentNullException.ThrowIfNull(finalizeRelease);
 
         return await _transactionRunner.ExecuteAsync(
             async (session, token) =>
             {
-                // Make one versioned cancellation win before releasing its exact claim in the transaction.
-                EnergyReservation cancelled = await persistReservationCompareAndSwap(session, token);
+                // Make one versioned final transition win before releasing its exact claim in the transaction.
+                EnergyReservation transitioned = await persistReservationCompareAndSwap(session, token);
                 CapacityMutationResult release = await ReleaseHeldCapacityAsync(
                     originalReservation,
                     session,
@@ -2168,16 +2865,16 @@ public sealed class ReservationService
                         "The reservation allocation was already absent and requires reconciliation.");
                 }
 
-                return await MarkCancellationReleasedAsync(cancelled, session, token);
+                return await finalizeRelease(transitioned, session, token);
             },
             async token =>
             {
-                // On standalone MongoDB, persist final status first so completion cannot win afterward.
-                EnergyReservation cancelled = await persistReservationCompareAndSwap(null, token);
+                // On standalone MongoDB, persist final status first so a competing transition cannot win.
+                EnergyReservation transitioned = await persistReservationCompareAndSwap(null, token);
                 try
                 {
                     await ReleaseHeldCapacityAsync(originalReservation, session: null, token);
-                    return await MarkCancellationReleasedAsync(cancelled, session: null, token);
+                    return await finalizeRelease(transitioned, null, token);
                 }
                 catch
                 {
@@ -2190,16 +2887,13 @@ public sealed class ReservationService
                             originalReservation.Id,
                             session: null,
                             token);
-                        bool cancellationPersisted =
-                            persisted.Status == ReservationStatus.Cancelled &&
+                        bool transitionPersisted =
+                            persisted.Status == proposedReservation.Status &&
                             persisted.Version == proposedReservation.Version &&
-                            string.Equals(
-                                persisted.CancellationRequestIdHash,
-                                proposedReservation.CancellationRequestIdHash,
-                                StringComparison.Ordinal);
+                            persisted.CapacityState == ReservationCapacityState.Released;
                         if (reconciliation.IsConsistent &&
                             reconciliation.CapacityState == ReservationCapacityState.Released &&
-                            cancellationPersisted)
+                            transitionPersisted)
                         {
                             return persisted;
                         }

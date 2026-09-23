@@ -113,6 +113,48 @@ public sealed class ReservationsController : ControllerBase
         return Ok(result.Reservation);
     }
 
+    [HttpPost("{reservationId}/approve")]
+    [Authorize(Roles = $"{nameof(UserRole.Backoffice)},{nameof(UserRole.GridOperator)}")]
+    public async Task<ActionResult<ReservationResponseDto>> ApproveReservation(
+        string reservationId,
+        [FromBody] ApproveReservationRequestDto request,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
+        CancellationToken cancellationToken)
+    {
+        // Delegate staff identity, current-state validation, and approval auditing to the domain service.
+        (string actorNic, string actorRole) = GetRequiredActorClaims();
+        ReservationApprovalResult result = await _reservationService.ApproveReservationAsync(
+            actorNic,
+            actorRole,
+            reservationId,
+            request,
+            idempotencyKey ?? string.Empty,
+            cancellationToken);
+        SetReplayHeader(result.IdempotencyReplayed);
+        return Ok(result.Reservation);
+    }
+
+    [HttpPost("{reservationId}/reject")]
+    [Authorize(Roles = nameof(UserRole.Backoffice))]
+    public async Task<ActionResult<ReservationResponseDto>> RejectReservation(
+        string reservationId,
+        [FromBody] RejectReservationRequestDto request,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
+        CancellationToken cancellationToken)
+    {
+        // Delegate Backoffice identity, rejection auditing, and exact capacity release to the service.
+        (string actorNic, string actorRole) = GetRequiredActorClaims();
+        ReservationRejectionResult result = await _reservationService.RejectReservationAsync(
+            actorNic,
+            actorRole,
+            reservationId,
+            request,
+            idempotencyKey ?? string.Empty,
+            cancellationToken);
+        SetReplayHeader(result.IdempotencyReplayed);
+        return Ok(result.Reservation);
+    }
+
     private (string ActorNic, string ActorRole) GetRequiredActorClaims()
     {
         // Reject an authenticated principal that lacks the repository's required NIC or role claims.
