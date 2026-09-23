@@ -1,3 +1,11 @@
+/*
+ * MongoSettings.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Defines configured MongoDB database and collection names used by the
+ *           central API, including Component 3 reservation scheduling guards.
+ * -----------------------------------------------------------------------------
+ */
+
 namespace SolarMicrogrid.API.Settings
 {
     public class MongoSettings
@@ -15,5 +23,8 @@ namespace SolarMicrogrid.API.Settings
         public string SlotsCollectionName { get; set; } = "EnergyBookingSlots";
 
         public string ReservationsCollectionName { get; set; } = "EnergyReservations";
+
+        public string ReservationSchedulingGuardsCollectionName { get; set; } =
+            "ReservationSchedulingGuards";
     }
 }

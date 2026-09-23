@@ -1,3 +1,12 @@
+/*
+ * MongoDbContext.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Exposes the application's MongoDB collections through one shared
+ *           context, including the Component 3 energy-reservation collection.
+ * Indexes : Creates the user indexes retained from the existing implementation.
+ * -----------------------------------------------------------------------------
+ */
+
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 using SolarMicrogrid.API.Models.Entities;
@@ -9,6 +18,7 @@ public sealed class MongoDbContext
 {
     public MongoDbContext(IMongoClient mongoClient, IOptions<MongoSettings> options)
     {
+        // Resolve validated settings once and bind every entity to its configured collection.
         ArgumentNullException.ThrowIfNull(mongoClient);
         ArgumentNullException.ThrowIfNull(options);
 
@@ -18,7 +28,9 @@ public sealed class MongoDbContext
         Users = database.GetCollection<User>(settings.UsersCollectionName);
         Stations = database.GetCollection<SolarStationInfo>(settings.StationsCollectionName);
         Slots = database.GetCollection<EnergyBookingSlot>(settings.SlotsCollectionName);
-        ///Reservations = database.GetCollection<EnergyReservation>(settings.ReservationsCollectionName);
+        Reservations = database.GetCollection<EnergyReservation>(settings.ReservationsCollectionName);
+        ReservationSchedulingGuards = database.GetCollection<ReservationSchedulingGuard>(
+            settings.ReservationSchedulingGuardsCollectionName);
     }
 
     public IMongoCollection<User> Users { get; }
@@ -27,10 +39,13 @@ public sealed class MongoDbContext
 
     public IMongoCollection<EnergyBookingSlot> Slots { get; }
 
-    ///public IMongoCollection<EnergyReservation> Reservations { get; }
+    public IMongoCollection<EnergyReservation> Reservations { get; }
+
+    public IMongoCollection<ReservationSchedulingGuard> ReservationSchedulingGuards { get; }
 
     public async Task EnsureIndexesAsync(CancellationToken cancellationToken)
     {
+        // Preserve the case-insensitive unique email constraint for user authentication.
         var emailIndex = new CreateIndexModel<User>(
             Builders<User>.IndexKeys.Ascending(user => user.Email),
             new CreateIndexOptions
