@@ -30,6 +30,40 @@ public sealed class ReservationsController : ControllerBase
         _reservationService = reservationService;
     }
 
+    [HttpGet]
+    [Authorize(Roles =
+        $"{nameof(UserRole.Prosumer)},{nameof(UserRole.Backoffice)},{nameof(UserRole.GridOperator)}")]
+    public async Task<ActionResult<PagedReservationResponseDto>> GetReservations(
+        [FromQuery] ReservationListQueryDto query,
+        CancellationToken cancellationToken)
+    {
+        // Apply identity and station scope in the database query before returning paged DTOs.
+        (string actorNic, string actorRole) = GetRequiredActorClaims();
+        PagedReservationResponseDto result = await _reservationService.GetReservationsAsync(
+            actorNic,
+            actorRole,
+            query,
+            cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpGet("{reservationId}")]
+    [Authorize(Roles =
+        $"{nameof(UserRole.Prosumer)},{nameof(UserRole.Backoffice)},{nameof(UserRole.GridOperator)}")]
+    public async Task<ActionResult<ReservationResponseDto>> GetReservationById(
+        string reservationId,
+        CancellationToken cancellationToken)
+    {
+        // Resolve details through an object-scoped database filter to prevent cross-owner disclosure.
+        (string actorNic, string actorRole) = GetRequiredActorClaims();
+        ReservationResponseDto result = await _reservationService.GetReservationByIdAsync(
+            actorNic,
+            actorRole,
+            reservationId,
+            cancellationToken);
+        return Ok(result);
+    }
+
     [HttpPost]
     [Authorize(Roles = nameof(UserRole.Prosumer))]
     public async Task<ActionResult<ReservationResponseDto>> CreateOwnReservation(
@@ -103,6 +137,48 @@ public sealed class ReservationsController : ControllerBase
         // Pass actor claims, expected version, and optional reason to the capacity-safe cancellation workflow.
         (string actorNic, string actorRole) = GetRequiredActorClaims();
         ReservationCancellationResult result = await _reservationService.CancelReservationAsync(
+            actorNic,
+            actorRole,
+            reservationId,
+            request,
+            idempotencyKey ?? string.Empty,
+            cancellationToken);
+        SetReplayHeader(result.IdempotencyReplayed);
+        return Ok(result.Reservation);
+    }
+
+    [HttpPost("{reservationId}/approve")]
+    [Authorize(Roles = $"{nameof(UserRole.Backoffice)},{nameof(UserRole.GridOperator)}")]
+    public async Task<ActionResult<ReservationResponseDto>> ApproveReservation(
+        string reservationId,
+        [FromBody] ApproveReservationRequestDto request,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
+        CancellationToken cancellationToken)
+    {
+        // Delegate staff identity, current-state validation, and approval auditing to the domain service.
+        (string actorNic, string actorRole) = GetRequiredActorClaims();
+        ReservationApprovalResult result = await _reservationService.ApproveReservationAsync(
+            actorNic,
+            actorRole,
+            reservationId,
+            request,
+            idempotencyKey ?? string.Empty,
+            cancellationToken);
+        SetReplayHeader(result.IdempotencyReplayed);
+        return Ok(result.Reservation);
+    }
+
+    [HttpPost("{reservationId}/reject")]
+    [Authorize(Roles = nameof(UserRole.Backoffice))]
+    public async Task<ActionResult<ReservationResponseDto>> RejectReservation(
+        string reservationId,
+        [FromBody] RejectReservationRequestDto request,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
+        CancellationToken cancellationToken)
+    {
+        // Delegate Backoffice identity, rejection auditing, and exact capacity release to the service.
+        (string actorNic, string actorRole) = GetRequiredActorClaims();
+        ReservationRejectionResult result = await _reservationService.RejectReservationAsync(
             actorNic,
             actorRole,
             reservationId,

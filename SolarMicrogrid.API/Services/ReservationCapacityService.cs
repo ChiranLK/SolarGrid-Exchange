@@ -39,11 +39,13 @@ public sealed class ReservationCapacityService
     private const int MaximumCompareAndSwapAttempts = 8;
 
     private readonly MongoDbContext _context;
+    private readonly TimeProvider _timeProvider;
 
-    public ReservationCapacityService(MongoDbContext context)
+    public ReservationCapacityService(MongoDbContext context, TimeProvider timeProvider)
     {
         // Reuse the shared MongoDB context and Member 2 slot collection.
         _context = context;
+        _timeProvider = timeProvider;
     }
 
     public async Task<CapacityMutationResult> HoldCapacityAsync(
@@ -99,7 +101,7 @@ public sealed class ReservationCapacityService
             SlotAvailabilityStatus newStatus = CalculateAvailabilityStatus(
                 slot.AvailabilityStatus,
                 newAvailableCapacity);
-            DateTime now = DateTime.UtcNow;
+            DateTime now = _timeProvider.GetUtcNow().UtcDateTime;
 
             var claim = new SlotCapacityAllocation
             {
@@ -241,7 +243,7 @@ public sealed class ReservationCapacityService
                         item => item.CapacityAllocations,
                         exactClaimFilter));
 
-            DateTime now = DateTime.UtcNow;
+            DateTime now = _timeProvider.GetUtcNow().UtcDateTime;
             UpdateDefinition<EnergyBookingSlot> update = Builders<EnergyBookingSlot>.Update
                 .Set(item => item.AvailableCapacityKwh, newAvailableCapacity)
                 .Set(item => item.AvailabilityStatus, newStatus)
@@ -326,7 +328,7 @@ public sealed class ReservationCapacityService
                         item => item.CapacityAllocations,
                         exactClaimFilter));
 
-            DateTime now = DateTime.UtcNow;
+            DateTime now = _timeProvider.GetUtcNow().UtcDateTime;
             UpdateDefinition<EnergyBookingSlot> update = Builders<EnergyBookingSlot>.Update
                 .Set(item => item.AvailableCapacityKwh, newAvailableCapacity)
                 .Set(item => item.AvailabilityStatus, newStatus)

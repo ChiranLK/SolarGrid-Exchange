@@ -47,6 +47,7 @@ builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
 
 builder.Services.AddSingleton<MongoDbContext>();
 builder.Services.AddHostedService<MongoDbIndexInitializer>();
+builder.Services.AddSingleton(TimeProvider.System);
 
 builder.Services
     .AddOptions<JwtSettings>()

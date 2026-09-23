@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="SolarMicrogrid.API/SolarMicrogrid.API.csproj" />
   <Project Path="SolarMicrogrid.Tests/SolarMicrogrid.Tests.csproj" />
+  <Project Path="SolarMicrogrid.API.Tests/SolarMicrogrid.API.Tests.csproj" />
 </Solution>

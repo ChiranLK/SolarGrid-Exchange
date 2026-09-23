@@ -26,11 +26,13 @@ public sealed class ReservationSchedulingGuardService
     private static readonly TimeSpan LeaseDuration = TimeSpan.FromMinutes(2);
 
     private readonly MongoDbContext _context;
+    private readonly TimeProvider _timeProvider;
 
-    public ReservationSchedulingGuardService(MongoDbContext context)
+    public ReservationSchedulingGuardService(MongoDbContext context, TimeProvider timeProvider)
     {
         // Reuse the shared Component 3 scheduling-guard collection.
         _context = context;
+        _timeProvider = timeProvider;
     }
 
     public async Task<ReservationSchedulingLease> AcquireAsync(
@@ -43,7 +45,7 @@ public sealed class ReservationSchedulingGuardService
 
         for (int attempt = 0; attempt < MaximumAcquireAttempts; attempt++)
         {
-            DateTime nowUtc = DateTime.UtcNow;
+            DateTime nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
             FilterDefinition<ReservationSchedulingGuard> filter =
                 Builders<ReservationSchedulingGuard>.Filter.And(
                     Builders<ReservationSchedulingGuard>.Filter.Eq(
@@ -80,6 +82,10 @@ public sealed class ReservationSchedulingGuardService
                 when (exception.WriteError.Category == ServerErrorCategory.DuplicateKey)
             {
                 // A live lease won the unique NIC race; wait briefly before retrying.
+            }
+            catch (MongoCommandException exception) when (exception.Code == 11000)
+            {
+                // findAndModify upserts report the same live-lease race as a command error.
             }
 
             await Task.Delay(AcquireRetryDelay, cancellationToken);
