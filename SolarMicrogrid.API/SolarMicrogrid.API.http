@@ -175,3 +175,24 @@ Content-Type: application/json
   "expectedVersion": 1,
   "reason": "Plans changed before the notice cutoff."
 }
+
+### Backoffice or assigned Grid Operator approves a Pending reservation
+POST {{baseUrl}}/api/reservations/{{reservationId}}/approve
+Authorization: Bearer {{token}}
+Idempotency-Key: approve-reservation-example-001
+Content-Type: application/json
+
+{
+  "expectedVersion": 1
+}
+
+### Backoffice rejects a Pending reservation
+POST {{baseUrl}}/api/reservations/{{reservationId}}/reject
+Authorization: Bearer {{token}}
+Idempotency-Key: reject-reservation-example-001
+Content-Type: application/json
+
+{
+  "expectedVersion": 1,
+  "reason": "Reservation does not meet the documented operational requirements."
+}
