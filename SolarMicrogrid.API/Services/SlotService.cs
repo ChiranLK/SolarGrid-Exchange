@@ -298,6 +298,7 @@ public sealed class SlotService
     {
         ArgumentNullException.ThrowIfNull(query);
         string normalizedStationId = NormalizeObjectId(stationId, nameof(stationId));
+        await GetRequiredStationAsync(normalizedStationId, cancellationToken);
         int page = Math.Max(query.Page, 1);
         int pageSize = Math.Clamp(query.PageSize, 1, MaximumPageSize);
         var filters = new List<FilterDefinition<EnergyBookingSlot>>
@@ -378,7 +379,7 @@ public sealed class SlotService
             .Find(item => item.Id == stationId)
             .FirstOrDefaultAsync(cancellationToken);
 
-        return station ?? throw new ArgumentException("The specified station does not exist.");
+        return station ?? throw new NotFoundException("The specified station does not exist.");
     }
 
     private async Task EnsureNoOverlapAsync(
