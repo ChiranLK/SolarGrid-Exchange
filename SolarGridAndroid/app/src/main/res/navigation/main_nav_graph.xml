@@ -12,7 +12,7 @@
         <argument android:name="stationId" app:argType="string" />
     </fragment>
     <fragment android:id="@+id/nav_my_reservations" android:name="com.solargrid.exchange.ui.reservations.ReservationListFragment" android:label="@string/my_reservations">
-        <argument android:name="defaultView" android:defaultValue="All" app:argType="string" />
+        <argument android:name="defaultView" android:defaultValue="Pending" app:argType="string" />
     </fragment>
     <fragment android:id="@+id/nav_booking_history" android:name="com.solargrid.exchange.ui.reservations.ReservationListFragment" android:label="@string/booking_history">
         <argument android:name="defaultView" android:defaultValue="History" app:argType="string" />

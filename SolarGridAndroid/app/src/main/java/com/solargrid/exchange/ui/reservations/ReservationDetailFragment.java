@@ -2,11 +2,14 @@ package com.solargrid.exchange.ui.reservations;
 
 import android.app.AlertDialog;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -19,14 +22,27 @@ import androidx.navigation.Navigation;
 
 import com.solargrid.exchange.R;
 import com.solargrid.exchange.data.model.Reservation;
+import com.solargrid.exchange.data.model.ReservationAllowedActions;
 import com.solargrid.exchange.data.model.ReservationStatusHistory;
 import com.solargrid.exchange.ui.MainActivity;
 import com.solargrid.exchange.ui.common.UiState;
 import com.solargrid.exchange.ui.common.UiStateView;
 
 public final class ReservationDetailFragment extends Fragment {
+    private static final long REFRESH_INTERVAL_MS = 30_000L;
     private ReservationDetailViewModel viewModel;
     private Reservation displayedReservation;
+    private ScrollView detailScroll;
+    private final Handler refreshHandler = new Handler(Looper.getMainLooper());
+    private final Runnable scheduledRefresh = new Runnable() {
+        @Override
+        public void run() {
+            if (viewModel != null) {
+                viewModel.refreshSilently();
+                refreshHandler.postDelayed(this, REFRESH_INTERVAL_MS);
+            }
+        }
+    };
 
     @Nullable
     @Override
@@ -34,10 +50,14 @@ public final class ReservationDetailFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_reservation_detail, container, false);
         View content = view.findViewById(R.id.reservation_detail_content);
+        detailScroll = (ScrollView) content;
         UiStateView stateView = view.findViewById(R.id.reservation_detail_state);
+        TextView refreshNotice = view.findViewById(R.id.reservation_detail_refresh_notice);
         Button update = view.findViewById(R.id.reservation_update_button);
         Button cancel = view.findViewById(R.id.reservation_cancel_button);
         viewModel = new ViewModelProvider(this).get(ReservationDetailViewModel.class);
+        detailScroll.setOnScrollChangeListener((scrollView, scrollX, scrollY, oldScrollX, oldScrollY) ->
+                viewModel.rememberScroll(scrollY));
 
         viewModel.getState().observe(getViewLifecycleOwner(), state -> {
             content.setVisibility(state.getStatus() == UiState.Status.SUCCESS ? View.VISIBLE : View.GONE);
@@ -52,9 +72,21 @@ public final class ReservationDetailFragment extends Fragment {
                     stateView.hide();
                     displayedReservation = state.getData();
                     bind(view, displayedReservation);
+                    detailScroll.post(() -> detailScroll.scrollTo(0, viewModel.getScrollY()));
                     break;
                 default:
                     break;
+            }
+        });
+
+        viewModel.getRefreshError().observe(getViewLifecycleOwner(), error -> {
+            if (error == null) {
+                refreshNotice.setVisibility(View.GONE);
+            } else if (error.isAuthenticationExpired()) {
+                ((MainActivity) requireActivity()).handleAuthenticationExpiry();
+            } else {
+                refreshNotice.setText(getString(R.string.reservation_refresh_failed, error.getMessage()));
+                refreshNotice.setVisibility(View.VISIBLE);
             }
         });
 
@@ -102,6 +134,33 @@ public final class ReservationDetailFragment extends Fragment {
         return view;
     }
 
+    @Override
+    public void onStart() {
+        super.onStart();
+        if (viewModel != null && viewModel.getState().getValue() != null) {
+            UiState.Status status = viewModel.getState().getValue().getStatus();
+            if (status != UiState.Status.IDLE && status != UiState.Status.LOADING) {
+                viewModel.refreshSilently();
+            }
+        }
+        refreshHandler.postDelayed(scheduledRefresh, REFRESH_INTERVAL_MS);
+    }
+
+    @Override
+    public void onStop() {
+        refreshHandler.removeCallbacks(scheduledRefresh);
+        if (viewModel != null && detailScroll != null) {
+            viewModel.rememberScroll(detailScroll.getScrollY());
+        }
+        super.onStop();
+    }
+
+    @Override
+    public void onDestroyView() {
+        detailScroll = null;
+        super.onDestroyView();
+    }
+
     private void bind(View view, Reservation reservation) {
         if (reservation == null) {
             return;
@@ -116,6 +175,19 @@ public final class ReservationDetailFragment extends Fragment {
         setText(view, R.id.reservation_detail_energy,
                 ReservationFormatters.energy(reservation.getRequestedEnergyKwh()));
         setText(view, R.id.reservation_detail_reference, reservation.getId());
+        setText(view, R.id.reservation_detail_prosumer,
+                getString(R.string.prosumer_identity_format,
+                        valueOrFallback(reservation.getProsumerFullName(), getString(R.string.current_user)),
+                        reservation.getProsumerNic()));
+        setText(view, R.id.reservation_detail_slot, reservation.getSlotId());
+        setText(view, R.id.reservation_detail_created,
+                ReservationFormatters.localDateTime(reservation.getCreatedAtUtc()));
+        setText(view, R.id.reservation_detail_updated,
+                ReservationFormatters.localDateTime(reservation.getUpdatedAtUtc()));
+        bindOptionalReason(view, R.id.reservation_cancellation_reason_group,
+                R.id.reservation_detail_cancellation_reason, reservation.getCancellationReason());
+        bindOptionalReason(view, R.id.reservation_rejection_reason_group,
+                R.id.reservation_detail_rejection_reason, reservation.getRejectionReason());
 
         StringBuilder history = new StringBuilder();
         for (ReservationStatusHistory item : reservation.getStatusHistory()) {
@@ -134,14 +206,58 @@ public final class ReservationDetailFragment extends Fragment {
 
         Button update = view.findViewById(R.id.reservation_update_button);
         Button cancel = view.findViewById(R.id.reservation_cancel_button);
-        update.setEnabled(reservation.getAllowedActions().canUpdate());
-        cancel.setEnabled(reservation.getAllowedActions().canCancel());
+        boolean mutationBusy = viewModel.isCancellationInProgress();
+        update.setEnabled(!mutationBusy && reservation.getAllowedActions().canUpdate());
+        cancel.setEnabled(!mutationBusy && reservation.getAllowedActions().canCancel());
         update.setContentDescription(reservation.getAllowedActions().canUpdate()
                 ? getString(R.string.modify_reservation)
-                : reservation.getAllowedActions().getUpdateUnavailableReason());
+                : valueOrFallback(reservation.getAllowedActions().getUpdateUnavailableReason(),
+                        getString(R.string.action_unavailable_fallback)));
         cancel.setContentDescription(reservation.getAllowedActions().canCancel()
                 ? getString(R.string.cancel_reservation)
-                : reservation.getAllowedActions().getCancelUnavailableReason());
+                : valueOrFallback(reservation.getAllowedActions().getCancelUnavailableReason(),
+                        getString(R.string.action_unavailable_fallback)));
+        setText(view, R.id.reservation_detail_allowed_actions,
+                buildAllowedActions(reservation.getAllowedActions()));
+    }
+
+    private String buildAllowedActions(ReservationAllowedActions actions) {
+        StringBuilder result = new StringBuilder();
+        appendAction(result, getString(R.string.modify_reservation), actions.canUpdate(),
+                actions.getUpdateUnavailableReason());
+        appendAction(result, getString(R.string.cancel_reservation), actions.canCancel(),
+                actions.getCancelUnavailableReason());
+        appendAction(result, getString(R.string.qr_access), actions.canGetQr(),
+                actions.getGetQrUnavailableReason());
+        if (actions.canGetQr()) {
+            result.append("\n").append(getString(R.string.qr_destination_dependency));
+        }
+        return result.toString();
+    }
+
+    private void appendAction(StringBuilder result, String label, boolean allowed, String reason) {
+        if (result.length() > 0) {
+            result.append("\n\n");
+        }
+        result.append(label).append(": ")
+                .append(allowed ? getString(R.string.action_available) : getString(R.string.action_unavailable));
+        if (!allowed) {
+            result.append("\n").append(valueOrFallback(
+                    reason, getString(R.string.action_unavailable_fallback)));
+        }
+    }
+
+    private static void bindOptionalReason(View view, int groupId, int valueId, String value) {
+        View group = view.findViewById(groupId);
+        boolean visible = value != null && !value.trim().isEmpty();
+        group.setVisibility(visible ? View.VISIBLE : View.GONE);
+        if (visible) {
+            setText(view, valueId, value);
+        }
+    }
+
+    private static String valueOrFallback(String value, String fallback) {
+        return value == null || value.trim().isEmpty() ? fallback : value;
     }
 
     private void showCancelDialog() {

@@ -37,6 +37,14 @@
         </LinearLayout>
 
         <TextView
+            android:id="@+id/reservation_item_reference"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_xs"
+            android:textAppearance="@style/TextAppearance.SolarGrid.Body"
+            android:textIsSelectable="true" />
+
+        <TextView
             android:id="@+id/reservation_item_time"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

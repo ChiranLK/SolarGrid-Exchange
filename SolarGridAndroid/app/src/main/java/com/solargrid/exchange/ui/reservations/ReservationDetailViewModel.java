@@ -20,11 +20,14 @@ public final class ReservationDetailViewModel extends AndroidViewModel {
     private final ReservationRepository repository;
     private final MutableLiveData<UiState<Reservation>> state =
             new MutableLiveData<>(UiState.idle());
+    private final MutableLiveData<ApiError> refreshError = new MutableLiveData<>();
     private final MutableLiveData<UiState<Reservation>> cancellationState =
             new MutableLiveData<>(UiState.idle());
     private String reservationId;
     private String cancellationFingerprint;
     private String cancellationKey;
+    private int requestGeneration;
+    private int scrollY;
 
     public ReservationDetailViewModel(@NonNull Application application) {
         super(application);
@@ -34,7 +37,13 @@ public final class ReservationDetailViewModel extends AndroidViewModel {
     }
 
     public LiveData<UiState<Reservation>> getState() { return state; }
+    public LiveData<ApiError> getRefreshError() { return refreshError; }
     public LiveData<UiState<Reservation>> getCancellationState() { return cancellationState; }
+    public int getScrollY() { return scrollY; }
+    public boolean isCancellationInProgress() {
+        UiState<Reservation> current = cancellationState.getValue();
+        return current != null && current.getStatus() == UiState.Status.LOADING;
+    }
 
     public void load(String id) {
         if (id.equals(reservationId) && state.getValue() != null
@@ -46,26 +55,58 @@ public final class ReservationDetailViewModel extends AndroidViewModel {
     }
 
     public void refresh() {
+        request(true);
+    }
+
+    public void refreshSilently() {
+        request(false);
+    }
+
+    public void rememberScroll(int value) {
+        scrollY = Math.max(0, value);
+    }
+
+    private void request(boolean showLoading) {
         if (reservationId == null || reservationId.isEmpty()) {
             state.setValue(UiState.error(new ApiError(
                     ApiError.Kind.NOT_FOUND, 404, "The reservation reference is missing.")));
             return;
         }
-        state.setValue(UiState.loading());
-        repository.getReservation(reservationId, new ApiCallback<>() {
+        UiState<Reservation> current = state.getValue();
+        boolean hasVisibleData = current != null && current.getStatus() == UiState.Status.SUCCESS;
+        if (showLoading || !hasVisibleData) {
+            state.setValue(UiState.loading());
+        }
+        String requestedId = reservationId;
+        int generation = ++requestGeneration;
+        repository.getReservation(requestedId, new ApiCallback<>() {
             @Override
             public void onSuccess(Reservation value) {
+                if (generation != requestGeneration || !requestedId.equals(reservationId)) {
+                    return;
+                }
+                refreshError.setValue(null);
                 state.setValue(UiState.success(value));
             }
 
             @Override
             public void onError(ApiError error) {
-                state.setValue(UiState.error(error));
+                if (generation != requestGeneration || !requestedId.equals(reservationId)) {
+                    return;
+                }
+                if (!showLoading && hasVisibleData) {
+                    refreshError.setValue(error);
+                } else {
+                    state.setValue(UiState.error(error));
+                }
             }
         });
     }
 
     public void cancel(Reservation reservation, String reason) {
+        if (isCancellationInProgress()) {
+            return;
+        }
         String normalizedReason = reason == null ? "" : reason.trim();
         String fingerprint = reservation.getId() + "|" + reservation.getVersion() + "|" + normalizedReason;
         if (!fingerprint.equals(cancellationFingerprint)) {
