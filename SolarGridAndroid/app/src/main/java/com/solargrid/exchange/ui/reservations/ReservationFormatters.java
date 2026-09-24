@@ -14,6 +14,37 @@ final class ReservationFormatters {
         if (utcValue == null || utcValue.trim().isEmpty()) {
             return "Not supplied";
         }
+        Date value = parseUtc(utcValue);
+        if (value == null) {
+            return utcValue;
+        }
+        return DateFormat.getDateTimeInstance(
+                DateFormat.MEDIUM,
+                DateFormat.SHORT,
+                Locale.getDefault()).format(value);
+    }
+
+    static String localDate(String utcValue) {
+        Date value = parseUtc(utcValue);
+        return value == null
+                ? utcValue
+                : DateFormat.getDateInstance(DateFormat.FULL, Locale.getDefault()).format(value);
+    }
+
+    static String localTimeRange(String startUtc, String endUtc) {
+        Date start = parseUtc(startUtc);
+        Date end = parseUtc(endUtc);
+        if (start == null || end == null) {
+            return localDateTime(startUtc) + " - " + localDateTime(endUtc);
+        }
+        DateFormat formatter = DateFormat.getTimeInstance(DateFormat.SHORT, Locale.getDefault());
+        return formatter.format(start) + " - " + formatter.format(end);
+    }
+
+    private static Date parseUtc(String utcValue) {
+        if (utcValue == null || utcValue.trim().isEmpty()) {
+            return null;
+        }
         String normalized = normalizeFraction(utcValue.trim());
         String[] patterns = {
                 "yyyy-MM-dd'T'HH:mm:ss.SSSX",
@@ -26,16 +57,13 @@ final class ReservationFormatters {
                 parser.setTimeZone(TimeZone.getTimeZone("UTC"));
                 Date value = parser.parse(normalized);
                 if (value != null) {
-                    return DateFormat.getDateTimeInstance(
-                            DateFormat.MEDIUM,
-                            DateFormat.SHORT,
-                            Locale.getDefault()).format(value);
+                    return value;
                 }
             } catch (ParseException ignored) {
                 // Try the next ISO-8601 shape before preserving the server value.
             }
         }
-        return utcValue;
+        return null;
     }
 
     static String energy(double value) {

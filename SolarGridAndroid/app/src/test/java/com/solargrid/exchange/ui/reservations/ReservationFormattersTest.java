@@ -19,6 +19,13 @@ public final class ReservationFormattersTest {
             String utc = "2026-09-25T10:20:30.1234567Z";
 
             assertNotEquals(utc, ReservationFormatters.localDateTime(utc));
+            assertEquals("Friday, September 25, 2026", ReservationFormatters.localDate(utc));
+            assertEquals(
+                    "3:50 PM - 4:50 PM",
+                    ReservationFormatters.localTimeRange(
+                            utc,
+                            "2026-09-25T11:20:30.1234567Z")
+                            .replace('\u202f', ' '));
         } finally {
             Locale.setDefault(originalLocale);
             TimeZone.setDefault(originalZone);

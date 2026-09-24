@@ -2,9 +2,9 @@
 
 Audit date: 2026-09-25
 
-Branch inspected: `feature/reservation-workflow` at Android foundation `1792670`, based on merged `develop` reservation work `ae1b067`
+Branch inspected: `feature/reservation-workflow` at Android reservation baseline `2cb3a94`, already shared with `develop`
 
-Scope of this update: integrate Component 3 into the pure-native Java/XML Android application and merge the completed branch into `develop`
+Scope of this update: integrate Component 3 into the pure-native Java/XML Android application, including API-backed available-slot selection and booking review, and merge the completed branch into `develop`
 
 Latest implementation update: 2026-09-25 on `feature/reservation-workflow`
 
@@ -148,13 +148,14 @@ The Android application language is **Java** and its existing XML/Fragment archi
 | Area | Integrated behavior |
 | --- | --- |
 | API models/repository | Parses paged list/detail DTOs, allowed actions, status history, and create/update/cancel results; sends expected versions and per-logical-request idempotency keys. |
-| Booking creation | A Prosumer selects a live available slot from Member 2's station-detail flow, enters kWh, and receives an API-returned result summary. Staff cannot enter the self-booking flow. |
+| Booking creation | A Prosumer starts from Member 2's station-detail flow. The selection screen re-fetches that station's available-slot API, shows future date/time and reported capacity, permits exactly one slot, and requires `RequestedEnergyKwh` because it is mandatory in the real create DTO. Staff cannot enter the self-booking flow. |
+| Booking review | A separate pre-submit screen shows the signed-in Prosumer name/NIC, station, slot reference, localized date and start/end time, selected-time available capacity, requested kWh, seven-day contract guidance, and expected initial `Pending` status. It explicitly identifies availability as unconfirmed until the API accepts submission. |
 | Lists/history | My Reservations exposes server-defined `All`, `Pending`, `Current`, and `ApprovedFuture` views; Booking History uses the server-defined `History` view. |
 | Details/actions | Detail reloads the authoritative reservation, renders local-time schedule/status/history, and enables modify/cancel only from server-provided `AllowedActions`. |
 | Modification | Reloads current detail plus live slots for the reservation's station and submits `SlotId`, `RequestedEnergyKwh`, and `ExpectedVersion`; the API revalidates all lifecycle/capacity rules. |
 | Cancellation | Sends the displayed version and optional reason. No local capacity/status mutation occurs. |
 | Summaries | Create, update, and cancellation summaries contain only the reservation returned by the successful central API mutation. |
-| Lifecycle/errors | ViewModels retain loaded and in-flight UI state across configuration recreation. Shared 400/401/403/404/409/server/network mapping is reused, and 401 clears the shared session before routing to login. |
+| Lifecycle/errors | Loading, empty, error, and retry states use the shared state component. ViewModels retain the selected slot, quantity, loaded data, idempotency key, and in-flight UI state across configuration recreation. Back from review restores the valid draft. Shared 400/401/403/404/409/server/network mapping is reused, and 401 clears the shared session before routing to login. |
 | Offline/cache | No offline mutation queue and no reservation/availability cache were added. Availability remains explicitly labelled as live and unconfirmed; network failure never becomes success. |
 | SQLite | The existing version-1 session database is reused unchanged. No second user/session database and no plaintext password storage were introduced. |
 
@@ -184,8 +185,8 @@ Remote refs were refreshed before integration. `origin/feature/stations-slots-ma
 | --- | --- |
 | Repository instructions | No `AGENTS.md` or other repository instruction file found. |
 | README/assignment/team plan | Read the only README. No assignment or team-plan artifact exists in the checkout, any available ref tree, or tracked document history. |
-| Git branch | PASS: implementation is on `feature/reservation-workflow` after synchronizing it with `develop` at `f64b97f`. |
-| Safe branch preparation | PASS: the clean reservation branch was fast-forwarded to current `develop`; Member 1's existing user API commit was integrated without reset or file discard. Commit, feature push, and develop merge were requested for this update. |
+| Git branch | PASS: implementation is on `feature/reservation-workflow`, starting from the shared `feature/reservation-workflow`/`develop` commit `2cb3a94`. |
+| Safe branch preparation | PASS: the clean feature and develop branches shared the same verified baseline; no reset or file discard was used. Commit, feature push, and develop merge were requested for this update. |
 | Git baseline comparison | INFO: the baseline already contains the Component 3 API, tests, and reservation list/detail UI; this update extends the existing creation entry point. |
 | Backend/framework inspection | PASS: ASP.NET Core controller API targeting `net10.0` confirmed from project/source. |
 | Web foundation | IMPLEMENTED: React/TypeScript with Vite, Bootstrap 5, React Router, centralized Fetch client, environment API URL, `POST /api/auth/login`, `GET /api/auth/me`, session context, protected/role routes, responsive shared layout, and reusable loading/empty/error/confirmation/status components. Dashboard and Prosumer data remain unintegrated because their controllers are empty. |
@@ -193,7 +194,7 @@ Remote refs were refreshed before integration. `origin/feature/stations-slots-ma
 | Web refresh and visibility | PASS: successful create/update/approve/reject/cancel operations publish an application-wide and cross-tab reservation-change signal. Reservation lists and details refresh on that signal, window focus, visibility return, and a 30-second interval, closing an open action if its displayed version changed. Navigating back remounts and reloads the filtered list. This is the refresh integration point for Member 4's dashboard once its currently empty controller/page is implemented. Default `All` and server-defined `History` views continue to include cancelled/rejected records. The browser never calls station/slot capacity mutation routes. |
 | Web dependency install | PASS: 185 packages audited with 0 reported vulnerabilities. TypeScript remains on the supported 6.x line because current `typescript-eslint` does not accept TypeScript 7. |
 | Web checks | PASS: `npm run check` completed ESLint, **22/22** focused Vitest checks, TypeScript project compilation, and the Vite 8.3.1 production build. Vite transformed 64 modules and emitted the production bundle. The added checks cover action reconciliation, optional cancellation/agreed rejection reasons, approvals, stale versions, clear backend/cutoff errors, and cross-client change explanations. |
-| Android inspection | PASS: pure-native Java/XML architecture, Activity/Fragment navigation, ViewModel/repository layers, bearer authentication, shared error mapping, role routing, one SQLite session store, and Member 2 station/available-slot entry flow were preserved. Component 3 adds API-backed create, filtered current/pending/history lists, detail, update, cancellation, and server-result summaries. |
+| Android inspection | PASS: pure-native Java/XML architecture, Activity/Fragment navigation, ViewModel/repository layers, bearer authentication, shared error mapping, role routing, one SQLite session store, and Member 2 station/available-slot entry flow were preserved. Component 3 adds API-refreshed single-slot selection, a pre-submit booking review, create, filtered current/pending/history lists, detail, update, cancellation, and server-result summaries. No client-side filter is treated as availability proof; create revalidation remains server-owned. |
 | Eligible Prosumer lookup | PASS: `GET /api/users/eligible-prosumers` is limited to Backoffice/GridOperator, requires a bounded search term, filters active Prosumer role/status in MongoDB before stable paging, and returns a minimal selection DTO. |
 | MongoDB inspection | PASS: reservation collection mapping, BSON attributes, references, UTC fields, Decimal128 energy quantity, versioning, query/duplicate indexes, allocation claims, and per-Prosumer scheduling leases are implemented and exercised against MongoDB 8. |
 | Reservation domain/DTO implementation | PASS (compile verified): entity/status/history/capacity state, request/query/response DTOs, collection mapping, and indexes are implemented. |

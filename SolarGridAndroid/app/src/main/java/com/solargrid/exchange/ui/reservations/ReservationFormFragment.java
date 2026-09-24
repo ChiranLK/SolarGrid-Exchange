@@ -1,11 +1,14 @@
 package com.solargrid.exchange.ui.reservations;
 
 import android.os.Bundle;
+import android.text.Editable;
 import android.text.InputType;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Spinner;
@@ -47,6 +50,29 @@ public final class ReservationFormFragment extends Fragment {
         Button submit = view.findViewById(R.id.reservation_submit_button);
         energy.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
         viewModel = new ViewModelProvider(this).get(ReservationFormViewModel.class);
+        slotSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View selected, int position, long id) {
+                if (position >= 0 && position < displayedSlots.size()) {
+                    viewModel.saveSelectedSlot(displayedSlots.get(position));
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) { }
+        });
+        energy.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence value, int start, int count, int after) { }
+
+            @Override
+            public void onTextChanged(CharSequence value, int start, int before, int count) {
+                viewModel.saveEnergyText(value.toString().trim());
+            }
+
+            @Override
+            public void afterTextChanged(Editable value) { }
+        });
 
         viewModel.getFormState().observe(getViewLifecycleOwner(), state -> {
             content.setVisibility(state.getStatus() == UiState.Status.SUCCESS ? View.VISIBLE : View.GONE);
@@ -60,6 +86,12 @@ public final class ReservationFormFragment extends Fragment {
                     } else if (state.getError() != null) {
                         stateView.showError(state.getError(), ignored -> viewModel.retry());
                     }
+                    break;
+                case EMPTY:
+                    stateView.showEmpty(
+                            getString(R.string.no_available_slots),
+                            getString(R.string.no_available_slots_review_message),
+                            ignored -> viewModel.retry());
                     break;
                 case SUCCESS:
                     stateView.hide();
@@ -78,7 +110,7 @@ public final class ReservationFormFragment extends Fragment {
             } else if (formData != null) {
                 submit.setText(formData.isEditing()
                         ? R.string.update_reservation
-                        : R.string.confirm_booking);
+                        : R.string.review_booking);
             }
 
             if (state.getStatus() == UiState.Status.ERROR && state.getError() != null) {
@@ -120,7 +152,22 @@ public final class ReservationFormFragment extends Fragment {
                 energy.setError(getString(R.string.energy_required));
                 return;
             }
-            viewModel.submit(displayedSlots.get(position), requestedEnergy);
+            Slot selectedSlot = displayedSlots.get(position);
+            viewModel.saveSelectedSlot(selectedSlot);
+            viewModel.saveEnergyText(energy.getText().toString().trim());
+            if (formData != null && formData.isEditing()) {
+                viewModel.submitUpdate(selectedSlot, requestedEnergy);
+                return;
+            }
+            Bundle review = new Bundle();
+            review.putString("stationName", formData == null ? "" : formData.getStationName());
+            review.putString("stationId", selectedSlot.getStationId());
+            review.putString("slotId", selectedSlot.getId());
+            review.putString("startUtc", selectedSlot.getStartTimeUtc());
+            review.putString("endUtc", selectedSlot.getEndTimeUtc());
+            review.putDouble("availableCapacity", selectedSlot.getAvailableCapacityKwh());
+            review.putDouble("requestedEnergy", requestedEnergy);
+            Navigation.findNavController(view).navigate(R.id.nav_booking_review, review);
         });
 
         Bundle arguments = getArguments() == null ? Bundle.EMPTY : getArguments();
@@ -130,10 +177,7 @@ public final class ReservationFormFragment extends Fragment {
             viewModel.configureCreate(
                     arguments.getString("stationName", ""),
                     arguments.getString("stationId", ""),
-                    arguments.getString("slotId", ""),
-                    arguments.getString("startUtc", ""),
-                    arguments.getString("endUtc", ""),
-                    arguments.getDouble("availableCapacity", 0));
+                    arguments.getString("slotId", ""));
         }
         return view;
     }
@@ -154,7 +198,7 @@ public final class ReservationFormFragment extends Fragment {
                 data.isEditing()
                         ? R.string.update_authority_notice
                         : R.string.booking_authority_notice);
-        submit.setText(data.isEditing() ? R.string.update_reservation : R.string.confirm_booking);
+        submit.setText(data.isEditing() ? R.string.update_reservation : R.string.review_booking);
         displayedSlots = data.getSlots();
         List<String> labels = new ArrayList<>();
         int selected = 0;
@@ -167,8 +211,7 @@ public final class ReservationFormFragment extends Fragment {
             labels.add(ReservationFormatters.localDateTime(slot.getStartTimeUtc()) + " - "
                     + ReservationFormatters.localDateTime(slot.getEndTimeUtc()) + "\n"
                     + slotDetail);
-            if (data.getReservation() != null
-                    && data.getReservation().getSlotId().equals(slot.getId())) {
+            if (slot.getId().equals(viewModel.getDraftSelectedSlotId())) {
                 selected = index;
             }
         }
@@ -177,8 +220,8 @@ public final class ReservationFormFragment extends Fragment {
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);
         spinner.setSelection(selected);
-        if (data.getReservation() != null && energy.getText().length() == 0) {
-            energy.setText(String.valueOf(data.getReservation().getRequestedEnergyKwh()));
+        if (energy.getText().length() == 0 && !viewModel.getDraftEnergyText().isEmpty()) {
+            energy.setText(viewModel.getDraftEnergyText());
         }
     }
 }

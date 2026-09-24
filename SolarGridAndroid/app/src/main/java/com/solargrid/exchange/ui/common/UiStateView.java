@@ -43,11 +43,19 @@ public final class UiStateView extends LinearLayout {
     }
 
     public void showEmpty(String emptyTitle, String emptyMessage) {
+        showEmpty(emptyTitle, emptyMessage, null);
+    }
+
+    public void showEmpty(
+            String emptyTitle,
+            String emptyMessage,
+            @Nullable OnClickListener retryListener) {
         setVisibility(VISIBLE);
         progress.setVisibility(GONE);
         title.setText(emptyTitle);
         message.setText(emptyMessage);
-        retry.setVisibility(GONE);
+        retry.setVisibility(retryListener == null ? GONE : VISIBLE);
+        retry.setOnClickListener(retryListener);
     }
 
     public void showError(ApiError error, @Nullable OnClickListener retryListener) {

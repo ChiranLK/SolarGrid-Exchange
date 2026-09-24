@@ -75,7 +75,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/space_lg"
-                android:text="@string/confirm_booking" />
+                android:text="@string/review_booking" />
         </LinearLayout>
     </ScrollView>
 </FrameLayout>

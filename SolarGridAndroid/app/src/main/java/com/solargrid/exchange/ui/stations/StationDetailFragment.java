@@ -101,9 +101,6 @@ public final class StationDetailFragment extends Fragment {
                 arguments.putString("stationId", station.getId());
                 arguments.putString("stationName", station.getName());
                 arguments.putString("slotId", slot.getId());
-                arguments.putString("startUtc", slot.getStartTimeUtc());
-                arguments.putString("endUtc", slot.getEndTimeUtc());
-                arguments.putDouble("availableCapacity", slot.getAvailableCapacityKwh());
                 Navigation.findNavController(view).navigate(R.id.nav_reservation_form, arguments);
             } : null);
         }

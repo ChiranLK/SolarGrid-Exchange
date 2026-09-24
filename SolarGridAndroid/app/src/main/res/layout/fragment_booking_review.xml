@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/solar_surface"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/space_lg">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/review_booking_title"
+            android:textAppearance="@style/TextAppearance.SolarGrid.Headline" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_sm"
+            android:text="@string/seven_day_booking_guidance"
+            android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_lg" android:text="@string/prosumer_label" android:textStyle="bold" />
+        <TextView android:id="@+id/booking_review_prosumer" android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_md" android:text="@string/station_label" android:textStyle="bold" />
+        <TextView android:id="@+id/booking_review_station" android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_md" android:text="@string/slot_reference" android:textStyle="bold" />
+        <TextView android:id="@+id/booking_review_slot" android:layout_width="match_parent" android:layout_height="wrap_content" android:textIsSelectable="true" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_md" android:text="@string/booking_date" android:textStyle="bold" />
+        <TextView android:id="@+id/booking_review_date" android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_md" android:text="@string/booking_time" android:textStyle="bold" />
+        <TextView android:id="@+id/booking_review_time" android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_md" android:text="@string/available_capacity_at_selection" android:textStyle="bold" />
+        <TextView android:id="@+id/booking_review_capacity" android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_md" android:text="@string/requested_energy" android:textStyle="bold" />
+        <TextView android:id="@+id/booking_review_quantity" android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_md" android:text="@string/initial_expected_status" android:textStyle="bold" />
+        <TextView
+            android:id="@+id/booking_review_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@color/solar_green_100"
+            android:padding="@dimen/space_sm"
+            android:textColor="@color/solar_green_900"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_lg"
+            android:text="@string/review_authority_notice"
+            android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_lg"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/booking_review_edit_button"
+                style="@style/Widget.SolarGrid.Button"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/edit_selection" />
+
+            <Button
+                android:id="@+id/booking_review_confirm_button"
+                style="@style/Widget.SolarGrid.Button"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/space_sm"
+                android:layout_weight="1"
+                android:text="@string/confirm_booking" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

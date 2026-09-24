@@ -21,6 +21,7 @@
         <argument android:name="reservationId" app:argType="string" />
     </fragment>
     <fragment android:id="@+id/nav_reservation_form" android:name="com.solargrid.exchange.ui.reservations.ReservationFormFragment" android:label="@string/reservation" />
+    <fragment android:id="@+id/nav_booking_review" android:name="com.solargrid.exchange.ui.reservations.BookingReviewFragment" android:label="@string/review_booking_title" />
     <fragment android:id="@+id/nav_reservation_summary" android:name="com.solargrid.exchange.ui.reservations.ReservationSummaryFragment" android:label="@string/reservation_summary" />
     <fragment android:id="@+id/nav_qr_operations" android:name="com.solargrid.exchange.ui.placeholder.DestinationFragment" android:label="@string/qr_operations">
         <argument android:name="title" android:defaultValue="QR verification &amp; operations" app:argType="string" />
