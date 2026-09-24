@@ -101,8 +101,10 @@ builder.Services
 builder.Services.AddControllers();
 
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<ReservationGuardService>();
 builder.Services.AddScoped<StationService>();
 builder.Services.AddScoped<SlotService>();
+builder.Services.AddScoped<StationAccessService>();
 builder.Services.AddScoped<MongoTransactionRunner>();
 builder.Services.AddScoped<ReservationCapacityService>();
 builder.Services.AddScoped<ReservationSchedulingGuardService>();

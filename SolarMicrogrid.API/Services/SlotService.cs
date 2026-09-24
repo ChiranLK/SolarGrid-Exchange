@@ -65,6 +65,42 @@ public sealed class SlotService
         return slot is null ? null : MapToResponse(slot);
     }
 
+    public async Task<bool> DeleteSlotAsync(
+        string slotId,
+        CancellationToken cancellationToken)
+    {
+        if (!ObjectId.TryParse(slotId, out _))
+        {
+            return false;
+        }
+
+        EnergyBookingSlot? slot = await _context.Slots
+            .Find(item => item.Id == slotId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (slot is null)
+        {
+            return false;
+        }
+
+        EnergyReservation? reservation = await _context.Reservations
+            .Find(item => item.SlotId == slot.Id)
+            .Limit(1)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (reservation is not null)
+        {
+            throw new ConflictException(
+                "The slot cannot be deleted because a reservation references it.");
+        }
+
+        DeleteResult result = await _context.Slots.DeleteOneAsync(
+            item => item.Id == slot.Id,
+            cancellationToken);
+
+        return result.DeletedCount == 1;
+    }
+
     public async Task<SlotResponseDto> CreateSlotAsync(
         CreateSlotRequestDto request,
         CancellationToken cancellationToken)
@@ -399,11 +435,12 @@ public sealed class SlotService
             filter &= Builders<EnergyBookingSlot>.Filter.Ne(slot => slot.Id, excludedSlotId);
         }
 
-        bool overlaps = await _context.Slots
+        EnergyBookingSlot? overlappingSlot = await _context.Slots
             .Find(filter)
-            .AnyAsync(cancellationToken);
+            .Limit(1)
+            .FirstOrDefaultAsync(cancellationToken);
 
-        if (overlaps)
+        if (overlappingSlot is not null)
         {
             throw new ConflictException("The slot overlaps another slot for this station.");
         }

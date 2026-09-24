@@ -72,7 +72,12 @@ PATCH {{baseUrl}}/api/stations/{{stationId}}/activate
 Authorization: Bearer {{token}}
 
 ### Deactivate station (Backoffice)
+# 409 Conflict if the station has Pending or Approved reservations.
 PATCH {{baseUrl}}/api/stations/{{stationId}}/deactivate
+Authorization: Bearer {{token}}
+
+### Logically delete station (Backoffice; 204, or 409 for active reservations)
+DELETE {{baseUrl}}/api/stations/{{stationId}}
 Authorization: Bearer {{token}}
 
 ### List slots for station
@@ -111,6 +116,10 @@ Content-Type: application/json
   "endTimeUtc": "2027-01-04T05:30:00Z",
   "totalCapacityKwh": 120
 }
+
+### Delete unreferenced slot (Backoffice; 204, or 409 for any reservation history)
+DELETE {{baseUrl}}/api/slots/{{slotId}}
+Authorization: Bearer {{token}}
 
 ### Disable slot (Backoffice)
 PATCH {{baseUrl}}/api/slots/{{slotId}}/availability

@@ -103,4 +103,16 @@ public sealed class StationsController : ControllerBase
         StationResponseDto? station = await _stationService.DeactivateStationAsync(stationId, cancellationToken);
         return station is null ? NotFound() : Ok(station);
     }
+
+    [HttpDelete("{stationId}")]
+    [Authorize(Roles = nameof(UserRole.Backoffice))]
+    public async Task<IActionResult> DeleteStation(
+        string stationId,
+        CancellationToken cancellationToken)
+    {
+        StationResponseDto? station = await _stationService.DeactivateStationAsync(
+            stationId,
+            cancellationToken);
+        return station is null ? NotFound() : NoContent();
+    }
 }

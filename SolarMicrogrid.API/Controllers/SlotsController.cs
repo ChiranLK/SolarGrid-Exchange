@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SolarMicrogrid.API.Exceptions;
 using SolarMicrogrid.API.Models.DTOs.Slots;
 using SolarMicrogrid.API.Models.Entities;
 using SolarMicrogrid.API.Services;
@@ -12,10 +14,14 @@ namespace SolarMicrogrid.API.Controllers;
 public sealed class SlotsController : ControllerBase
 {
     private readonly SlotService _slotService;
+    private readonly StationAccessService _stationAccessService;
 
-    public SlotsController(SlotService slotService)
+    public SlotsController(
+        SlotService slotService,
+        StationAccessService stationAccessService)
     {
         _slotService = slotService;
+        _stationAccessService = stationAccessService;
     }
 
     [HttpGet("stations/{stationId}/slots")]
@@ -85,17 +91,35 @@ public sealed class SlotsController : ControllerBase
         return slot is null ? NotFound() : Ok(slot);
     }
 
-    [HttpPatch("slots/{slotId}/availability")]
+    [HttpDelete("slots/{slotId}")]
     [Authorize(Roles = nameof(UserRole.Backoffice))]
+    public async Task<IActionResult> DeleteSlot(
+        string slotId,
+        CancellationToken cancellationToken)
+    {
+        bool deleted = await _slotService.DeleteSlotAsync(slotId, cancellationToken);
+        return deleted ? NoContent() : NotFound();
+    }
+
+    [HttpPatch("slots/{slotId}/availability")]
+    [Authorize(Roles = $"{nameof(UserRole.Backoffice)},{nameof(UserRole.GridOperator)}")]
     public async Task<ActionResult<SlotResponseDto>> ChangeSlotAvailability(
         string slotId,
         [FromBody] ChangeSlotAvailabilityRequestDto request,
         CancellationToken cancellationToken)
     {
-        SlotResponseDto? slot = await _slotService.ChangeSlotAvailabilityAsync(
+        string? actorNic = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(actorNic))
+        {
+            throw new UnauthorizedException(
+                "The access token is missing the required user identifier claim.");
+        }
+
+        SlotResponseDto slot = await _stationAccessService.ChangeSlotAvailabilityAsync(
+            actorNic,
             slotId,
             request,
             cancellationToken);
-        return slot is null ? NotFound() : Ok(slot);
+        return Ok(slot);
     }
 }
