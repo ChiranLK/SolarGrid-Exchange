@@ -65,9 +65,13 @@ project.lock.json
 project.fragment.lock.json
 artifacts/
 
-# Node package manifests
-**/package.json
-**/package-lock.json
+# Node/Vite dependencies, generated builds, and local configuration
+**/node_modules/
+**/dist/
+**/.vite/
+**/.env
+**/.env.*
+!**/.env.example
 
 # Tye
 .tye/

@@ -15,6 +15,8 @@ public sealed class ReservationResponseDto
 
     public string ProsumerNic { get; set; } = string.Empty;
 
+    public string? ProsumerFullName { get; set; }
+
     public string StationId { get; set; } = string.Empty;
 
     public string? StationName { get; set; }

@@ -57,7 +57,8 @@ public sealed record ReservationRejectionResult(
 
 internal sealed record ReservationDisplayReferences(
     IReadOnlyDictionary<string, SolarStationInfo> Stations,
-    IReadOnlyDictionary<string, EnergyBookingSlot> Slots);
+    IReadOnlyDictionary<string, EnergyBookingSlot> Slots,
+    IReadOnlyDictionary<string, User> Prosumers);
 
 internal sealed record ReservationCreationEntityResult(
     EnergyReservation Reservation,
@@ -274,7 +275,8 @@ public sealed class ReservationService
             cancellationToken);
         references.Stations.TryGetValue(reservation.StationId, out SolarStationInfo? station);
         references.Slots.TryGetValue(reservation.SlotId, out EnergyBookingSlot? slot);
-        return MapToResponse(reservation, actor, GetUtcNow(), station, slot);
+        references.Prosumers.TryGetValue(reservation.ProsumerNic, out User? prosumer);
+        return MapToResponse(reservation, actor, GetUtcNow(), station, slot, prosumer);
     }
 
     public async Task<ReservationCreationResult> CreateOwnReservationAsync(
@@ -2429,12 +2431,13 @@ public sealed class ReservationService
         IReadOnlyCollection<EnergyReservation> reservations,
         CancellationToken cancellationToken)
     {
-        // Batch station and slot display lookups so paged responses avoid per-item database calls.
+        // Batch user, station, and slot display lookups so pages avoid per-item database calls.
         if (reservations.Count == 0)
         {
             return new ReservationDisplayReferences(
                 new Dictionary<string, SolarStationInfo>(),
-                new Dictionary<string, EnergyBookingSlot>());
+                new Dictionary<string, EnergyBookingSlot>(),
+                new Dictionary<string, User>());
         }
 
         string[] stationIds = reservations
@@ -2445,17 +2448,25 @@ public sealed class ReservationService
             .Select(reservation => reservation.SlotId)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
+        string[] prosumerNics = reservations
+            .Select(reservation => reservation.ProsumerNic)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
         Task<List<SolarStationInfo>> stationTask = _context.Stations
             .Find(Builders<SolarStationInfo>.Filter.In(station => station.Id, stationIds))
             .ToListAsync(cancellationToken);
         Task<List<EnergyBookingSlot>> slotTask = _context.Slots
             .Find(Builders<EnergyBookingSlot>.Filter.In(slot => slot.Id, slotIds))
             .ToListAsync(cancellationToken);
-        await Task.WhenAll(stationTask, slotTask);
+        Task<List<User>> prosumerTask = _context.Users
+            .Find(Builders<User>.Filter.In(user => user.Nic, prosumerNics))
+            .ToListAsync(cancellationToken);
+        await Task.WhenAll(stationTask, slotTask, prosumerTask);
 
         return new ReservationDisplayReferences(
             stationTask.Result.ToDictionary(station => station.Id, StringComparer.Ordinal),
-            slotTask.Result.ToDictionary(slot => slot.Id, StringComparer.Ordinal));
+            slotTask.Result.ToDictionary(slot => slot.Id, StringComparer.Ordinal),
+            prosumerTask.Result.ToDictionary(user => user.Nic, StringComparer.Ordinal));
     }
 
     private ReservationListItemResponseDto MapToListItem(
@@ -2467,10 +2478,12 @@ public sealed class ReservationService
         // Return a compact DTO with display metadata and the same action policy as details.
         references.Stations.TryGetValue(reservation.StationId, out SolarStationInfo? station);
         references.Slots.TryGetValue(reservation.SlotId, out EnergyBookingSlot? slot);
+        references.Prosumers.TryGetValue(reservation.ProsumerNic, out User? prosumer);
         return new ReservationListItemResponseDto
         {
             Id = reservation.Id,
             ProsumerNic = reservation.ProsumerNic,
+            ProsumerFullName = prosumer?.FullName,
             StationId = reservation.StationId,
             StationName = station?.Name,
             StationAddress = station?.Address,
@@ -2483,6 +2496,7 @@ public sealed class ReservationService
             Version = reservation.Version,
             QrEligible = reservation.Status == ReservationStatus.Approved,
             AllowedActions = BuildAllowedActions(reservation, actor, serverNowUtc),
+            CreatedAtUtc = reservation.CreatedAtUtc,
             UpdatedAtUtc = reservation.UpdatedAtUtc
         };
     }
@@ -2492,13 +2506,15 @@ public sealed class ReservationService
         User actor,
         DateTime serverNowUtc,
         SolarStationInfo? station = null,
-        EnergyBookingSlot? slot = null)
+        EnergyBookingSlot? slot = null,
+        User? prosumer = null)
     {
         // Project persisted state plus actor-scoped actions without exposing internal hashes or counters.
         return new ReservationResponseDto
         {
             Id = reservation.Id,
             ProsumerNic = reservation.ProsumerNic,
+            ProsumerFullName = prosumer?.FullName,
             StationId = reservation.StationId,
             StationName = station?.Name,
             StationAddress = station?.Address,

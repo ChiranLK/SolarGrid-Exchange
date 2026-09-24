@@ -14,6 +14,8 @@ public sealed class ReservationListItemResponseDto
 
     public string ProsumerNic { get; set; } = string.Empty;
 
+    public string? ProsumerFullName { get; set; }
+
     public string StationId { get; set; } = string.Empty;
 
     public string? StationName { get; set; }
@@ -37,6 +39,8 @@ public sealed class ReservationListItemResponseDto
     public bool QrEligible { get; set; }
 
     public ReservationAllowedActionsDto AllowedActions { get; set; } = new();
+
+    public DateTime CreatedAtUtc { get; set; }
 
     public DateTime UpdatedAtUtc { get; set; }
 }
