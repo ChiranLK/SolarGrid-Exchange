@@ -25,19 +25,25 @@ namespace SolarMicrogrid.API.Exceptions
         }
     }
 
+    
     public class ForbiddenException : Exception
     {
-        public ForbiddenException(string message) : base(message)
-        {
-            // Preserve the authorization failure message for the shared error response.
-        }
+        public ForbiddenException(string message) : base(message) { }
     }
-
+ 
+ 
+    public class BadRequestException : Exception
+    {
+        public BadRequestException(string message) : base(message) { }
+    }
+ 
+    
     public class NotFoundException : Exception
     {
-        public NotFoundException(string message) : base(message)
-        {
-            // Preserve the missing-resource message for the shared error response.
-        }
+        public NotFoundException(string message) : base(message) { }
     }
+
+    
+
+   
 }
