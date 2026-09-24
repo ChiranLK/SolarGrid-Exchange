@@ -311,6 +311,57 @@ textarea {
   top: 5.5rem;
 }
 
+.creation-progress-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid #d7e2db;
+  border-radius: 999px;
+  color: #68766d;
+  background: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.creation-progress-item span {
+  display: inline-grid;
+  width: 1.45rem;
+  height: 1.45rem;
+  place-items: center;
+  border-radius: 50%;
+  background: #e8efea;
+  font-size: 0.75rem;
+}
+
+.creation-progress-item.is-active {
+  border-color: #8ac4a1;
+  color: #145c36;
+  background: #eff8f2;
+}
+
+.creation-progress-item.is-active span {
+  color: #fff;
+  background: #238452;
+}
+
+.reservation-saved-summary {
+  overflow: hidden;
+  border-top: 0.3rem solid #238452 !important;
+}
+
+.saved-check {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: #238452;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
 .audit-timeline {
   position: relative;
   padding-left: 1.75rem;

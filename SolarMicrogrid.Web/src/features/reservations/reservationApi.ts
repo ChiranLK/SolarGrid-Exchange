@@ -23,7 +23,11 @@ export const reservationApi = {
     return apiRequest<ReservationDetail>(`/reservations/${encodeURIComponent(reservationId)}`, { signal })
   },
 
-  createOwn(request: CreateReservationRequest, idempotencyKey: string): Promise<ReservationDetail> {
+  createOwn(
+    request: CreateReservationRequest,
+    idempotencyKey: string,
+    signal?: AbortSignal,
+  ): Promise<ReservationDetail> {
     return apiRequest<ReservationDetail>('/reservations', {
       method: 'POST',
       headers: { 'Idempotency-Key': idempotencyKey },
@@ -31,12 +35,14 @@ export const reservationApi = {
         slotId: request.slotId,
         requestedEnergyKwh: request.requestedEnergyKwh,
       }),
+      signal,
     })
   },
 
   createForProsumer(
     request: CreateReservationRequest,
     idempotencyKey: string,
+    signal?: AbortSignal,
   ): Promise<ReservationDetail> {
     return apiRequest<ReservationDetail>('/reservations/staff', {
       method: 'POST',
@@ -46,6 +52,7 @@ export const reservationApi = {
         slotId: request.slotId,
         requestedEnergyKwh: request.requestedEnergyKwh,
       }),
+      signal,
     })
   },
 

@@ -77,6 +77,8 @@ Feature modules should call `apiRequest` through an endpoint module under `src/a
 | `GET /api/auth/me` | Validates a stored token before restoring a protected session. |
 | `GET /api/reservations` | Role-scoped list, views, station/status filters, Backoffice search, and pagination. |
 | `GET /api/reservations/{id}` | Object-authorized booking details, audit history, and server-derived actions. |
+| `GET /api/users/eligible-prosumers` | Staff-only, paged active-Prosumer search for the reservation owner picker; no full user-directory download. |
+| `POST /api/reservations/staff` | Reviewed staff booking with one logical idempotency key, timeout reconciliation, and a dedicated saved summary. |
 | Reservation create/update/cancel/approve/reject routes | Accessible action forms submit expected versions and idempotency keys; the API remains authoritative. |
 | Station and available-slot reads | Populate reservation filters, creation, and rescheduling controls. |
 
@@ -86,7 +88,7 @@ The web guards use the API's exact role names: `Backoffice`, `GridOperator`, and
 
 - `DashboardController` and `ProsumersController` are empty, so dashboard and Prosumer-specific data calls are not implemented.
 - Registration exists at `POST /api/auth/register`, but a registration screen is outside this foundation task.
-- User administration and station-management screens remain owned follow-up work. Reservation list, detail, and supporting mutation forms are implemented under `src/features/reservations`.
+- User administration and station-management screens remain owned follow-up work. The reservation feature only reuses the authorized eligible-Prosumer lookup; it does not duplicate user management.
 - The API has no logout or refresh-token endpoint. Sign-out therefore removes the browser session locally; token expiry is handled on the next API request.
 - The API currently has no cross-origin CORS policy. Local development uses Vite's same-origin `/api` proxy. A separately hosted production UI requires an explicit trusted-origin API policy or same-origin reverse proxy.
 - Dashboard metrics, QR verification, and reservation completion endpoints are not available and must not be simulated in the client.
