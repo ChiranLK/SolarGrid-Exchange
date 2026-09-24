@@ -72,6 +72,7 @@ PATCH {{baseUrl}}/api/stations/{{stationId}}/activate
 Authorization: Bearer {{token}}
 
 ### Deactivate station (Backoffice)
+# 409 Conflict if the station has Pending or Approved reservations.
 PATCH {{baseUrl}}/api/stations/{{stationId}}/deactivate
 Authorization: Bearer {{token}}
 
