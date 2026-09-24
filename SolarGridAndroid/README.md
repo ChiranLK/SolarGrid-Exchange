@@ -44,17 +44,22 @@ Inspect the database from Android Studio using **View > Tool Windows > App Inspe
 
 The implementation was matched to the repository's controllers and DTOs:
 
-| Endpoint | Foundation usage |
+| Endpoint | Android usage |
 | --- | --- |
 | `POST /api/auth/login` | Login and local session creation |
 | `GET /api/auth/me` | Startup token validation and email/role refresh |
 | `GET /api/stations?isActive=true&page=1&pageSize=100` | Active station list |
 | `GET /api/stations/{stationId}` | Station details |
 | `GET /api/stations/{stationId}/slots/available` | Live available-slot display |
+| `GET /api/reservations?view=...` | Role-scoped current, pending, approved-future, all, and history lists |
+| `GET /api/reservations/{reservationId}` | Authoritative details, status history, and allowed actions |
+| `POST /api/reservations` | Prosumer booking creation with an idempotency key |
+| `PUT /api/reservations/{reservationId}` | Versioned slot/energy modification with an idempotency key |
+| `POST /api/reservations/{reservationId}/cancel` | Versioned cancellation with an optional reason and idempotency key |
 
 `GET /api/stations/nearby` also exists, but acquiring runtime location and rendering Member 2's map are deliberately left to that feature integration. The current nearby-stations destination displays API-backed active stations and identifies slot availability as a live, unconfirmed API result. No availability is cached in SQLite.
 
-Reservation create/update/cancel screens are deliberately absent from this foundation. The navigation destinations for My Reservations and History are explicit placeholders for Component 3. QR verification/operator transactions remain placeholders because the corresponding Component 4 API endpoints are not implemented. No fake production data is returned.
+Component 3 adds API-backed booking creation from Member 2's available-slot screen, filtered current/pending reservation lists, history, details, modification, cancellation, and create/update/cancel response summaries. Mutation summaries use only the server response. Failed or offline requests remain errors and are never queued or represented as confirmed. Exact-request retries retain their idempotency key so an uncertain connection result cannot allocate twice. QR verification/operator transactions remain placeholders because the corresponding Component 4 API endpoints are not implemented. No fake production data is returned.
 
 ## Open in Android Studio
 

@@ -11,8 +11,12 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.navigation.Navigation;
 
 import com.solargrid.exchange.R;
+import com.solargrid.exchange.SolarGridApplication;
+import com.solargrid.exchange.data.model.SessionUser;
+import com.solargrid.exchange.data.model.Slot;
 import com.solargrid.exchange.data.model.Station;
 import com.solargrid.exchange.features.stations.StationDetailData;
 import com.solargrid.exchange.ui.MainActivity;
@@ -80,7 +84,28 @@ public final class StationDetailFragment extends Fragment {
         } else {
             slotLabel.setText(R.string.available_slots_live);
             slots.setVisibility(View.VISIBLE);
-            slots.setAdapter(new SlotAdapter(requireContext(), data.getAvailableSlots()));
+            SlotAdapter adapter = new SlotAdapter(requireContext(), data.getAvailableSlots());
+            slots.setAdapter(adapter);
+            SessionUser session = ((SolarGridApplication) requireActivity().getApplication())
+                    .getAppContainer()
+                    .getSessionStore()
+                    .read();
+            boolean canBook = session != null && session.isProsumer();
+            slots.setOnItemClickListener(canBook ? (parent, item, position, id) -> {
+                Slot slot = adapter.getItem(position);
+                if (slot == null) {
+                    return;
+                }
+                Bundle arguments = new Bundle();
+                arguments.putString("mode", "create");
+                arguments.putString("stationId", station.getId());
+                arguments.putString("stationName", station.getName());
+                arguments.putString("slotId", slot.getId());
+                arguments.putString("startUtc", slot.getStartTimeUtc());
+                arguments.putString("endUtc", slot.getEndTimeUtc());
+                arguments.putDouble("availableCapacity", slot.getAvailableCapacityKwh());
+                Navigation.findNavController(view).navigate(R.id.nav_reservation_form, arguments);
+            } : null);
         }
     }
 

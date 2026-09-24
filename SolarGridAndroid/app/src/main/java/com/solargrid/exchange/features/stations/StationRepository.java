@@ -67,6 +67,10 @@ public final class StationRepository {
         });
     }
 
+    public void getAvailableSlots(String stationId, ApiCallback<List<Slot>> callback) {
+        loadAvailableSlots(encode(stationId), callback);
+    }
+
     private void loadAvailableSlots(String encodedStationId, ApiCallback<List<Slot>> callback) {
         SimpleDateFormat utcFormat = new SimpleDateFormat(
                 "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",

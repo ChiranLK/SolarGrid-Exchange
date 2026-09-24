@@ -20,7 +20,9 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -40,15 +42,25 @@ public final class ApiClient {
     }
 
     public void get(String relativePath, ApiCallback<JSONObject> callback) {
-        request("GET", relativePath, null, true, callback);
+        request("GET", relativePath, null, true, Collections.emptyMap(), callback);
     }
 
     public void postAnonymous(String relativePath, JSONObject body, ApiCallback<JSONObject> callback) {
-        request("POST", relativePath, body, false, callback);
+        request("POST", relativePath, body, false, Collections.emptyMap(), callback);
     }
 
     public void post(String relativePath, JSONObject body, ApiCallback<JSONObject> callback) {
-        request("POST", relativePath, body, true, callback);
+        request("POST", relativePath, body, true, Collections.emptyMap(), callback);
+    }
+
+    public void post(String relativePath, JSONObject body, Map<String, String> headers,
+                     ApiCallback<JSONObject> callback) {
+        request("POST", relativePath, body, true, headers, callback);
+    }
+
+    public void put(String relativePath, JSONObject body, Map<String, String> headers,
+                    ApiCallback<JSONObject> callback) {
+        request("PUT", relativePath, body, true, headers, callback);
     }
 
     private void request(
@@ -56,8 +68,10 @@ public final class ApiClient {
             String relativePath,
             @Nullable JSONObject body,
             boolean authenticated,
+            Map<String, String> headers,
             ApiCallback<JSONObject> callback) {
-        executor.execute(() -> executeRequest(method, relativePath, body, authenticated, callback));
+        executor.execute(() -> executeRequest(
+                method, relativePath, body, authenticated, headers, callback));
     }
 
     private void executeRequest(
@@ -65,6 +79,7 @@ public final class ApiClient {
             String relativePath,
             @Nullable JSONObject body,
             boolean authenticated,
+            Map<String, String> headers,
             ApiCallback<JSONObject> callback) {
         HttpURLConnection connection = null;
         try {
@@ -76,6 +91,9 @@ public final class ApiClient {
             connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
             connection.setReadTimeout(READ_TIMEOUT_MS);
             connection.setRequestProperty("Accept", "application/json");
+            for (Map.Entry<String, String> header : headers.entrySet()) {
+                connection.setRequestProperty(header.getKey(), header.getValue());
+            }
 
             if (authenticated) {
                 String token = sessionStore.readToken();
