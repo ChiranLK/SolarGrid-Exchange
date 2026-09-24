@@ -26,6 +26,7 @@ public final class CreateReservationSummaryFragment extends Fragment {
         arguments.putString("endUtc", reservation.getScheduledEndTimeUtc());
         arguments.putDouble("energy", reservation.getRequestedEnergyKwh());
         arguments.putString("status", reservation.getStatus());
+        arguments.putString("createdAtUtc", reservation.getCreatedAtUtc());
         return arguments;
     }
 
@@ -49,6 +50,8 @@ public final class CreateReservationSummaryFragment extends Fragment {
         setText(view, R.id.create_summary_quantity,
                 ReservationFormatters.energy(arguments.getDouble("energy", 0)));
         setText(view, R.id.create_summary_status, arguments.getString("status", ""));
+        setText(view, R.id.create_summary_created,
+                ReservationFormatters.localDateTime(arguments.getString("createdAtUtc", "")));
 
         view.findViewById(R.id.create_summary_view_detail).setOnClickListener(ignored -> {
             Bundle detail = new Bundle();

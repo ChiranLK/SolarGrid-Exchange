@@ -173,6 +173,7 @@ public final class ReservationRepository {
                 allowedActions,
                 value.optString("createdAtUtc", ""),
                 value.optString("updatedAtUtc", ""),
+                optionalString(value, "cancelledAtUtc"),
                 optionalString(value, "cancellationReason"),
                 optionalString(value, "rejectionReason"),
                 history);

@@ -15,6 +15,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.activity.OnBackPressedCallback;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavOptions;
@@ -53,9 +54,21 @@ public final class ReservationDetailFragment extends Fragment {
         detailScroll = (ScrollView) content;
         UiStateView stateView = view.findViewById(R.id.reservation_detail_state);
         TextView refreshNotice = view.findViewById(R.id.reservation_detail_refresh_notice);
+        TextView cancellationProgress = view.findViewById(R.id.reservation_cancellation_progress);
         Button update = view.findViewById(R.id.reservation_update_button);
         Button cancel = view.findViewById(R.id.reservation_cancel_button);
         viewModel = new ViewModelProvider(this).get(ReservationDetailViewModel.class);
+        OnBackPressedCallback processingBackGuard = new OnBackPressedCallback(false) {
+            @Override
+            public void handleOnBackPressed() {
+                Toast.makeText(
+                        requireContext(),
+                        R.string.reservation_mutation_wait,
+                        Toast.LENGTH_SHORT).show();
+            }
+        };
+        requireActivity().getOnBackPressedDispatcher().addCallback(
+                getViewLifecycleOwner(), processingBackGuard);
         detailScroll.setOnScrollChangeListener((scrollView, scrollX, scrollY, oldScrollX, oldScrollY) ->
                 viewModel.rememberScroll(scrollY));
 
@@ -92,6 +105,7 @@ public final class ReservationDetailFragment extends Fragment {
 
         viewModel.getCancellationState().observe(getViewLifecycleOwner(), state -> {
             boolean busy = state.getStatus() == UiState.Status.LOADING;
+            processingBackGuard.setEnabled(busy);
             update.setEnabled(!busy && displayedReservation != null
                     && displayedReservation.getAllowedActions().canUpdate());
             cancel.setEnabled(!busy && displayedReservation != null
@@ -111,9 +125,29 @@ public final class ReservationDetailFragment extends Fragment {
                         .build();
                 Navigation.findNavController(view).navigate(
                         R.id.nav_reservation_summary,
-                        ReservationSummaryFragment.argumentsFor("Reservation cancelled", result),
+                        ReservationSummaryFragment.argumentsForCancellation(result),
                         options);
             }
+        });
+
+        viewModel.getCancellationPhase().observe(getViewLifecycleOwner(), phase -> {
+            int message;
+            switch (phase) {
+                case SUBMITTING:
+                    message = R.string.cancellation_progress_submitting;
+                    break;
+                case RECONCILING:
+                    message = R.string.cancellation_progress_reconciling;
+                    break;
+                case REFRESHING:
+                    message = R.string.cancellation_progress_refreshing;
+                    break;
+                default:
+                    cancellationProgress.setVisibility(View.GONE);
+                    return;
+            }
+            cancellationProgress.setText(message);
+            cancellationProgress.setVisibility(View.VISIBLE);
         });
 
         update.setOnClickListener(ignored -> {
@@ -264,15 +298,21 @@ public final class ReservationDetailFragment extends Fragment {
         if (displayedReservation == null || !displayedReservation.getAllowedActions().canCancel()) {
             return;
         }
-        EditText reason = new EditText(requireContext());
-        reason.setHint(R.string.cancellation_reason_hint);
-        reason.setMaxLines(4);
-        int padding = getResources().getDimensionPixelSize(R.dimen.space_lg);
-        reason.setPadding(padding, padding / 2, padding, 0);
+        View dialogView = LayoutInflater.from(requireContext()).inflate(
+                R.layout.dialog_cancel_reservation, null, false);
+        EditText reason = dialogView.findViewById(R.id.cancel_dialog_reason);
+        setText(dialogView, R.id.cancel_dialog_reference, displayedReservation.getId());
+        setText(dialogView, R.id.cancel_dialog_station,
+                ReservationFormatters.station(
+                        displayedReservation.getStationName(), displayedReservation.getStationId()));
+        setText(dialogView, R.id.cancel_dialog_time,
+                ReservationFormatters.localDateTime(displayedReservation.getScheduledStartTimeUtc()) + " - "
+                        + ReservationFormatters.localDateTime(
+                                displayedReservation.getScheduledEndTimeUtc()));
         new AlertDialog.Builder(requireContext())
                 .setTitle(R.string.cancel_reservation)
                 .setMessage(R.string.cancel_confirmation)
-                .setView(reason)
+                .setView(dialogView)
                 .setNegativeButton(android.R.string.cancel, null)
                 .setPositiveButton(R.string.confirm_cancellation,
                         (dialog, which) -> viewModel.cancel(

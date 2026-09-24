@@ -84,6 +84,7 @@
     <string name="slot_reference">Slot reference</string>
     <string name="created_at">Created</string>
     <string name="updated_at">Last updated</string>
+    <string name="cancelled_at">Cancelled</string>
     <string name="cancellation_reason">Cancellation reason</string>
     <string name="rejection_reason">Rejection reason</string>
     <string name="station_label">Station</string>
@@ -98,10 +99,21 @@
     <string name="qr_destination_dependency">The server allows QR access, but the Android QR destination is awaiting Member 4 integration; no inactive button is shown.</string>
     <string name="current_user">Current prosumer</string>
     <string name="update_reservation">Update reservation</string>
+    <string name="reservation_updated">Reservation Updated</string>
+    <string name="reservation_cancelled">Reservation Cancelled</string>
     <string name="cancel_reservation">Cancel reservation</string>
     <string name="cancellation_reason_hint">Optional reason</string>
     <string name="cancel_confirmation">The central API will validate the current status, notice period, version, and capacity release.</string>
     <string name="confirm_cancellation">Confirm cancellation</string>
+    <string name="approved_update_pending_notice">This reservation is Approved. If the API accepts a material slot or quantity change, it returns the reservation to Pending for a new approval and invalidates prior QR eligibility.</string>
+    <string name="approved_update_result_notice">The central API accepted this change and returned the formerly Approved reservation to Pending. It requires approval again and is not QR-ready.</string>
+    <string name="reservation_mutation_wait">Please wait while the API confirms the reservation result.</string>
+    <string name="update_progress_submitting">Submitting the update with the current server version…</string>
+    <string name="update_progress_reconciling">The connection was interrupted. Checking the authoritative reservation…</string>
+    <string name="update_progress_refreshing">Update confirmed. Refreshing current, pending, and history views…</string>
+    <string name="cancellation_progress_submitting">Submitting cancellation with the current server version…</string>
+    <string name="cancellation_progress_reconciling">The connection was interrupted. Checking whether the API cancelled the reservation…</string>
+    <string name="cancellation_progress_refreshing">Cancellation confirmed. Refreshing current, pending, and history views…</string>
     <string name="create_booking">Create booking</string>
     <string name="select_energy_slot">Energy slot</string>
     <string name="confirm_booking">Submit booking request</string>
@@ -137,5 +149,5 @@
     <string name="update_authority_notice">The central API revalidates status, notice period, version, overlap, and capacity before applying this change.</string>
     <string name="current_slot_revalidation">Current reservation slot · capacity revalidated by the API</string>
     <string name="server_confirmation_notice">This summary is the authoritative result returned by the central API.</string>
-    <string name="view_reservations">View my reservations</string>
+    <string name="view_booking_history">View booking history</string>
 </resources>

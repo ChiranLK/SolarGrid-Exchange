@@ -17,6 +17,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.activity.OnBackPressedCallback;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavOptions;
@@ -48,8 +49,20 @@ public final class ReservationFormFragment extends Fragment {
         Spinner slotSpinner = view.findViewById(R.id.reservation_slot_spinner);
         EditText energy = view.findViewById(R.id.reservation_energy_input);
         Button submit = view.findViewById(R.id.reservation_submit_button);
+        TextView mutationProgress = view.findViewById(R.id.reservation_mutation_progress);
         energy.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
         viewModel = new ViewModelProvider(this).get(ReservationFormViewModel.class);
+        OnBackPressedCallback processingBackGuard = new OnBackPressedCallback(false) {
+            @Override
+            public void handleOnBackPressed() {
+                Toast.makeText(
+                        requireContext(),
+                        R.string.reservation_mutation_wait,
+                        Toast.LENGTH_SHORT).show();
+            }
+        };
+        requireActivity().getOnBackPressedDispatcher().addCallback(
+                getViewLifecycleOwner(), processingBackGuard);
         slotSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View selected, int position, long id) {
@@ -104,8 +117,12 @@ public final class ReservationFormFragment extends Fragment {
         });
 
         viewModel.getMutationState().observe(getViewLifecycleOwner(), state -> {
-            submit.setEnabled(state.getStatus() != UiState.Status.LOADING);
-            if (state.getStatus() == UiState.Status.LOADING) {
+            boolean loading = state.getStatus() == UiState.Status.LOADING;
+            processingBackGuard.setEnabled(loading);
+            submit.setEnabled(!loading);
+            slotSpinner.setEnabled(!loading);
+            energy.setEnabled(!loading);
+            if (loading) {
                 submit.setText(R.string.saving_reservation);
             } else if (formData != null) {
                 submit.setText(formData.isEditing()
@@ -122,9 +139,9 @@ public final class ReservationFormFragment extends Fragment {
                 viewModel.consumeMutation();
             } else if (state.getStatus() == UiState.Status.SUCCESS && state.getData() != null) {
                 Reservation result = state.getData();
-                String outcome = formData != null && formData.isEditing()
-                        ? "Reservation updated"
-                        : "Booking request created";
+                boolean wasApproved = formData != null
+                        && formData.getReservation() != null
+                        && "Approved".equals(formData.getReservation().getStatus());
                 viewModel.consumeMutation();
                 int popTarget = formData != null && formData.isEditing()
                         ? R.id.nav_reservation_detail
@@ -134,9 +151,29 @@ public final class ReservationFormFragment extends Fragment {
                         .build();
                 Navigation.findNavController(view).navigate(
                         R.id.nav_reservation_summary,
-                        ReservationSummaryFragment.argumentsFor(outcome, result),
+                        ReservationSummaryFragment.argumentsForUpdate(result, wasApproved),
                         options);
             }
+        });
+
+        viewModel.getPhase().observe(getViewLifecycleOwner(), phase -> {
+            int message;
+            switch (phase) {
+                case SUBMITTING:
+                    message = R.string.update_progress_submitting;
+                    break;
+                case RECONCILING:
+                    message = R.string.update_progress_reconciling;
+                    break;
+                case REFRESHING:
+                    message = R.string.update_progress_refreshing;
+                    break;
+                default:
+                    mutationProgress.setVisibility(View.GONE);
+                    return;
+            }
+            mutationProgress.setText(message);
+            mutationProgress.setVisibility(View.VISIBLE);
         });
 
         submit.setOnClickListener(ignored -> {
@@ -198,6 +235,11 @@ public final class ReservationFormFragment extends Fragment {
                 data.isEditing()
                         ? R.string.update_authority_notice
                         : R.string.booking_authority_notice);
+        TextView statusNotice = view.findViewById(R.id.reservation_update_status_notice);
+        boolean approvedEdit = data.isEditing()
+                && data.getReservation() != null
+                && "Approved".equals(data.getReservation().getStatus());
+        statusNotice.setVisibility(approvedEdit ? View.VISIBLE : View.GONE);
         submit.setText(data.isEditing() ? R.string.update_reservation : R.string.review_booking);
         displayedSlots = data.getSlots();
         List<String> labels = new ArrayList<>();

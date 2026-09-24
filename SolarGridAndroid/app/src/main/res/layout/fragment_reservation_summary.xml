@@ -18,6 +18,7 @@
             android:textAppearance="@style/TextAppearance.SolarGrid.Headline" />
 
         <TextView
+            android:id="@+id/summary_notice"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/space_sm"
@@ -37,12 +38,50 @@
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_md" android:text="@string/requested_energy" android:textStyle="bold" />
         <TextView android:id="@+id/summary_energy" android:layout_width="match_parent" android:layout_height="wrap_content" />
 
+        <TextView android:id="@+id/summary_timestamp_label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_md" android:textStyle="bold" />
+        <TextView android:id="@+id/summary_timestamp" android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+        <LinearLayout
+            android:id="@+id/summary_reason_group"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_md"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/cancellation_reason" android:textStyle="bold" />
+            <TextView android:id="@+id/summary_reason" android:layout_width="match_parent" android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_lg"
+            android:text="@string/next_actions"
+            android:textAppearance="@style/TextAppearance.SolarGrid.Title" />
+
         <Button
-            android:id="@+id/summary_done_button"
+            android:id="@+id/summary_view_detail"
             style="@style/Widget.SolarGrid.Button"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/space_lg"
-            android:text="@string/view_reservations" />
+            android:text="@string/view_reservation_detail" />
+
+        <Button
+            android:id="@+id/summary_view_reservations"
+            style="@style/Widget.SolarGrid.Button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_sm"
+            android:text="@string/view_current_pending" />
+
+        <Button
+            android:id="@+id/summary_view_history"
+            style="@style/Widget.SolarGrid.Button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_sm"
+            android:text="@string/view_booking_history" />
     </LinearLayout>
 </ScrollView>

@@ -22,6 +22,7 @@ public final class Reservation {
     private final ReservationAllowedActions allowedActions;
     private final String createdAtUtc;
     private final String updatedAtUtc;
+    private final String cancelledAtUtc;
     private final String cancellationReason;
     private final String rejectionReason;
     private final List<ReservationStatusHistory> statusHistory;
@@ -44,6 +45,7 @@ public final class Reservation {
             ReservationAllowedActions allowedActions,
             String createdAtUtc,
             String updatedAtUtc,
+            String cancelledAtUtc,
             String cancellationReason,
             String rejectionReason,
             List<ReservationStatusHistory> statusHistory) {
@@ -64,6 +66,7 @@ public final class Reservation {
         this.allowedActions = allowedActions;
         this.createdAtUtc = createdAtUtc;
         this.updatedAtUtc = updatedAtUtc;
+        this.cancelledAtUtc = cancelledAtUtc;
         this.cancellationReason = cancellationReason;
         this.rejectionReason = rejectionReason;
         this.statusHistory = statusHistory == null
@@ -88,6 +91,7 @@ public final class Reservation {
     public ReservationAllowedActions getAllowedActions() { return allowedActions; }
     public String getCreatedAtUtc() { return createdAtUtc; }
     public String getUpdatedAtUtc() { return updatedAtUtc; }
+    public String getCancelledAtUtc() { return cancelledAtUtc; }
     public String getCancellationReason() { return cancellationReason; }
     public String getRejectionReason() { return rejectionReason; }
     public List<ReservationStatusHistory> getStatusHistory() { return statusHistory; }
