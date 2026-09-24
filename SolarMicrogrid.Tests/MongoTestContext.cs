@@ -23,6 +23,9 @@ internal sealed class MongoTestContext
         _database
             .Setup(database => database.GetCollection<EnergyBookingSlot>("slots", null))
             .Returns(Slots.Object);
+        _database
+            .Setup(database => database.GetCollection<EnergyReservation>("reservations", null))
+            .Returns(Reservations.Object);
 
         Context = new MongoDbContext(
             Client.Object,
@@ -31,7 +34,8 @@ internal sealed class MongoTestContext
                 DatabaseName = "test",
                 UsersCollectionName = "users",
                 StationsCollectionName = "stations",
-                SlotsCollectionName = "slots"
+                SlotsCollectionName = "slots",
+                ReservationsCollectionName = "reservations"
             }));
     }
 
@@ -43,9 +47,21 @@ internal sealed class MongoTestContext
 
     public Mock<IMongoCollection<EnergyBookingSlot>> Slots { get; } = new();
 
+    public Mock<IMongoCollection<EnergyReservation>> Reservations { get; } = new();
+
     public MongoDbContext Context { get; }
 
     public string? ConfiguredStationId { get; private set; }
+
+    public void ReturnUsers(params User[] users)
+    {
+        Users
+            .Setup(collection => collection.FindAsync<User>(
+                It.IsAny<FilterDefinition<User>>(),
+                It.IsAny<FindOptions<User, User>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => Cursor(users));
+    }
 
     public void ReturnStations(params SolarStationInfo[] stations)
     {
@@ -66,6 +82,16 @@ internal sealed class MongoTestContext
                 It.IsAny<FindOptions<EnergyBookingSlot, EnergyBookingSlot>>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(() => Cursor(slots));
+    }
+
+    public void ReturnReservations(params EnergyReservation[] reservations)
+    {
+        Reservations
+            .Setup(collection => collection.FindAsync<EnergyReservation>(
+                It.IsAny<FilterDefinition<EnergyReservation>>(),
+                It.IsAny<FindOptions<EnergyReservation, EnergyReservation>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => Cursor(reservations));
     }
 
     public static IAsyncCursor<T> Cursor<T>(IEnumerable<T> values)

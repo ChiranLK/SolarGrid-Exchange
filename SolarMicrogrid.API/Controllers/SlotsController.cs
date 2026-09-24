@@ -91,6 +91,16 @@ public sealed class SlotsController : ControllerBase
         return slot is null ? NotFound() : Ok(slot);
     }
 
+    [HttpDelete("slots/{slotId}")]
+    [Authorize(Roles = nameof(UserRole.Backoffice))]
+    public async Task<IActionResult> DeleteSlot(
+        string slotId,
+        CancellationToken cancellationToken)
+    {
+        bool deleted = await _slotService.DeleteSlotAsync(slotId, cancellationToken);
+        return deleted ? NoContent() : NotFound();
+    }
+
     [HttpPatch("slots/{slotId}/availability")]
     [Authorize(Roles = $"{nameof(UserRole.Backoffice)},{nameof(UserRole.GridOperator)}")]
     public async Task<ActionResult<SlotResponseDto>> ChangeSlotAvailability(

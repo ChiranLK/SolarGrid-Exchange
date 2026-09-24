@@ -29,7 +29,7 @@ public sealed class StationServiceTests
                 (station, _, _) => inserted = station)
             .Returns(Task.CompletedTask);
 
-        StationResponseDto result = await new StationService(database.Context)
+        StationResponseDto result = await Service(database)
             .CreateStationAsync(ValidCreateRequest(), CancellationToken.None);
 
         Assert.NotNull(inserted);
@@ -49,7 +49,7 @@ public sealed class StationServiceTests
         request.Latitude = latitude;
 
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
-            new StationService(new MongoTestContext().Context)
+            Service(new MongoTestContext())
                 .CreateStationAsync(request, CancellationToken.None));
     }
 
@@ -63,7 +63,7 @@ public sealed class StationServiceTests
         request.Longitude = longitude;
 
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
-            new StationService(new MongoTestContext().Context)
+            Service(new MongoTestContext())
                 .CreateStationAsync(request, CancellationToken.None));
     }
 
@@ -76,7 +76,7 @@ public sealed class StationServiceTests
         request.EnergyGenerationCapacityKw = capacity;
 
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
-            new StationService(new MongoTestContext().Context)
+            Service(new MongoTestContext())
                 .CreateStationAsync(request, CancellationToken.None));
     }
 
@@ -88,7 +88,7 @@ public sealed class StationServiceTests
         request.OperatingSchedule[0].ClosingTime = "08:00";
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            new StationService(new MongoTestContext().Context)
+            Service(new MongoTestContext())
                 .CreateStationAsync(request, CancellationToken.None));
     }
 
@@ -103,7 +103,7 @@ public sealed class StationServiceTests
         });
 
         ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() =>
-            new StationService(new MongoTestContext().Context)
+            Service(new MongoTestContext())
                 .CreateStationAsync(request, CancellationToken.None));
 
         Assert.Contains("duplicate", exception.Message, StringComparison.OrdinalIgnoreCase);
@@ -137,7 +137,7 @@ public sealed class StationServiceTests
             BatteryStorageCapacityKwh = 40,
             OperatingSchedule = ValidSchedule()
         };
-        StationResponseDto? result = await new StationService(database.Context)
+        StationResponseDto? result = await Service(database)
             .UpdateStationAsync(existing.Id, request, CancellationToken.None);
 
         Assert.NotNull(result);
@@ -176,7 +176,7 @@ public sealed class StationServiceTests
                 (filter, _, _) => requestedFilter = filter)
             .ReturnsAsync(() => MongoTestContext.Cursor([activeStation]));
 
-        IReadOnlyList<NearbyStationResponseDto> result = await new StationService(database.Context)
+        IReadOnlyList<NearbyStationResponseDto> result = await Service(database)
             .GetNearbyStationsAsync(6.9, 79.86, 25, 20, CancellationToken.None);
 
         Assert.Single(result);
@@ -190,6 +190,9 @@ public sealed class StationServiceTests
         Assert.Contains("is_active", filterJson);
         Assert.Contains("true", filterJson, StringComparison.OrdinalIgnoreCase);
     }
+
+    private static StationService Service(MongoTestContext database) =>
+        new(database.Context, new ReservationGuardService(database.Context));
 
     internal static CreateStationRequestDto ValidCreateRequest() => new()
     {

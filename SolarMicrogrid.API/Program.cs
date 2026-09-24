@@ -101,6 +101,7 @@ builder.Services
 builder.Services.AddControllers();
 
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<ReservationGuardService>();
 builder.Services.AddScoped<StationService>();
 builder.Services.AddScoped<SlotService>();
 builder.Services.AddScoped<StationAccessService>();

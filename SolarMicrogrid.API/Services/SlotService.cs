@@ -65,6 +65,42 @@ public sealed class SlotService
         return slot is null ? null : MapToResponse(slot);
     }
 
+    public async Task<bool> DeleteSlotAsync(
+        string slotId,
+        CancellationToken cancellationToken)
+    {
+        if (!ObjectId.TryParse(slotId, out _))
+        {
+            return false;
+        }
+
+        EnergyBookingSlot? slot = await _context.Slots
+            .Find(item => item.Id == slotId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (slot is null)
+        {
+            return false;
+        }
+
+        EnergyReservation? reservation = await _context.Reservations
+            .Find(item => item.SlotId == slot.Id)
+            .Limit(1)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (reservation is not null)
+        {
+            throw new ConflictException(
+                "The slot cannot be deleted because a reservation references it.");
+        }
+
+        DeleteResult result = await _context.Slots.DeleteOneAsync(
+            item => item.Id == slot.Id,
+            cancellationToken);
+
+        return result.DeletedCount == 1;
+    }
+
     public async Task<SlotResponseDto> CreateSlotAsync(
         CreateSlotRequestDto request,
         CancellationToken cancellationToken)

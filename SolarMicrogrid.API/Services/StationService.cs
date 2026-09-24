@@ -17,10 +17,12 @@ public sealed class StationService
     private const double EarthRadiusKm = 6371.0088;
 
     private readonly MongoDbContext _context;
+    private readonly ReservationGuardService _reservationGuardService;
 
-    public StationService(MongoDbContext context)
+    public StationService(MongoDbContext context, ReservationGuardService reservationGuardService)
     {
         _context = context;
+        _reservationGuardService = reservationGuardService;
     }
 
     public async Task<PagedStationResponseDto> GetStationsAsync(
@@ -257,16 +259,33 @@ public sealed class StationService
             return null;
         }
 
+        if (await _reservationGuardService.HasActiveReservationsForStationAsync(
+                stationId,
+                cancellationToken))
+        {
+            throw new ConflictException(
+                "Station cannot be deactivated while it has pending or approved reservations.");
+        }
+
         if (!station.IsActive)
         {
             return MapToResponse(station);
         }
 
-        // Integration blocker: Member 3 has not defined the reservation fields or
-        // active-reservation statuses needed for a safe query. The station must stay
-        // active until that contract exists and the check can positively allow it.
-        throw new ConflictException(
-            "Station deactivation is unavailable until active energy reservations can be checked safely.");
+        var update = Builders<SolarStationInfo>.Update
+            .Set(item => item.IsActive, false)
+            .Set(item => item.UpdatedAtUtc, DateTime.UtcNow);
+
+        SolarStationInfo? deactivatedStation = await _context.Stations.FindOneAndUpdateAsync(
+            item => item.Id == stationId && item.IsActive,
+            update,
+            new FindOneAndUpdateOptions<SolarStationInfo>
+            {
+                ReturnDocument = ReturnDocument.After
+            },
+            cancellationToken);
+
+        return deactivatedStation is null ? null : MapToResponse(deactivatedStation);
     }
 
     private static List<StationOperatingSchedule> ValidateAndMapSchedule(
