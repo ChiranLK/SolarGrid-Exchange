@@ -38,7 +38,7 @@ describe('staff reservation creation helpers', () => {
 
     expect(result.outcomeUnknown).toBe(true)
     expect(result.message).toContain('may have been saved')
-    expect(result.message).toContain('without creating a duplicate')
+    expect(result.message).toContain('checking current server state')
   })
 
   it('provides specific guidance for capacity conflicts', () => {

@@ -23,6 +23,7 @@ import {
   formatSlotRange,
 } from './reservationFormatters'
 import { buildReservationDetailPath, getSafeReservationReturnTo } from './reservationNavigation'
+import { announceReservationChange } from './reservationSync'
 import type { CreateReservationRequest, ReservationDetail } from './reservationTypes'
 import { StaffProsumerPicker } from './StaffProsumerPicker'
 
@@ -31,6 +32,7 @@ type CreationStep = 'details' | 'review' | 'saved'
 interface LogicalAttempt {
   fingerprint: string
   idempotencyKey: string
+  startedAtEpochMs: number
 }
 
 export function ReservationCreatePage() {
@@ -158,8 +160,10 @@ export function ReservationCreatePage() {
       logicalAttempt.current = {
         fingerprint,
         idempotencyKey: createIdempotencyKey(isStaff ? 'staff-create' : 'create'),
+        startedAtEpochMs: Date.now(),
       }
     }
+    const attempt = logicalAttempt.current
 
     submissionInFlight.current = true
     setIsSubmitting(true)
@@ -167,18 +171,33 @@ export function ReservationCreatePage() {
     try {
       let created: ReservationDetail
       try {
-        created = await submitOnce(request, logicalAttempt.current.idempotencyKey, isStaff)
+        created = await submitOnce(request, attempt.idempotencyKey, isStaff)
       } catch (error) {
         if (!(error instanceof ApiError) || error.status !== 0) {
           throw error
         }
 
         setIsReconciling(true)
-        created = await submitOnce(request, logicalAttempt.current.idempotencyKey, isStaff)
+        const currentReservation = await findCreatedReservation(
+          request,
+          session?.role === 'Backoffice',
+          attempt.startedAtEpochMs,
+          session?.nic,
+        )
+        if (!currentReservation) {
+          setSubmitError({
+            title: 'Current state checked',
+            message: 'No matching reservation is currently visible on the server. You may retry; the original request identifier will be reused so a delayed first request cannot create a duplicate.',
+            outcomeUnknown: true,
+          })
+          return
+        }
+        created = currentReservation
       }
 
       setSavedReservation(created)
       setStep('saved')
+      announceReservationChange(created)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (error) {
       setSubmitError(describeCreationError(error))
@@ -539,4 +558,31 @@ async function submitOnce(
   } finally {
     window.clearTimeout(timeout)
   }
+}
+
+async function findCreatedReservation(
+  request: CreateReservationRequest,
+  canFilterByProsumer: boolean,
+  startedAtEpochMs: number,
+  actorNic: string | undefined,
+): Promise<ReservationDetail | null> {
+  const response = await reservationApi.list({
+    view: 'All',
+    prosumerNic: canFilterByProsumer ? request.targetProsumerNic : undefined,
+    page: 1,
+    pageSize: 100,
+  })
+  const match = response.items.find((reservation) =>
+    reservation.slotId === request.slotId &&
+    reservation.requestedEnergyKwh === request.requestedEnergyKwh &&
+    (!request.targetProsumerNic || reservation.prosumerNic === request.targetProsumerNic) &&
+    Date.parse(reservation.createdAtUtc) >= startedAtEpochMs - 2_000,
+  )
+
+  if (!match) {
+    return null
+  }
+
+  const detail = await reservationApi.getById(match.id)
+  return actorNic && detail.createdByActorNic !== actorNic ? null : detail
 }

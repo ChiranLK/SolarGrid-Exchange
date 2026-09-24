@@ -93,6 +93,7 @@ export interface ReservationListQuery {
   view?: ReservationView
   status?: ReservationStatus | ''
   stationId?: string
+  prosumerNic?: string
   search?: string
   page?: number
   pageSize?: number

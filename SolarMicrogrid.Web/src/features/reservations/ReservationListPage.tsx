@@ -24,6 +24,7 @@ import {
   type ReservationStatus,
   type ReservationView,
 } from './reservationTypes'
+import { subscribeToReservationChanges } from './reservationSync'
 
 const pageSize = 10
 
@@ -44,6 +45,26 @@ export function ReservationListPage() {
 
   useEffect(() => {
     document.title = 'Reservations | SolarGrid Exchange'
+  }, [])
+
+  useEffect(() => {
+    const refresh = () => setReloadToken((value) => value + 1)
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') {
+        refresh()
+      }
+    }
+    const interval = window.setInterval(refreshWhenVisible, 30_000)
+    const unsubscribe = subscribeToReservationChanges(refresh)
+
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refreshWhenVisible)
+    return () => {
+      window.clearInterval(interval)
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', refreshWhenVisible)
+      unsubscribe()
+    }
   }, [])
 
   useEffect(() => {
