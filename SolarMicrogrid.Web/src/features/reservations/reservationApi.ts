@@ -13,6 +13,7 @@ export const reservationApi = {
     appendQuery(parameters, 'view', query.view)
     appendQuery(parameters, 'status', query.status)
     appendQuery(parameters, 'stationId', query.stationId)
+    appendQuery(parameters, 'prosumerNic', query.prosumerNic)
     appendQuery(parameters, 'search', query.search)
     appendQuery(parameters, 'page', query.page)
     appendQuery(parameters, 'pageSize', query.pageSize)
@@ -56,11 +57,17 @@ export const reservationApi = {
     })
   },
 
-  update(reservationId: string, request: UpdateReservationRequest, idempotencyKey: string) {
+  update(
+    reservationId: string,
+    request: UpdateReservationRequest,
+    idempotencyKey: string,
+    signal?: AbortSignal,
+  ) {
     return apiRequest<ReservationDetail>(`/reservations/${encodeURIComponent(reservationId)}`, {
       method: 'PUT',
       headers: { 'Idempotency-Key': idempotencyKey },
       body: JSON.stringify(request),
+      signal,
     })
   },
 
@@ -69,6 +76,7 @@ export const reservationApi = {
     expectedVersion: number,
     reason: string,
     idempotencyKey: string,
+    signal?: AbortSignal,
   ) {
     return apiRequest<ReservationDetail>(
       `/reservations/${encodeURIComponent(reservationId)}/cancel`,
@@ -76,17 +84,24 @@ export const reservationApi = {
         method: 'POST',
         headers: { 'Idempotency-Key': idempotencyKey },
         body: JSON.stringify({ expectedVersion, reason: reason.trim() || null }),
+        signal,
       },
     )
   },
 
-  approve(reservationId: string, expectedVersion: number, idempotencyKey: string) {
+  approve(
+    reservationId: string,
+    expectedVersion: number,
+    idempotencyKey: string,
+    signal?: AbortSignal,
+  ) {
     return apiRequest<ReservationDetail>(
       `/reservations/${encodeURIComponent(reservationId)}/approve`,
       {
         method: 'POST',
         headers: { 'Idempotency-Key': idempotencyKey },
         body: JSON.stringify({ expectedVersion }),
+        signal,
       },
     )
   },
@@ -96,6 +111,7 @@ export const reservationApi = {
     expectedVersion: number,
     reason: string,
     idempotencyKey: string,
+    signal?: AbortSignal,
   ) {
     return apiRequest<ReservationDetail>(
       `/reservations/${encodeURIComponent(reservationId)}/reject`,
@@ -103,6 +119,7 @@ export const reservationApi = {
         method: 'POST',
         headers: { 'Idempotency-Key': idempotencyKey },
         body: JSON.stringify({ expectedVersion, reason: reason.trim() }),
+        signal,
       },
     )
   },

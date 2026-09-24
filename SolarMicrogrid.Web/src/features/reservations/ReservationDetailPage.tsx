@@ -11,15 +11,28 @@ import { StatusBadge } from '../../components/StatusBadge'
 import type { SlotSummary, StationSummary } from '../stations/stationTypes'
 import { createIdempotencyKey, reservationApi } from './reservationApi'
 import {
+  describeActionError,
+  describeReservationChange,
+  mutationMatchesCurrentState,
+  type ActionErrorPresentation,
+  type MutationIntent,
+  type ReservationAction,
+} from './reservationActions'
+import {
   formatDateTime,
   formatEnergy,
   formatReservationReference,
   formatSlotRange,
 } from './reservationFormatters'
 import { getSafeReservationReturnTo } from './reservationNavigation'
+import { announceReservationChange, subscribeToReservationChanges } from './reservationSync'
 import type { ReservationAllowedActions, ReservationDetail } from './reservationTypes'
 
-type ReservationAction = 'update' | 'cancel' | 'approve' | 'reject'
+interface CompletedActionResult {
+  action: ReservationAction
+  reservation: ReservationDetail
+  reconciled: boolean
+}
 
 export function ReservationDetailPage() {
   const { reservationId = '' } = useParams()
@@ -31,14 +44,18 @@ export function ReservationDetailPage() {
   const [activeAction, setActiveAction] = useState<ReservationAction | null>(requestedAction)
   const [isLoading, setIsLoading] = useState(true)
   const [isMutating, setIsMutating] = useState(false)
+  const [isReconciling, setIsReconciling] = useState(false)
   const [error, setError] = useState<unknown>(null)
-  const [mutationError, setMutationError] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [mutationError, setMutationError] = useState<ActionErrorPresentation | null>(null)
+  const [completedResult, setCompletedResult] = useState<CompletedActionResult | null>(null)
   const [cancelReason, setCancelReason] = useState('')
   const [rejectReason, setRejectReason] = useState('')
   const [reloadToken, setReloadToken] = useState(0)
-  const mutationKeys = useRef(new Map<ReservationAction, string>())
+  const [slotRefreshToken, setSlotRefreshToken] = useState(0)
+  const mutationKeys = useRef(new Map<ReservationAction, { fingerprint: string; key: string }>())
+  const mutationInFlight = useRef(false)
   const isStaff = session?.role === 'Backoffice' || session?.role === 'GridOperator'
+  const loadedReservationVersion = reservation?.version ?? null
 
   const loadReservation = useCallback(async (signal?: AbortSignal) => {
     if (!reservationId) {
@@ -68,10 +85,75 @@ export function ReservationDetailPage() {
     return () => controller.abort()
   }, [loadReservation, reloadToken])
 
+  useEffect(() => {
+    if (!reservationId || loadedReservationVersion === null) {
+      return
+    }
+
+    let disposed = false
+    let refreshInFlight = false
+    const refreshCurrentState = async () => {
+      if (disposed || refreshInFlight || mutationInFlight.current || document.visibilityState === 'hidden') {
+        return
+      }
+
+      refreshInFlight = true
+      try {
+        const latest = await loadReservation()
+        if (disposed) {
+          return
+        }
+        setReservation((current) => {
+          if (current && current.version !== latest.version) {
+            setActiveAction(null)
+            setMutationError({
+              title: 'Reservation refreshed',
+              message: `${describeReservationChange(current, latest)} Review the latest values before taking an action.`,
+              stale: true,
+              outcomeUnknown: false,
+            })
+          }
+          return latest
+        })
+      } catch {
+        // Background refresh failures must not replace usable reservation details.
+      } finally {
+        refreshInFlight = false
+      }
+    }
+
+    const interval = window.setInterval(() => void refreshCurrentState(), 30_000)
+    const handleFocus = () => void refreshCurrentState()
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshCurrentState()
+      }
+    }
+    const unsubscribe = subscribeToReservationChanges((notice) => {
+      if (!notice || notice.reservationId === reservationId) {
+        void refreshCurrentState()
+      }
+    })
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      disposed = true
+      window.clearInterval(interval)
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibility)
+      unsubscribe()
+    }
+  }, [loadReservation, loadedReservationVersion, reservationId])
+
   function selectAction(action: ReservationAction | null) {
     setMutationError(null)
-    setSuccessMessage(null)
+    setCompletedResult(null)
     setActiveAction(action)
+    updateActionQuery(action)
+  }
+
+  function updateActionQuery(action: ReservationAction | null) {
     setSearchParameters((current) => {
       const next = new URLSearchParams(current)
       if (action) {
@@ -83,37 +165,140 @@ export function ReservationDetailPage() {
     }, { replace: true })
   }
 
-  function keyFor(action: ReservationAction): string {
+  function keyFor(action: ReservationAction, payload: unknown): string {
+    const fingerprint = JSON.stringify(payload)
     const existing = mutationKeys.current.get(action)
-    if (existing) {
-      return existing
+    if (existing?.fingerprint === fingerprint) {
+      return existing.key
     }
-    const created = createIdempotencyKey(action)
-    mutationKeys.current.set(action, created)
-    return created
+    const key = createIdempotencyKey(action)
+    mutationKeys.current.set(action, { fingerprint, key })
+    return key
   }
 
-  async function completeMutation(action: ReservationAction, mutation: () => Promise<ReservationDetail>) {
+  function finishMutation(
+    action: ReservationAction,
+    updatedReservation: ReservationDetail,
+    reconciled: boolean,
+  ) {
+    mutationKeys.current.delete(action)
+    setReservation(updatedReservation)
+    setCancelReason('')
+    setRejectReason('')
+    setActiveAction(null)
+    updateActionQuery(null)
+    setMutationError(null)
+    setCompletedResult({ action, reservation: updatedReservation, reconciled })
+    announceReservationChange(updatedReservation)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  async function completeMutation(
+    action: ReservationAction,
+    intent: MutationIntent,
+    mutation: (signal: AbortSignal) => Promise<ReservationDetail>,
+  ) {
+    if (mutationInFlight.current || !reservation) {
+      return
+    }
+
+    const previous = reservation
+    mutationInFlight.current = true
     setIsMutating(true)
     setMutationError(null)
-    setSuccessMessage(null)
+    setCompletedResult(null)
     try {
-      await mutation()
-      mutationKeys.current.delete(action)
-      const refreshed = await loadReservation()
-      setReservation(refreshed)
-      setCancelReason('')
-      setRejectReason('')
-      selectAction(null)
-      setSuccessMessage(`Reservation ${completedActionLabel(action)} successfully.`)
+      const response = await submitMutationOnce(mutation)
+      let refreshed = response
+      try {
+        refreshed = await loadReservation()
+      } catch {
+        // The mutation response is authoritative if the follow-up read is temporarily unavailable.
+      }
+      finishMutation(action, refreshed, false)
     } catch (requestError) {
-      setMutationError(
-        requestError instanceof ApiError
-          ? requestError.message
-          : 'The reservation action could not be completed.',
-      )
+      const presentation = describeActionError(requestError)
+      if (presentation.outcomeUnknown) {
+        setIsReconciling(true)
+        try {
+          const current = await loadReservation()
+          if (mutationMatchesCurrentState(intent, current)) {
+            finishMutation(action, current, true)
+          } else if (current.version !== previous.version) {
+            mutationKeys.current.delete(action)
+            setReservation(current)
+            setActiveAction(null)
+            updateActionQuery(null)
+            setMutationError({
+              title: 'Reservation changed while the result was uncertain',
+              message: `${describeReservationChange(previous, current)} The action was not retried.`,
+              stale: true,
+              outcomeUnknown: false,
+            })
+          } else {
+            setReservation(current)
+            setMutationError({
+              title: 'Current state checked',
+              message: 'The reservation is unchanged on the server. You may retry this same action; its original request identifier will be reused.',
+              stale: false,
+              outcomeUnknown: true,
+            })
+          }
+        } catch {
+          setMutationError({
+            title: 'Action outcome could not be confirmed',
+            message: 'Neither the mutation response nor current server state could be retrieved. Do not retry until the reservation can be reloaded.',
+            stale: false,
+            outcomeUnknown: true,
+          })
+        } finally {
+          setIsReconciling(false)
+        }
+      } else if (presentation.stale) {
+        mutationKeys.current.delete(action)
+        try {
+          const current = await loadReservation()
+          setReservation(current)
+          setActiveAction(null)
+          updateActionQuery(null)
+          setMutationError({
+            ...presentation,
+            message: `${presentation.message} ${describeReservationChange(previous, current)}`,
+          })
+        } catch {
+          setMutationError({
+            ...presentation,
+            message: `${presentation.message} The automatic reload failed; use Reload current reservation before trying again.`,
+          })
+        }
+      } else if (requestError instanceof ApiError && requestError.status === 409) {
+        mutationKeys.current.delete(action)
+        setSlotRefreshToken((value) => value + 1)
+        try {
+          const current = await loadReservation()
+          setReservation(current)
+          if (current.version !== previous.version) {
+            setActiveAction(null)
+            updateActionQuery(null)
+            setMutationError({
+              title: 'Reservation changed while the action was rejected',
+              message: `${requestError.message} ${describeReservationChange(previous, current)} Review the refreshed reservation before trying again.`,
+              stale: true,
+              outcomeUnknown: false,
+            })
+          } else {
+            setMutationError(presentation)
+          }
+        } catch {
+          setMutationError(presentation)
+        }
+      } else {
+        mutationKeys.current.delete(action)
+        setMutationError(presentation)
+      }
     } finally {
       setIsMutating(false)
+      mutationInFlight.current = false
     }
   }
 
@@ -150,8 +335,33 @@ export function ReservationDetailPage() {
         actions={<StatusBadge status={reservation.status} />}
       />
 
-      {successMessage && <div className="alert alert-success" role="status">{successMessage}</div>}
-      {mutationError && <div className="alert alert-danger" role="alert">{mutationError}</div>}
+      {completedResult && <ReservationActionResult result={completedResult} returnTo={returnTo} />}
+      {mutationError && (
+        <div className={`alert ${mutationError.outcomeUnknown ? 'alert-warning' : 'alert-danger'}`} role="alert">
+          <h2 className="h6 alert-heading">{mutationError.title}</h2>
+          <p className="mb-2">{mutationError.message}</p>
+          {mutationError.stale && (
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-dark"
+              disabled={isMutating}
+              onClick={() => {
+                setMutationError(null)
+                setIsLoading(true)
+                setError(null)
+                setReloadToken((value) => value + 1)
+              }}
+            >
+              Reload current reservation
+            </button>
+          )}
+        </div>
+      )}
+      {isReconciling && (
+        <div className="alert alert-info" role="status">
+          The response was uncertain. Checking the reservation's current server state before allowing a retry…
+        </div>
+      )}
 
       <div className="row g-4">
         <div className="col-12 col-xl-8">
@@ -185,13 +395,16 @@ export function ReservationDetailPage() {
             <UpdateReservationForm
               reservation={reservation}
               isBusy={isMutating}
+              refreshToken={slotRefreshToken}
               onCancel={() => selectAction(null)}
               onSubmit={(slotId, requestedEnergyKwh) => completeMutation(
                 'update',
-                () => reservationApi.update(
+                { action: 'update', slotId, requestedEnergyKwh },
+                (signal) => reservationApi.update(
                   reservation.id,
                   { slotId, requestedEnergyKwh, expectedVersion: reservation.version },
-                  keyFor('update'),
+                  keyFor('update', { slotId, requestedEnergyKwh, expectedVersion: reservation.version }),
+                  signal,
                 ),
               )}
             />
@@ -200,21 +413,23 @@ export function ReservationDetailPage() {
           {activeAction === 'cancel' && actions.canCancel && (
             <ReasonForm
               title="Cancel reservation"
-              description="Cancellation releases the held allocation when the API confirms the transition."
+              description="Confirm that this reservation should be cancelled. The optional reason is recorded only if the API accepts the transition."
               label="Cancellation reason (optional)"
               value={cancelReason}
               isBusy={isMutating}
-              submitLabel="Cancel reservation"
+              submitLabel="Confirm cancellation"
               destructive
               onChange={setCancelReason}
               onCancel={() => selectAction(null)}
               onSubmit={() => completeMutation(
                 'cancel',
-                () => reservationApi.cancel(
+                { action: 'cancel', reason: cancelReason },
+                (signal) => reservationApi.cancel(
                   reservation.id,
                   reservation.version,
                   cancelReason,
-                  keyFor('cancel'),
+                  keyFor('cancel', { expectedVersion: reservation.version, reason: cancelReason.trim() }),
+                  signal,
                 ),
               )}
             />
@@ -234,11 +449,13 @@ export function ReservationDetailPage() {
               onCancel={() => selectAction(null)}
               onSubmit={() => completeMutation(
                 'reject',
-                () => reservationApi.reject(
+                { action: 'reject', reason: rejectReason },
+                (signal) => reservationApi.reject(
                   reservation.id,
                   reservation.version,
                   rejectReason,
-                  keyFor('reject'),
+                  keyFor('reject', { expectedVersion: reservation.version, reason: rejectReason.trim() }),
+                  signal,
                 ),
               )}
             />
@@ -266,14 +483,77 @@ export function ReservationDetailPage() {
         onCancel={() => selectAction(null)}
         onConfirm={() => void completeMutation(
           'approve',
-          () => reservationApi.approve(
+          { action: 'approve' },
+          (signal) => reservationApi.approve(
             reservation.id,
             reservation.version,
-            keyFor('approve'),
+            keyFor('approve', { expectedVersion: reservation.version }),
+            signal,
           ),
         )}
       />
     </>
+  )
+}
+
+async function submitMutationOnce(
+  mutation: (signal: AbortSignal) => Promise<ReservationDetail>,
+): Promise<ReservationDetail> {
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), 15_000)
+  try {
+    return await mutation(controller.signal)
+  } finally {
+    window.clearTimeout(timeout)
+  }
+}
+
+function ReservationActionResult({
+  result,
+  returnTo,
+}: {
+  result: CompletedActionResult
+  returnTo: string
+}) {
+  const { action, reservation, reconciled } = result
+  return (
+    <section className="card border-success shadow-sm mb-4" aria-labelledby="reservation-result-title" role="status">
+      <div className="card-body p-4">
+        <p className="page-eyebrow mb-1">Action confirmed</p>
+        <div className="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+          <div>
+            <h2 id="reservation-result-title" className="h4 mb-1">
+              Reservation {completedActionLabel(action)}
+            </h2>
+            <p className="text-body-secondary mb-0">
+              {reconciled
+                ? 'The original response was uncertain, so this result was confirmed from current server state.'
+                : 'The result below was refreshed from the reservation API.'}
+            </p>
+          </div>
+          <StatusBadge status={reservation.status} />
+        </div>
+        <dl className="detail-grid mb-3">
+          <Detail label="Reference" value={formatReservationReference(reservation.id)} />
+          <Detail label="Version" value={String(reservation.version)} />
+          <Detail
+            label="Scheduled slot"
+            value={formatSlotRange(reservation.scheduledStartTimeUtc, reservation.scheduledEndTimeUtc)}
+          />
+          <Detail label="Requested energy" value={formatEnergy(reservation.requestedEnergyKwh)} />
+          {action === 'cancel' && reservation.cancellationReason && (
+            <Detail label="Cancellation reason" value={reservation.cancellationReason} />
+          )}
+          {action === 'reject' && reservation.rejectionReason && (
+            <Detail label="Rejection reason" value={reservation.rejectionReason} />
+          )}
+        </dl>
+        <div className="d-flex flex-wrap gap-2">
+          <a className="btn btn-success" href="#booking-information-title">Review refreshed details</a>
+          <Link className="btn btn-outline-secondary" to={returnTo}>Return to reservation list</Link>
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -410,6 +690,7 @@ function ReasonForm({
 interface UpdateReservationFormProps {
   reservation: ReservationDetail
   isBusy: boolean
+  refreshToken: number
   onSubmit: (slotId: string, requestedEnergyKwh: number) => Promise<void>
   onCancel: () => void
 }
@@ -417,6 +698,7 @@ interface UpdateReservationFormProps {
 function UpdateReservationForm({
   reservation,
   isBusy,
+  refreshToken,
   onSubmit,
   onCancel,
 }: UpdateReservationFormProps) {
@@ -447,7 +729,7 @@ function UpdateReservationForm({
         }
       })
     return () => controller.abort()
-  }, [stationId])
+  }, [refreshToken, stationId])
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
