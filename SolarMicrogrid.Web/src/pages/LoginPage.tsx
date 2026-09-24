@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { ApiError } from '../api/apiClient'
 import { useAuth } from '../auth/useAuth'
+import { Alert } from '../components/Alert'
 import { LoadingState } from '../components/LoadingState'
 
 interface LoginLocationState {
@@ -81,9 +82,7 @@ export function LoginPage() {
           </p>
 
           {error && (
-            <div className="alert alert-danger" role="alert" aria-live="assertive">
-              {error}
-            </div>
+            <Alert variant="danger">{error}</Alert>
           )}
 
           <form onSubmit={handleSubmit} noValidate>

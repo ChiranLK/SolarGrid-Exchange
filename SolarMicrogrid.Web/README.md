@@ -54,12 +54,14 @@ Do not commit `.env.local`, tokens, passwords, or API secrets.
 src/
   api/          Central HTTP client and endpoint modules
   auth/         Session types, storage, context, and API restoration
-  components/   Shared loading, empty, error, confirmation, and status UI
+  components/   Shared loading, empty, alert, error, confirmation, and status UI
   config/       Environment configuration
   features/     Team-owned feature modules
     users/
+    prosumers/
     stations/
     reservations/
+    dashboard/
     operations/
   layouts/      Responsive authenticated application shell
   pages/        Shared login, home, dashboard, and HTTP-state pages
@@ -68,6 +70,19 @@ src/
 ```
 
 Feature modules should call `apiRequest` through an endpoint module under `src/api`; they must not call `fetch` independently or reproduce API business/authorization rules.
+
+## Shared routes
+
+| Route | Access | Current integration |
+| --- | --- | --- |
+| `/login` | Anonymous | `POST /api/auth/login` |
+| `/` | Authenticated | Responsive home and account summary |
+| `/users` | Backoffice, GridOperator | Shared placeholder for confirmed user-management contracts |
+| `/prosumers` | Backoffice, GridOperator | Placeholder; dedicated controller is currently empty |
+| `/stations` | Authenticated | Shared station/slot feature entry point |
+| `/reservations` | Authenticated | Member 3 feature integration already present on the current baseline |
+| `/dashboard` | Authenticated | Placeholder; dashboard controller is currently empty |
+| `/operations` | Backoffice, GridOperator | Shared operational workspace placeholder |
 
 ## Verified API integrations
 

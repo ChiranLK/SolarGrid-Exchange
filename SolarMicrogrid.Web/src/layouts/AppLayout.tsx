@@ -14,6 +14,7 @@ const navigation: NavigationItem[] = [
   { label: 'Home', path: '/', shortLabel: 'H' },
   { label: 'Dashboard', path: '/dashboard', shortLabel: 'D' },
   { label: 'Users', path: '/users', shortLabel: 'U', roles: ['Backoffice', 'GridOperator'] },
+  { label: 'Prosumers', path: '/prosumers', shortLabel: 'P', roles: ['Backoffice', 'GridOperator'] },
   { label: 'Stations & slots', path: '/stations', shortLabel: 'S' },
   { label: 'Reservations', path: '/reservations', shortLabel: 'R' },
   { label: 'Operations', path: '/operations', shortLabel: 'O', roles: ['Backoffice', 'GridOperator'] },

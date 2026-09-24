@@ -117,7 +117,11 @@ function getErrorMessage(status: number, problem?: ApiProblem): string {
       return 'You do not have permission to perform this action.'
     case 404:
       return 'The requested resource could not be found.'
+    case 409:
+      return 'The request conflicts with the current server state. Refresh the latest data and try again.'
     default:
-      return 'The request could not be completed. Please try again.'
+      return status >= 500
+        ? 'The SolarGrid API encountered an error. Please try again later.'
+        : 'The request could not be completed. Please try again.'
   }
 }

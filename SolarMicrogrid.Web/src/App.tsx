@@ -47,6 +47,16 @@ export default function App() {
               )}
             />
             <Route
+              path="prosumers"
+              element={(
+                <FeaturePlaceholderPage
+                  title="Prosumers"
+                  description="Staff workspace reserved for Prosumer search, status, and account workflows."
+                  ownerNote="The dedicated Prosumer controller is not implemented. Use only confirmed user API contracts when this feature is added."
+                />
+              )}
+            />
+            <Route
               path="operations"
               element={(
                 <FeaturePlaceholderPage
