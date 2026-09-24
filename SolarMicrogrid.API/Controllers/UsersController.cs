@@ -56,6 +56,18 @@ namespace SolarMicrogrid.API.Controllers
             return Ok(result);
         }
 
+        [HttpGet("eligible-prosumers")]
+        [Authorize(Roles = "Backoffice,GridOperator")]
+        public async Task<ActionResult<PagedEligibleProsumerResponseDto>> SearchEligibleProsumers(
+            [FromQuery] EligibleProsumerListQueryDto query,
+            CancellationToken cancellationToken)
+        {
+            // Search only active Prosumer identities through a bounded server-side query.
+            PagedEligibleProsumerResponseDto result =
+                await _userService.SearchEligibleProsumersAsync(query, cancellationToken);
+            return Ok(result);
+        }
+
         // GET api/users/pending
         // Shortcut for the Backoffice "pending activations" view: users with
         // Status = PendingActivation. Backoffice only.

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:checkableBehavior="single">
+        <item android:id="@+id/nav_prosumer_home" android:icon="@android:drawable/ic_menu_view" android:title="@string/prosumer_home" />
+        <item android:id="@+id/nav_operator_home" android:icon="@android:drawable/ic_menu_manage" android:title="@string/operator_home" />
+        <item android:id="@+id/nav_profile" android:icon="@android:drawable/ic_menu_myplaces" android:title="@string/profile" />
+        <item android:id="@+id/nav_nearby_stations" android:icon="@android:drawable/ic_menu_mylocation" android:title="@string/nearby_stations" />
+        <item android:id="@+id/nav_my_reservations" android:icon="@android:drawable/ic_menu_agenda" android:title="@string/my_reservations" />
+        <item android:id="@+id/nav_booking_history" android:icon="@android:drawable/ic_menu_recent_history" android:title="@string/booking_history" />
+        <item android:id="@+id/nav_qr_operations" android:icon="@android:drawable/ic_menu_camera" android:title="@string/qr_operations" />
+    </group>
+    <item android:title="@string/account_menu">
+        <menu>
+            <item android:id="@+id/nav_sign_out" android:icon="@android:drawable/ic_lock_power_off" android:title="@string/sign_out" />
+        </menu>
+    </item>
+</menu>

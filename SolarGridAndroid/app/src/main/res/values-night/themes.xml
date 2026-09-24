@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.SolarGrid" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/solar_green_500</item>
+        <item name="colorOnPrimary">@color/solar_green_900</item>
+        <item name="colorSecondary">@color/solar_gold_500</item>
+        <item name="android:fontFamily">sans</item>
+        <item name="android:statusBarColor">@color/solar_green_900</item>
+        <item name="android:navigationBarColor">@color/solar_green_900</item>
+    </style>
+</resources>

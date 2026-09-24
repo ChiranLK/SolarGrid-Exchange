@@ -216,6 +216,29 @@ public sealed class ReservationLifecycleSecurityConcurrencyTests : IAsyncLifetim
     }
 
     [Fact]
+    public async Task StaffCreatedReservationAppearsInTargetProsumerList()
+    {
+        // Create as Backoffice, then read through the same owner-scoped API projection Android uses.
+        EnergyBookingSlot slot = await _fixture.AddSlotAsync(
+            Component3MongoFixture.FixedNowUtc.AddDays(1));
+        ReservationCreationResult created = await CreateForTargetAsync(
+            slot,
+            Component3MongoFixture.ProsumerOneNic,
+            "staff-target-owner-list-001");
+
+        PagedReservationResponseDto ownerPage =
+            await _fixture.Reservations.GetReservationsAsync(
+                Component3MongoFixture.ProsumerOneNic,
+                UserRole.Prosumer.ToString(),
+                new ReservationListQueryDto(),
+                CancellationToken.None);
+
+        Assert.Contains(ownerPage.Items, item => item.Id == created.Reservation.Id);
+        Assert.All(ownerPage.Items, item =>
+            Assert.Equal(Component3MongoFixture.ProsumerOneNic, item.ProsumerNic));
+    }
+
+    [Fact]
     public async Task ConcurrentUpdateAndCancelHaveOneWinner()
     {
         // Race two production workflows sharing the MongoDB scheduling lease and version CAS.

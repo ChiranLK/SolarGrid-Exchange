@@ -6,6 +6,8 @@
  *           activating a prosumer or staff account.
  */
 
+using System.Text.RegularExpressions;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using SolarMicrogrid.API.Data;
 using SolarMicrogrid.API.Exceptions;
@@ -120,6 +122,63 @@ namespace SolarMicrogrid.API.Services
             List<User> users = await _context.Users.Find(filter).ToListAsync();
 
             return users.Select(UserMapper.ToUserResponse).ToList();
+        }
+
+        public async Task<PagedEligibleProsumerResponseDto> SearchEligibleProsumersAsync(
+            EligibleProsumerListQueryDto query,
+            CancellationToken cancellationToken)
+        {
+            // Require a meaningful bounded search and filter eligibility in MongoDB before paging.
+            string search = query.Search.Trim();
+            if (search.Length < 2)
+            {
+                throw new ArgumentException(
+                    "Enter at least two characters to search for an eligible Prosumer.",
+                    nameof(query.Search));
+            }
+
+            if (search.Length > 100)
+            {
+                throw new ArgumentException(
+                    "Prosumer search cannot exceed 100 characters.",
+                    nameof(query.Search));
+            }
+
+            var pattern = new BsonRegularExpression(Regex.Escape(search), "i");
+            FilterDefinition<User> filter = Builders<User>.Filter.And(
+                Builders<User>.Filter.Eq(user => user.Role, UserRole.Prosumer),
+                Builders<User>.Filter.Eq(user => user.Status, UserStatus.Active),
+                Builders<User>.Filter.Or(
+                    Builders<User>.Filter.Regex(user => user.Nic, pattern),
+                    Builders<User>.Filter.Regex(user => user.FullName, pattern),
+                    Builders<User>.Filter.Regex(user => user.Email, pattern)));
+
+            long totalCount = await _context.Users.CountDocumentsAsync(
+                filter,
+                cancellationToken: cancellationToken);
+            List<User> users = await _context.Users
+                .Find(filter)
+                .SortBy(user => user.FullName)
+                .ThenBy(user => user.Nic)
+                .Skip((query.Page - 1) * query.PageSize)
+                .Limit(query.PageSize)
+                .ToListAsync(cancellationToken);
+
+            return new PagedEligibleProsumerResponseDto
+            {
+                Items = users.Select(user => new EligibleProsumerResponseDto
+                {
+                    Nic = user.Nic,
+                    FullName = user.FullName,
+                    Email = user.Email
+                }).ToList(),
+                TotalCount = totalCount,
+                Page = query.Page,
+                PageSize = query.PageSize,
+                TotalPages = totalCount == 0
+                    ? 0
+                    : (int)Math.Ceiling(totalCount / (double)query.PageSize)
+            };
         }
 
         // Convenience wrapper: the Backoffice "pending activations" view is just

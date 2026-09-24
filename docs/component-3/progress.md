@@ -1,12 +1,12 @@
 # Component 3: Energy Reservation Workflow Progress
 
-Audit date: 2026-09-24
+Audit date: 2026-09-25
 
-Branch inspected: `feature/reservation-workflow` at `a6e5bb9`
+Branch inspected: `feature/reservation-workflow` at Android booking-review baseline `e707319`, already shared with `develop`
 
-Scope of this update: deterministic xUnit lifecycle/security/concurrency coverage using an isolated real MongoDB replica set
+Scope of this update: complete authenticated Android reservation creation, uncertain-outcome reconciliation, a dedicated creation summary, and cross-client visibility evidence
 
-Latest implementation update: 2026-09-24 on `feature/reservation-workflow`
+Latest implementation update: 2026-09-25 on `feature/reservation-workflow`
 
 ## Component 3 requirements
 
@@ -19,9 +19,9 @@ The task brief establishes the following requirements:
 - Have the web and native Android clients use the workflow only through REST API calls.
 - Preserve the repository's architecture and naming and reuse existing models, services, and frameworks.
 - Integrate with Member 1's authentication/user/prosumer/session work, Member 2's station/slot/schedule/capacity/map work, and Member 4's dashboard/history/search/QR/completion/deployment work.
-- Do not expose secrets or automatically commit, push, merge, or deploy.
+- Do not expose secrets. This update is explicitly authorized to commit, push, and merge into `develop`.
 
-The API configuration also contains two apparently reservation-oriented values: `MaxBookingDaysAhead = 7` and `MinChangeNoticeHours = 12`. They are not currently registered through options or used by any service. The missing assignment/team-plan artifact must confirm whether these values and their exact boundary behavior are acceptance requirements.
+The API configuration contains `MaxBookingDaysAhead = 7` and `MinChangeNoticeHours = 12`. Both are registered through validated options and enforced by the reservation service with inclusive boundary tests.
 
 ### Provisional delivery scope requiring assignment confirmation
 
@@ -46,8 +46,8 @@ The assignment document is required before treating this provisional list as the
 - Data access: MongoDB.Driver `3.12.0`; there is no repository abstraction or ORM layer.
 - Authentication: ASP.NET Core JWT bearer authentication with HMAC-SHA256 tokens. BCrypt (`BCrypt.Net-Next` `4.2.0`, work factor 12) hashes passwords.
 - OpenAPI: `Microsoft.AspNetCore.OpenApi` is registered and mapped in Development.
-- Web application: no web project, source, package manifest, or REST client is tracked in any available local or remote-tracking ref. A web framework therefore cannot be identified.
-- Native Android application: no Gradle project, Android manifest, Java/Kotlin files, XML layouts, or Compose source is tracked in any available ref. Android language and XML-versus-Compose usage therefore cannot be identified.
+- Web application: `SolarMicrogrid.Web` provides the shared React/TypeScript application using Vite, Bootstrap 5, React Router, one API client, API-backed JWT session restoration, protected/role routes, a responsive layout, reusable async/status/confirmation components, and API-backed reservation list/detail/action screens.
+- Native Android application: `SolarGridAndroid` is a pure Java 17 AndroidX application with XML layouts, Activities/Fragments, ViewModel/LiveData, AndroidX Navigation, manual dependency wiring, `HttpURLConnection`, and one app-private SQLite database.
 - Tests: `SolarMicrogrid.API.Tests` uses xUnit and the .NET test SDK. Its integration fixture uses a unique database, production MongoDB indexes/services, and a fixed injectable server clock. `scripts/run-component3-tests.ps1` runs a disposable MongoDB 8 replica set and removes it afterward.
 - Deployment: no container, CI/CD, or hosting configuration is tracked.
 
@@ -67,7 +67,7 @@ The assignment document is required before treating this provisional list as the
 - Paginated station/slot responses on `origin/develop` use `Items`, `TotalCount`, `Page`, `PageSize`, and `TotalPages` (serialized using the ASP.NET web JSON convention).
 - Shared exception middleware on `origin/develop` maps argument errors to 400, unauthorized to 401, forbidden to 403, missing resources to 404, conflicts to 409, and unexpected errors to 500. Its explicit error body is `{ "status": number, "message": string }`.
 - `[ApiController]` data-annotation/model-state failures use ASP.NET Core's standard validation problem response rather than the custom error body.
-- The current feature branch contains the middleware class but does not activate it; activation is among the newer `origin/develop` commits.
+- Shared exception middleware is active before authentication and authorization in the current merged API.
 
 ### MongoDB model and collection conventions
 
@@ -85,11 +85,11 @@ Stations use a GeoJSON point and decimal capacities. Slots expose total and avai
 - Persisted timestamps use `DateTime` properties suffixed `Utc`, `[BsonDateTimeOptions(Kind = DateTimeKind.Utc)]`, and `DateTime.UtcNow`.
 - Member 2's latest slot service in `origin/develop` rejects an unspecified/default timestamp, requires an explicit offset, and converts input to UTC.
 - Station operating times are local wall-clock strings in strict `HH:mm` form. Slot validation interprets them in the `Asia/Colombo` time zone and requires a slot to fit within one local operating day.
-- The reservation scaffold has no date fields or normalization behavior yet.
+- Reservation and slot timestamps are stored in UTC and returned for locale-aware client formatting.
 
 ### SQLite implementation
 
-No SQLite database, Room dependency, Android database helper/DAO, schema, migration, cached-session model, or related test exists in any available ref. Member 1's Android session/SQLite dependency cannot be integrated or verified from this checkout.
+Member 1's `SessionDatabaseHelper` and `SessionStore` own the single `solargrid_local.db` database at schema version 1. Component 3 reuses that authenticated token/identity session and does not introduce a second database, store passwords, cache availability, or persist reservation outcomes. No schema change is required, so no migration is applied. Any future extension must use the existing helper's forward-only `onUpgrade` path.
 
 ### Existing reservation-related files
 
@@ -108,10 +108,11 @@ No SQLite database, Room dependency, Android database helper/DAO, schema, migrat
 | `Models/Entities/EnergyBookingSlot.cs` | Preserves Member 2 fields and adds a minimal embedded allocation ledger plus lookup index so reservation releases are exact and repeat-safe. |
 | `Settings/MongoSettings.cs` and `appsettings.json` | Define the reservation and scheduling-guard collection names. |
 | `Settings/BusinessRulesSettings.cs` | Defines the seven-day booking horizon and twelve-hour change notice; options are now bound and startup-validated, and creation consumes the horizon setting. |
-| `Program.cs` | Registers transaction, capacity, scheduling-guard, and reservation services; binds business rules and activates shared exception middleware. |
+| `Program.cs` | Registers user, transaction, capacity, scheduling-guard, and reservation services; binds business rules and activates shared exception middleware. |
+| `UsersController.cs` and `UserService.cs` | Reuse Member 1's authorized user API and add a bounded, paged active-Prosumer search for staff reservation ownership selection. Search is executed in MongoDB and returns only NIC, name, and email. |
 | `Services/StationService.cs` | Deliberately blocks station deactivation until Component 3 supplies queryable active-reservation statuses/fields. |
 | API request examples | `SolarMicrogrid.API.http` contains sanitized list/search/detail and mutation examples with JWT, paging/filter, idempotency, expected-version, and reason inputs. |
-| Tests and clients | Twenty-seven real-MongoDB integration tests cover lifecycle, security, and concurrency behavior; eight focused xUnit tests preserve read scope, server-side predicate translation, filters, paging, history, and action-refresh coverage. Web, Android, and SQLite integration source is absent. |
+| Tests and clients | Thirty-one real-MongoDB integration tests cover lifecycle, security, concurrency, eligible-Prosumer lookup, and staff-created owner visibility; eight focused xUnit tests preserve read scope, server-side predicate translation, filters, paging, history, and action-refresh coverage. The shared web reservation UI and twenty-two focused web checks are present. The Java/XML Android client now covers create/list/detail/update/cancel and server-returned summaries while reusing the shared session database. |
 
 The original zero-byte reservation files were introduced as scaffolds in commit `14c0fc4`. The domain/persistence foundation plus create, update/reschedule, cancellation, approval, and rejection APIs are now implemented.
 
@@ -124,22 +125,44 @@ Ownership below comes from the task brief; commit/file evidence describes what i
 #### Member 1: authentication, users, prosumers, Android session/SQLite
 
 - Implemented backend evidence: `User` entity/role/status enums, auth DTOs, BCrypt helper, JWT helper, `AuthService`, `AuthController`, Mongo user access, and unique email index. Commits are primarily authored by `sankamaduwantha`/Sanka, with Mongo foundation contributions by Chiran.
-- Incomplete/absent: `UserService.cs`, `ProsumerService.cs`, `UsersController.cs`, and `ProsumersController.cs` are zero-byte scaffolds. Staff creation/activation and prosumer management mentioned in comments are not implemented. Android session and SQLite code are absent.
+- Implemented user/API evidence: Member 1's `UserService`/`UsersController` provide staff management and authorized user lists. Android reuses Member 1's API login, token validation, role routing, `SessionDatabaseHelper`, and `SessionStore`; passwords are never persisted.
 - Component 3 dependency: authoritative NIC claim, role/status rules, active-prosumer checks, and the eventual Android token/session interface.
 
 #### Member 2: stations, slots, schedules, capacity, maps
 
-- Current feature branch: station/slot entities and DTO contracts, Mongo collections/indexes, and `StationService` are present. Station/slot controllers and `SlotService` are still zero-byte scaffolds.
-- Latest available `origin/develop`: adds complete station/slot controllers, slot service, pagination DTOs, DI registration, shared error middleware activation, and manual station/slot API examples. It includes authenticated station/slot reads, Backoffice-only writes, nearby-station GeoJSON queries, operating-schedule validation, overlap prevention, capacity preservation during slot edits, and optimistic update filters.
+- Current feature branch: complete station/slot controllers, services, pagination DTOs, DI registration, and manual API examples are present. They include authenticated station/slot reads, Backoffice writes, nearby-station GeoJSON queries, operating-schedule validation, overlap prevention, capacity preservation during slot edits, and optimistic update filters.
 - No map client/UI is present; only the geospatial backend endpoint exists.
 - Component 3 dependency: integrate the latest slot API/data contract before implementing reservation capacity changes. Coordinate atomic reservation/release semantics so Component 3 does not duplicate or bypass Member 2's slot rules.
 
 #### Member 4: dashboard, history/search, QR verification, completion, deployment
 
 - `DashboardController.cs` is a zero-byte scaffold.
-- A fresh remote fetch found no reservation history/search endpoint, QR model/payload/verification code, completion workflow, deployment configuration, or related tests in Member 4's available branch or other team refs.
+- The 2026-09-25 remote-ref audit found no Member 4 Android history/dashboard/QR screen or reusable Android query, and no reservation history/search endpoint, QR model/payload/verification code, completion workflow, deployment configuration, or related tests in Member 4's available branch or other team refs. The existing Component 3 list is therefore shared by My Reservations and Booking History rather than duplicated.
 - The only commits associated with the apparent Member 4 branch/author (`Havindu`/`YourName`) update `.gitignore`; ownership identity should be confirmed in the missing team plan.
 - Component 3 dependency: agree on reservation IDs/statuses, search fields, QR payload/expiry/anti-replay contract, completion transition, and dashboard projection needs before freezing the reservation schema.
+
+## Android Component 3 integration
+
+The Android application language is **Java** and its existing XML/Fragment architecture is preserved. No Kotlin, Compose, cross-platform framework, Retrofit, Room, or dependency-injection framework was introduced.
+
+| Area | Integrated behavior |
+| --- | --- |
+| API models/repository | Parses paged list/detail DTOs, allowed actions, status history, and create/update/cancel results; sends expected versions and per-logical-request idempotency keys. |
+| Booking creation | A Prosumer starts from Member 2's station-detail flow. The selection screen re-fetches that station's available-slot API, shows future date/time and reported capacity, permits exactly one slot, and requires `RequestedEnergyKwh` because it is mandatory in the real create DTO. `POST /api/reservations` sends only `slotId` and `requestedEnergyKwh`; owner NIC is never sent because the API derives it from authenticated claims. Staff cannot enter the self-booking flow. |
+| Booking review | A separate pre-submit screen shows the signed-in Prosumer name/NIC, station, slot reference, localized date and start/end time, selected-time available capacity, requested kWh, seven-day contract guidance, and expected initial `Pending` status. It explicitly identifies availability as unconfirmed until the API accepts submission. |
+| Creation resilience | Processing disables edit/submit/back repetition. One UUID idempotency key is retained for the logical slot/quantity request across configuration changes, ordinary retries, and returning to review. Before the first POST the client records current reservation IDs. A network/timeout result triggers a Pending-list read and accepts only a new, exact Pending slot/quantity match; an unconfirmed result remains uncertain and retry reuses the same key. |
+| Creation errors | Shared 400/401/403/404/409/server/network kinds are preserved. Creation-specific messages explain the seven-day/future rule, insufficient or changed capacity, duplicate/overlap conflict, forbidden account, missing station/slot, server failure, and network uncertainty; 401 still clears session and routes to login. |
+| Creation summary | Successful POST or authoritative reconciliation opens a dedicated **Reservation Created** summary populated only from the API DTO: reference, station, localized schedule, kWh, exact server status, and server creation timestamp. It contains no Approved/QR claim and explicitly explains that Pending is not Approved or QR-ready. Actions open details, a freshly API-loaded Pending list, or station search. |
+| Lists/history | My Reservations defaults to the server-defined `Pending` view and provides clearly labelled Pending approval, Approved upcoming, Approved in-progress (`Current`), and All filters. Each row displays the API reference, station, localized date/time, quantity, and exact server status; the result count comes from `TotalCount`. Booking History reuses the same list/adapter/ViewModel with the server-defined `History` view rather than introducing a conflicting screen. |
+| Details/actions | Detail reloads the authoritative reservation and renders its reference, owner identity, station/address, slot, localized schedule, quantity, exact status, created/updated times, cancellation/rejection reason, and status history. Modify, cancel, and QR availability plus server-provided unavailable reasons are visible; only server-authorized modify/cancel controls are enabled. No inactive QR navigation is added while Member 4's destination is absent. |
+| Modification | Reloads the authoritative reservation, prefills current slot/quantity, reuses Member 2's live available-slot query, and submits `SlotId`, `RequestedEnergyKwh`, `ExpectedVersion`, and one retained idempotency key. Repeated taps/back are blocked in flight. Twelve-hour cutoff, stale version, capacity, overlap, lifecycle, session, and server errors receive action-specific explanations; definite failure never changes the local/original booking. A network timeout reads the same reservation and accepts only an exact persisted slot/quantity/version result. Material changes to an Approved booking are explained before submission and must return as server `Pending`. |
+| Cancellation | Confirmation shows reference, station, localized schedule, and an optional reason. Cancellation submits the displayed version plus one retained idempotency key, prevents repeated submit/back, and maps cutoff, stale state, capacity reconciliation, final/completed state, session, and server failures. A network timeout reloads the detail and accepts only a newer authoritative `Cancelled` result (and matching supplied reason); the client never creates a local cancellation record. |
+| Summaries | All three successful outcomes are explicit: **Reservation Created** shows `CreatedAtUtc`; **Reservation Updated** shows `UpdatedAtUtc`; **Reservation Cancelled** shows `CancelledAtUtc` and the optional server reason. Every screen displays the authoritative response reference, station/schedule, quantity, and exact status. Update/cancel reuse one action-aware summary layout with distinct titles/notices and links to detail, current/pending, and History; a former Approved update explains its returned Pending state. |
+| Lifecycle/errors | Loading, empty, error, and retry states use the shared state component. List/detail ViewModels retain the active server view, loaded data, useful scroll position, and stale-request generation across configuration recreation. Both screens silently refresh on return and every 30 seconds while visible, preserve existing content during transient refresh errors, and expose the error without deriving status from the phone clock. Creation/update/cancellation ViewModels retain drafts, current version, idempotency keys, in-flight phases, and reconciliation state; destructive back navigation is blocked while an outcome is unresolved. After each successful mutation, Pending, Current, ApprovedFuture, and History are re-read before summary navigation. Member 4's dashboard cannot be refreshed because its Android screen/query and backend controller implementation are absent; that dependency remains recorded rather than represented by a dead action. |
+| Offline/cache | No offline mutation queue and no reservation/availability cache were added. Availability remains explicitly labelled as live and unconfirmed; network failure never becomes success. |
+| SQLite | The existing version-1 session database is reused unchanged. No second user/session database and no plaintext password storage were introduced. |
+
+Remote refs were refreshed before integration. `origin/feature/stations-slots-maps` contains the authoritative backend station work but no Android tree; the Android foundation at `origin/feature/android-foundation` already includes the Member 2 station/slot screen and was therefore the correct client baseline.
 
 ## Missing implementation
 
@@ -147,12 +170,12 @@ Ownership below comes from the task brief; commit/file evidence describes what i
 2. Implement the remaining QR verification/completion mutation endpoints with Member 4.
 3. Integrate `HasActiveReservationsForStationAsync` into Member 2's station-deactivation transaction/check.
 4. Supply history/search and QR/completion integrations to Member 4 without taking ownership of their UI/dashboard/deployment work.
-5. Add web/Android clients plus standalone-Mongo compensation failure-injection tests.
+5. Implement remaining team-owned non-reservation web screens and standalone-Mongo compensation failure-injection tests.
 
 ## Dependencies
 
-- **Missing source artifacts:** official assignment/team-plan documents, web project, Android project, and Member 1's Android session/SQLite implementation.
-- **Branch baseline:** local `feature/reservation-workflow` matched `origin/feature/reservation-workflow` at `a6e5bb9` before this test update.
+- **Missing source artifacts:** official assignment/team-plan documents. The Android project and Member 1 session/SQLite implementation are now present.
+- **Branch baseline:** this Android modification/cancellation/summary update started from clean shared commit `73eb818`, where `feature/reservation-workflow` and `develop` matched. Member 1's user API/session implementation and Member 2's station/slot integration remain preserved.
 - **Member 1 contract:** authenticated active-user lookup, role/status enforcement, prosumer endpoints, and mobile session/token persistence.
 - **Member 2 contract:** the shared slot entity now has a minimal allocation ledger and atomic capacity service; Member 2 must integrate active-reservation schedule/deactivation checks after branch synchronization.
 - **Member 4 contract:** no completion implementation exists in available refs; reservation history/search representation, QR issuance/verification boundary, completion transition, and deployment expectations remain dependencies.
@@ -165,12 +188,23 @@ Ownership below comes from the task brief; commit/file evidence describes what i
 | --- | --- |
 | Repository instructions | No `AGENTS.md` or other repository instruction file found. |
 | README/assignment/team plan | Read the only README. No assignment or team-plan artifact exists in the checkout, any available ref tree, or tracked document history. |
-| Git branch | PASS: work began on `feature/reservation-workflow` while it matched `origin/feature/reservation-workflow` at `a6e5bb9`. No branch creation was needed. |
-| Safe branch preparation | PASS: the starting worktree was clean; no reset, rebase, or file discard was performed. Commit, push, and merge were explicitly requested for this update. |
-| Git baseline comparison | INFO: committed `HEAD` matched `origin/feature/reservation-workflow` at `a6e5bb9` before this test update. |
+| Git branch | PASS: implementation is on `feature/reservation-workflow`, starting from the shared `feature/reservation-workflow`/`develop` commit `73eb818`. |
+| Safe branch preparation | PASS: the clean feature and develop branches shared the same verified baseline; no reset or file discard was used. Commit, feature push, and develop merge were requested for this update. |
+| Git baseline comparison | PASS: `origin/Havindu` and the other refreshed team refs contain no Android reservation/history/dashboard/QR implementation to cherry-pick. The update extends the existing role-scoped list/detail implementation and reuses it for History, avoiding conflicting DTO/query/screen definitions. |
 | Backend/framework inspection | PASS: ASP.NET Core controller API targeting `net10.0` confirmed from project/source. |
-| Web inspection | BLOCKED/ABSENT: no web application is tracked, so its framework and API integration cannot be verified. |
-| Android inspection | BLOCKED/ABSENT: no Android application is tracked, so Java/Kotlin, XML/Compose, REST integration, session, and SQLite cannot be verified. |
+| Web foundation | IMPLEMENTED: React/TypeScript with Vite, Bootstrap 5, React Router, centralized Fetch client, environment API URL, `POST /api/auth/login`, `GET /api/auth/me`, session context, protected/role routes, responsive shared layout, and reusable loading/empty/error/confirmation/status components. Dashboard and Prosumer data remain unintegrated because their controllers are empty. |
+| Web reservation UI | PASS: list/detail routes consume authorized DTOs and preserve list filters. Create and reschedule use Member 2's station/available-slot reads only. Update, cancellation with optional reason, approval confirmation, and rejection with required reason send the displayed `ExpectedVersion`, use one idempotency key per logical action, prevent repeated submits, and show dedicated refreshed result summaries. Server-provided action flags and cutoff reasons control the available controls. A stale conflict reloads and explains the newer server state without applying the old form. An uncertain network result triggers a state query before any retry; a matching state is treated as reconciled, while an unchanged state retains the original idempotency key for an explicit retry. |
+| Web refresh and visibility | PASS: successful create/update/approve/reject/cancel operations publish an application-wide and cross-tab reservation-change signal. Reservation lists and details refresh on that signal, window focus, visibility return, and a 30-second interval, closing an open action if its displayed version changed. Navigating back remounts and reloads the filtered list. This is the refresh integration point for Member 4's dashboard once its currently empty controller/page is implemented. Default `All` and server-defined `History` views continue to include cancelled/rejected records. The browser never calls station/slot capacity mutation routes. |
+| Web dependency install | PASS: 185 packages audited with 0 reported vulnerabilities. TypeScript remains on the supported 6.x line because current `typescript-eslint` does not accept TypeScript 7. |
+| Web checks | PASS: `npm run check` completed ESLint, **22/22** focused Vitest checks, TypeScript project compilation, and the Vite 8.3.1 production build. Vite transformed 64 modules and emitted the production bundle. The added checks cover action reconciliation, optional cancellation/agreed rejection reasons, approvals, stale versions, clear backend/cutoff errors, and cross-client change explanations. |
+| Android inspection | PASS: pure-native Java/XML architecture, Activity/Fragment navigation, ViewModel/repository layers, bearer authentication, shared error mapping, role routing, one SQLite session store, and Member 2 station/available-slot entry flow were preserved. Component 3 adds API-refreshed single-slot selection, a pre-submit booking review, create, filtered current/pending/history lists, detail, update, cancellation, and server-result summaries. No client-side filter is treated as availability proof; create revalidation remains server-owned. |
+| Android current/pending/detail | PASS: Pending, Approved-upcoming, and Approved-in-progress are distinct server query views; All remains available without hard-coded counts. List/detail access remains claim-scoped by the API and sends no alternate Prosumer NIC. Rows show reference/station/time/status, details show all returned reservation fields and audit history, and visible server `AllowedActions` reasons explain unavailable modify/cancel/QR operations. Selected filters and list/detail scroll positions survive recreation. |
+| Android status refresh | PASS: list/detail screens re-query the central API when they become visible and every 30 seconds while started. Successful create already refreshes Pending; update/cancel return through authoritative summaries; later web approval/rejection becomes visible through the same list/detail endpoints. Silent refresh preserves useful visible state on a transient failure, maps 401 through shared session-expiry handling, and never calculates lifecycle status from the device clock. |
+| Android creation checks | PASS: creation prevents repeated taps, retains one key across retries, captures baseline IDs, reconciles uncertain results through the authorized Pending endpoint, rejects baseline/final-state false matches, refreshes Pending after a successful response, clears temporary state, and navigates to the dedicated creation summary. |
+| Android update/cancellation checks | PASS: both mutations use the current API version and retain their request key across a logical retry. Four new JVM checks prove that an Approved material update reconciles only as newer Pending with the requested slot/quantity, stale/different state is rejected, cancellation requires newer `Cancelled` plus a server timestamp, and a conflicting supplied reason is not falsely accepted. Successful actions re-read Pending, Current, ApprovedFuture, and History before showing summaries. |
+| Android three-summary evidence | PASS (compiled resource/navigation verification): create routes only to **Reservation Created** with `CreatedAtUtc`; edit routes only to **Reservation Updated** with `UpdatedAtUtc` and the Approved-to-Pending notice when applicable; cancellation routes only to **Reservation Cancelled** with `CancelledAtUtc` and optional reason. All three bind the successful/reconciled API DTO rather than a local optimistic model. |
+| Cross-client visibility | PASS at shared-contract level: Android and web consume the same authenticated list/detail DTOs. Android refreshes visible lists/details on return and every 30 seconds, so a web approval/rejection is obtained from the API rather than inferred locally. The current Component 3 MongoDB suite passed **39/39** and the current web check passed **22/22**, including lint, TypeScript, and production build; a live browser/device status-change demonstration remains blocked because no sanitized JWT test account/configuration was supplied. |
+| Eligible Prosumer lookup | PASS: `GET /api/users/eligible-prosumers` is limited to Backoffice/GridOperator, requires a bounded search term, filters active Prosumer role/status in MongoDB before stable paging, and returns a minimal selection DTO. |
 | MongoDB inspection | PASS: reservation collection mapping, BSON attributes, references, UTC fields, Decimal128 energy quantity, versioning, query/duplicate indexes, allocation claims, and per-Prosumer scheduling leases are implemented and exercised against MongoDB 8. |
 | Reservation domain/DTO implementation | PASS (compile verified): entity/status/history/capacity state, request/query/response DTOs, collection mapping, and indexes are implemented. |
 | Reservation creation API | PASS (compile verified): Prosumer self-create and Backoffice/assigned-Grid-Operator staff create validate current identities, eligibility, references, schedule, inclusive seven-day horizon, quantity, duplicate/overlap, atomic availability, Pending state, exact-once hold, hashed idempotency, and actor-derived allowed actions. |
@@ -180,9 +214,10 @@ Ownership below comes from the task brief; commit/file evidence describes what i
 | Focused cancellation checks | PASS: real MongoDB tests verify valid cancellation, exact-once release, replay safety, final-state blocking, object authorization, and cancellation-versus-completion CAS. |
 | Reservation approval/rejection APIs | PASS (compile/static verification): Backoffice and assigned-Grid-Operator approval rechecks active Prosumer/station, slot snapshot/schedule/future/horizon, overlap, and one exact claim without a second hold. Backoffice rejection requires a bounded reason, records audit/history, and uses the exact-once release workflow. Both enforce Pending/version/held-state CAS, stable idempotency outcomes, terminal-state conflicts, and authoritative QR/action projections. |
 | Focused approval/rejection checks | PASS: real MongoDB tests verify decision authorization, exact-once rejection release/replay, final-state blocking, Approved update reset, and approve-versus-reject concurrency. |
-| Reservation read APIs | PASS (compile/static verification): `GET /api/reservations` applies owner/global/assigned-station scope in MongoDB before count/paging; supports view, status, station, Prosumer, UTC range, Backoffice search, stable newest-first sorting, and batch display enrichment. `GET /api/reservations/{id}` combines ID and actor scope and returns 404 when absent or out of scope. |
-| Automated tests | PASS: `scripts/run-component3-tests.ps1` executed the complete suite: **35 passed, 0 failed, 0 skipped** in 5 seconds. This includes 27 real-MongoDB integration facts plus 8 focused read-policy facts; no unavailable test was counted as passed. |
+| Reservation read APIs | PASS (compile/static verification): `GET /api/reservations` applies owner/global/assigned-station scope in MongoDB before count/paging; supports view, status, station, Prosumer, UTC range, Backoffice search, stable newest-first sorting, and batch display enrichment including Prosumer names and the server-recorded request time. `GET /api/reservations/{id}` combines ID and actor scope and returns 404 when absent or out of scope. |
+| Automated tests | PASS: for this update, `clean testDebugUnitTest assembleDebug lintDebug` completed successfully in 26 seconds with 53 executed Gradle tasks, **11 passing local JVM tests**, a debug APK, and no lint errors; the final incremental rerun also passed. The current Component 3 MongoDB suite passed **39/39** update/cancellation and related integration tests; the most recent web check remains **22/22**. |
 | Confirmed defect fixed | PASS: concurrent scheduling-lease upserts can surface duplicate key code 11000 as `MongoCommandException`; the lease now treats that result as contention and retries, allowing update-versus-cancel and approve-versus-reject races to resolve through lifecycle/version CAS. |
+| User API error mapping | PASS: Member 1's `BadRequestException` is now translated to HTTP 400 by shared middleware instead of falling through to HTTP 500. |
 | Current-branch backend build | PASS: merged Member 2 and Component 3 source builds with .NET SDK 10.0.401 with 0 compilation errors. NuGet emits one `NU1900` warning because vulnerability metadata cannot be reached. |
 | Component 3 integration build | PASS: `dotnet build SolarMicrogrid.slnx --configuration Release --no-restore -m:1` completed with 0 errors; only `NU1900` was emitted because the NuGet vulnerability feed was unreachable. |
 | Assignment comment condition | PASS (static): every new/modified C# file has the required header block and every added/modified method begins with an explanatory inline comment. |
@@ -195,7 +230,7 @@ Ownership below comes from the task brief; commit/file evidence describes what i
 ### Inputs required from the team/course
 
 - Original assignment brief, marking rubric, Component 3 acceptance criteria, and current team plan/ownership matrix.
-- Web and Android repositories/projects if they are maintained separately.
+- Android repository/project if it is maintained separately.
 - Member 1's session/SQLite contract and Member 4's QR/completion/history contracts.
 - Agreed test accounts/roles and a sanitized development configuration procedure.
 
@@ -209,6 +244,6 @@ Ownership below comes from the task brief; commit/file evidence describes what i
 - End-to-end evidence for create, view, edit/reschedule, cancel, history/search, QR verification, and completion according to the final assignment scope.
 - Automated test results, build output, and a clean `git diff`/`git status` review before the user chooses to commit.
 
-Suggested commit message if this documentation is later committed by the user:
+Commit message requested for this Android action update:
 
-`docs(reservations): document component 3 scope and dependencies`
+`feat(android): add reservation update cancellation and action summaries`

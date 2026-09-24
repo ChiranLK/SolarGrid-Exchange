@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="@dimen/space_xl">
+
+    <ProgressBar
+        android:id="@+id/state_progress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <TextView
+        android:id="@+id/state_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_md"
+        android:gravity="center"
+        android:textAppearance="@style/TextAppearance.SolarGrid.Title" />
+
+    <TextView
+        android:id="@+id/state_message"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_sm"
+        android:gravity="center"
+        android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/state_retry"
+        style="@style/Widget.SolarGrid.Button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_md"
+        android:text="@string/retry"
+        android:visibility="gone" />
+</LinearLayout>

@@ -55,6 +55,7 @@ namespace SolarMicrogrid.API.Middleware
             HttpStatusCode statusCode = ex switch
             {
                 ConflictException => HttpStatusCode.Conflict,           // 409
+                BadRequestException => HttpStatusCode.BadRequest,       // 400
                 UnauthorizedException => HttpStatusCode.Unauthorized,   // 401
                 ForbiddenException => HttpStatusCode.Forbidden,         // 403
                 NotFoundException => HttpStatusCode.NotFound,           // 404
