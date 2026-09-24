@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/main_nav_graph"
+    app:startDestination="@id/nav_prosumer_home">
+
+    <fragment android:id="@+id/nav_prosumer_home" android:name="com.solargrid.exchange.ui.home.ProsumerHomeFragment" android:label="@string/prosumer_home" />
+    <fragment android:id="@+id/nav_operator_home" android:name="com.solargrid.exchange.ui.home.OperatorHomeFragment" android:label="@string/operator_home" />
+    <fragment android:id="@+id/nav_profile" android:name="com.solargrid.exchange.ui.profile.ProfileFragment" android:label="@string/profile" />
+    <fragment android:id="@+id/nav_nearby_stations" android:name="com.solargrid.exchange.ui.stations.NearbyStationsFragment" android:label="@string/nearby_stations" />
+    <fragment android:id="@+id/nav_station_detail" android:name="com.solargrid.exchange.ui.stations.StationDetailFragment" android:label="@string/station_details">
+        <argument android:name="stationId" app:argType="string" />
+    </fragment>
+    <fragment android:id="@+id/nav_my_reservations" android:name="com.solargrid.exchange.ui.placeholder.DestinationFragment" android:label="@string/my_reservations">
+        <argument android:name="title" android:defaultValue="My reservations" app:argType="string" />
+        <argument android:name="description" android:defaultValue="Reservation screens are deliberately outside this foundation task. Component 3 must use the central reservation API." app:argType="string" />
+    </fragment>
+    <fragment android:id="@+id/nav_booking_history" android:name="com.solargrid.exchange.ui.placeholder.DestinationFragment" android:label="@string/booking_history">
+        <argument android:name="title" android:defaultValue="Booking history &amp; search" app:argType="string" />
+        <argument android:name="description" android:defaultValue="History and search navigation is ready. The feature owner must integrate the authorized API response." app:argType="string" />
+    </fragment>
+    <fragment android:id="@+id/nav_qr_operations" android:name="com.solargrid.exchange.ui.placeholder.DestinationFragment" android:label="@string/qr_operations">
+        <argument android:name="title" android:defaultValue="QR verification &amp; operations" app:argType="string" />
+        <argument android:name="description" android:defaultValue="QR verification and operator transactions require the confirmed Component 4 API contract." app:argType="string" />
+    </fragment>
+</navigation>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="solar_green_900">#0B3D2E</color>
+    <color name="solar_green_700">#146B4A</color>
+    <color name="solar_green_500">#2E9B68</color>
+    <color name="solar_green_100">#DDF3E8</color>
+    <color name="solar_gold_500">#F4B942</color>
+    <color name="solar_surface">#F6F8F7</color>
+    <color name="solar_text">#17231E</color>
+    <color name="solar_muted">#5D6D65</color>
+    <color name="solar_error">#B3261E</color>
+    <color name="white">#FFFFFF</color>
+</resources>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="TextAppearance.SolarGrid.Headline" parent="TextAppearance.Material3.HeadlineMedium">
+        <item name="android:textColor">@color/solar_text</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="TextAppearance.SolarGrid.Title" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:textColor">@color/solar_text</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="TextAppearance.SolarGrid.Body" parent="TextAppearance.Material3.BodyLarge">
+        <item name="android:textColor">@color/solar_muted</item>
+    </style>
+
+    <style name="Widget.SolarGrid.Button" parent="Widget.Material3.Button">
+        <item name="cornerRadius">12dp</item>
+        <item name="android:minHeight">48dp</item>
+    </style>
+</resources>

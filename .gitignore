@@ -73,6 +73,19 @@ artifacts/
 **/.env.*
 !**/.env.example
 
+# Android Studio, Gradle, device captures, local SDK paths, and signing material
+**/.gradle/
+**/.idea/
+**/local.properties
+**/*.iml
+**/build/
+**/captures/
+**/.externalNativeBuild/
+**/.cxx/
+**/secrets.properties
+**/*.jks
+**/*.keystore
+
 # Tye
 .tye/
 
