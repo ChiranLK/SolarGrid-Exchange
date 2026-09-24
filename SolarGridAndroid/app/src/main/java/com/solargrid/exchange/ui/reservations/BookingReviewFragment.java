@@ -10,6 +10,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.activity.OnBackPressedCallback;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavOptions;
@@ -30,9 +31,21 @@ public final class BookingReviewFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_booking_review, container, false);
         Bundle arguments = getArguments() == null ? Bundle.EMPTY : getArguments();
         BookingReviewViewModel viewModel =
-                new ViewModelProvider(this).get(BookingReviewViewModel.class);
+                new ViewModelProvider(requireActivity()).get(BookingReviewViewModel.class);
         Button edit = view.findViewById(R.id.booking_review_edit_button);
         Button confirm = view.findViewById(R.id.booking_review_confirm_button);
+        TextView progress = view.findViewById(R.id.booking_review_progress);
+        OnBackPressedCallback processingBackGuard = new OnBackPressedCallback(false) {
+            @Override
+            public void handleOnBackPressed() {
+                Toast.makeText(
+                        requireContext(),
+                        R.string.booking_wait_for_result,
+                        Toast.LENGTH_SHORT).show();
+            }
+        };
+        requireActivity().getOnBackPressedDispatcher().addCallback(
+                getViewLifecycleOwner(), processingBackGuard);
 
         SessionUser session = ((SolarGridApplication) requireActivity().getApplication())
                 .getAppContainer()
@@ -68,8 +81,32 @@ public final class BookingReviewFragment extends Fragment {
                 arguments.getString("slotId", ""),
                 arguments.getDouble("requestedEnergy", 0)));
 
+        viewModel.getPhase().observe(getViewLifecycleOwner(), phase -> {
+            int message;
+            switch (phase) {
+                case LOADING_BASELINE:
+                    message = R.string.booking_progress_preparing;
+                    break;
+                case SUBMITTING:
+                    message = R.string.booking_progress_submitting;
+                    break;
+                case RECONCILING:
+                    message = R.string.booking_progress_reconciling;
+                    break;
+                case REFRESHING:
+                    message = R.string.booking_progress_refreshing;
+                    break;
+                default:
+                    progress.setVisibility(View.GONE);
+                    return;
+            }
+            progress.setText(message);
+            progress.setVisibility(View.VISIBLE);
+        });
+
         viewModel.getState().observe(getViewLifecycleOwner(), state -> {
             boolean loading = state.getStatus() == UiState.Status.LOADING;
+            processingBackGuard.setEnabled(loading);
             edit.setEnabled(!loading);
             confirm.setEnabled(!loading);
             confirm.setText(loading ? R.string.saving_reservation : R.string.confirm_booking);
@@ -82,13 +119,13 @@ public final class BookingReviewFragment extends Fragment {
                 viewModel.consumeResult();
             } else if (state.getStatus() == UiState.Status.SUCCESS && state.getData() != null) {
                 Reservation result = state.getData();
-                viewModel.consumeResult();
+                viewModel.clearAfterSuccess();
                 NavOptions options = new NavOptions.Builder()
                         .setPopUpTo(R.id.nav_reservation_form, true)
                         .build();
                 Navigation.findNavController(view).navigate(
-                        R.id.nav_reservation_summary,
-                        ReservationSummaryFragment.argumentsFor("Booking request created", result),
+                        R.id.nav_create_reservation_summary,
+                        CreateReservationSummaryFragment.argumentsFor(result),
                         options);
             }
         });
