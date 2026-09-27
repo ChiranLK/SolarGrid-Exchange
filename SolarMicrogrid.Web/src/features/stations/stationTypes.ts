@@ -51,6 +51,20 @@ export interface SlotSummary {
   totalCapacityKwh: number
   availableCapacityKwh: number
   availabilityStatus: string
+  createdAtUtc: string
+  updatedAtUtc: string
+}
+
+export interface SlotInput {
+  startTimeUtc: string
+  endTimeUtc: string
+  totalCapacityKwh: number
+}
+
+export interface SlotListQuery {
+  page: number
+  pageSize: number
+  status?: 'Available' | 'FullyBooked' | 'Unavailable'
 }
 
 export interface PagedSlots {

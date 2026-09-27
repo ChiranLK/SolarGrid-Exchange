@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import type { StationFormValues } from './stationFormModel'
 import { validateStation } from './stationFormModel'
+import { ScheduleFields } from './ScheduleFields'
 
 interface Props {
   initialValues: StationFormValues
@@ -15,13 +16,6 @@ export function StationForm({ initialValues, submitLabel, isSaving, onSubmit }: 
 
   function update(field: keyof Omit<StationFormValues, 'operatingSchedule'>, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
-  }
-
-  function updateDay(index: number, changes: Partial<StationFormValues['operatingSchedule'][number]>) {
-    setValues((current) => ({
-      ...current,
-      operatingSchedule: current.operatingSchedule.map((item, position) => position === index ? { ...item, ...changes } : item),
-    }))
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -44,21 +38,7 @@ export function StationForm({ initialValues, submitLabel, isSaving, onSubmit }: 
           <div className="col-12 col-md-6"><label className="form-label" htmlFor="station-generation">Generation capacity (kW)</label><input id="station-generation" className="form-control" type="number" step="any" min="0.01" required value={values.energyGenerationCapacityKw} onChange={(event) => update('energyGenerationCapacityKw', event.target.value)} /></div>
           <div className="col-12 col-md-6"><label className="form-label" htmlFor="station-battery">Battery storage capacity (kWh)</label><input id="station-battery" className="form-control" type="number" step="any" min="0" required value={values.batteryStorageCapacityKwh} onChange={(event) => update('batteryStorageCapacityKwh', event.target.value)} /></div>
         </div>
-        <h2 className="h5 mt-4">Operating schedule</h2>
-        <p className="text-body-secondary small">Set open days and their local 24-hour times. Closed days do not need times.</p>
-        <div className="row g-3">
-          {values.operatingSchedule.map((item, index) => (
-            <div className="col-12 col-lg-6" key={item.dayOfWeek}>
-              <div className="border rounded p-3 h-100">
-                <div className="form-check mb-2"><input className="form-check-input" type="checkbox" id={`open-${item.dayOfWeek}`} checked={item.isOpen} onChange={(event) => updateDay(index, { isOpen: event.target.checked })} /><label className="form-check-label fw-semibold" htmlFor={`open-${item.dayOfWeek}`}>{item.dayOfWeek} open</label></div>
-                {item.isOpen && <div className="row g-2">
-                  <div className="col-6"><label className="form-label" htmlFor={`start-${item.dayOfWeek}`}>Opens</label><input className="form-control" id={`start-${item.dayOfWeek}`} type="time" required value={item.openingTime ?? ''} onChange={(event) => updateDay(index, { openingTime: event.target.value })} /></div>
-                  <div className="col-6"><label className="form-label" htmlFor={`end-${item.dayOfWeek}`}>Closes</label><input className="form-control" id={`end-${item.dayOfWeek}`} type="time" required value={item.closingTime ?? ''} onChange={(event) => updateDay(index, { closingTime: event.target.value })} /></div>
-                </div>}
-              </div>
-            </div>
-          ))}
-        </div>
+        <ScheduleFields schedule={values.operatingSchedule} onChange={(operatingSchedule) => setValues((current) => ({ ...current, operatingSchedule }))} />
         <div className="mt-4"><button className="btn btn-success" type="submit" disabled={isSaving}>{isSaving ? 'Saving…' : submitLabel}</button></div>
       </div>
     </form>

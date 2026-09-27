@@ -28,6 +28,14 @@ export const stationApi = {
     })
   },
 
+  activate(stationId: string, signal?: AbortSignal): Promise<Station> {
+    return apiRequest<Station>(`/stations/${encodeURIComponent(stationId)}/activate`, { method: 'PATCH', signal })
+  },
+
+  deactivate(stationId: string, signal?: AbortSignal): Promise<Station> {
+    return apiRequest<Station>(`/stations/${encodeURIComponent(stationId)}/deactivate`, { method: 'PATCH', signal })
+  },
+
   listActive(signal?: AbortSignal): Promise<PagedStations> {
     return apiRequest<PagedStations>('/stations?isActive=true&page=1&pageSize=100', { signal })
   },

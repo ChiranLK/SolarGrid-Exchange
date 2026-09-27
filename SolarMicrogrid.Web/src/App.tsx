@@ -14,6 +14,8 @@ import { ReservationListPage } from './features/reservations/ReservationListPage
 import { StationDetailPage } from './features/stations/StationDetailPage'
 import { StationFormPage } from './features/stations/StationFormPage'
 import { StationListPage } from './features/stations/StationListPage'
+import { StationSchedulePage } from './features/stations/StationSchedulePage'
+import { SlotFormPage } from './features/stations/SlotFormPage'
 
 export default function App() {
   return (
@@ -56,6 +58,9 @@ export default function App() {
           <Route element={<RoleRoute allowedRoles={['Backoffice']} />}>
             <Route path="stations/new" element={<StationFormPage />} />
             <Route path="stations/:stationId/edit" element={<StationFormPage />} />
+            <Route path="stations/:stationId/schedule" element={<StationSchedulePage />} />
+            <Route path="stations/:stationId/slots/new" element={<SlotFormPage />} />
+            <Route path="stations/:stationId/slots/:slotId/edit" element={<SlotFormPage />} />
             <Route
               path="backoffice"
               element={(
