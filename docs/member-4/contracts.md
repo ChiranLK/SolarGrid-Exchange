@@ -283,7 +283,8 @@ These records reference the existing reservation/station/user identifiers. They 
 ### Web
 
 - Reuse `apiRequest`, auth context, role routes, shared layout/components, reservation DTOs, and the existing Bootstrap green/gold theme.
-- Implement dashboards in the existing `DashboardPage`/feature structure and operator verification/completion in `src/features/operations`.
+- Grid Operator dashboard/history are implemented in `src/features/operations` at `/operator/dashboard` and `/operator/history`, using the shared exact-role guard and API client.
+- Operator verification/completion UI remains a later integration in the same feature area.
 - Render the QR as an opaque API value and never decode it for business decisions.
 - Use the read-only Member 4 dashboard/history routes, which reuse Member 3's shared view predicates and never add reservation mutations.
 
@@ -335,6 +336,7 @@ These inputs are currently `Blocked`; no compatible deployment configuration can
 | Existing `QrEligible` projection as final eligibility | Not Verified | It remains a preliminary status-only UI flag; the transaction API applies the authoritative stronger rule. |
 | Dashboard implementation and test coverage | Completed | API, DTOs, indexes, controller contracts, and MongoDB integration cases are implemented. |
 | Dashboard MongoDB integration execution | Completed | Included in the 60/60 full API suite against MongoDB 8 replica set. |
+| Grid Operator web dashboard/history | Completed | Role-protected responsive routes consume live Member 4 APIs; 29/29 web tests and the production build pass. Browser screenshots remain Not Verified. |
 | QR transaction API implementation/tests | Completed | Full API suite passed 60/60 against MongoDB 8 replica set. Client QR UI remains Not Started. |
 | Completion implementation/tests | Completed | Success, replay, expiry, changed-state, and simultaneous one-winner completion are covered and passing. |
 | Deployment implementation/smoke test | Blocked | Target, domains, secrets, topology, and signing inputs absent. |

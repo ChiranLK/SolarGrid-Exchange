@@ -400,6 +400,66 @@ textarea {
   content: "";
 }
 
+.operator-metric-card {
+  height: 100%;
+  padding: 1.25rem;
+  border: 1px solid #dce6df;
+  border-left-width: 0.3rem;
+  border-radius: 0.9rem;
+  background: #fff;
+  box-shadow: 0 0.35rem 1rem rgb(7 28 17 / 6%);
+}
+
+.operator-metric-warning {
+  border-left-color: #d6a300;
+}
+
+.operator-metric-success {
+  border-left-color: #167447;
+}
+
+.operator-metric-primary {
+  border-left-color: #2378b5;
+}
+
+.operator-metric-secondary {
+  border-left-color: #6b7a70;
+}
+
+.operator-metric-label {
+  color: #65756a;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.operator-metric-value {
+  margin-top: 0.3rem;
+  color: #12291b;
+  font-size: clamp(1.7rem, 4vw, 2.25rem);
+  font-weight: 750;
+  line-height: 1;
+}
+
+.operator-status-total {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 8rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid #e1e9e3;
+  border-radius: 0.75rem;
+  background: #f8faf9;
+}
+
+.operator-reservation-card {
+  padding: 1rem;
+  border: 1px solid #e0e9e3;
+  border-radius: 0.8rem;
+  background: #fff;
+}
+
 .sidebar-scrim {
   position: fixed;
   z-index: 1020;

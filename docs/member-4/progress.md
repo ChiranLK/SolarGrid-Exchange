@@ -194,6 +194,34 @@ The server-side two-step workflow is implemented under `api/transactions` withou
 
 The earlier Prompt 2 dashboard integration result is superseded by the successful full API run: its MongoDB tests are now verified as part of the 60/60 suite.
 
+## Prompt 4 implementation: Grid Operator web dashboard and booking history
+
+The existing web source was verified before implementation. It is React 19 with TypeScript/Vite, React Router, session-storage JWT restoration through `AuthProvider`, the centralized Fetch-based `apiRequest`, an authenticated responsive `AppLayout`, Bootstrap 5 plus `src/styles/app.css`, and shared loading/empty/error/pagination/status components. Member 4 extended those patterns without adding another web app, auth store, HTTP client, or styling framework.
+
+### Routes and screens
+
+| Web route | Access | API usage and behavior |
+| --- | --- | --- |
+| `/operator/dashboard` | Authenticated `GridOperator` only | `GET /api/dashboard?recentLimit=5`; shows pending count/list, approved-future count, current count, exact status totals, active transfers, recent approved/completed activity, and completed-transfer summary. |
+| `/operator/history` | Authenticated `GridOperator` only | `GET /api/dashboard/history`; sends trimmed reference/text, exact status, station, inclusive UTC start-date range, page, and page size. Results are rendered in the deterministic order supplied by the API. |
+| `/dashboard` | Authenticated `GridOperator` only | Compatibility redirect to `/operator/dashboard`; non-operator access reaches the existing forbidden route. |
+
+Navigation now exposes `Operator dashboard` and `Booking history` only to the exact `GridOperator` role. `ProtectedRoute` still redirects unauthenticated users to login and `RoleRoute` still redirects authenticated non-operators to `/forbidden`.
+
+Both screens use responsive tables/cards, labeled controls, keyboard-native forms/buttons/links, status badges with accessible labels, and the shared API error presentation. Loading, empty, invalid date-range, 403, offline, general server error, and retry states are explicit. Manual refresh, browser focus/visibility, a 30-second visible-page refresh, and the existing cross-screen reservation-change event refetch authoritative values; no client-side counts or reservation timing/eligibility rules were added.
+
+### Prompt 4 verification
+
+| Command/check | Actual result |
+| --- | --- |
+| `npm.cmd ci` | Completed successfully using the tracked lock file. |
+| `npm.cmd run lint` | Passed with 0 errors and 0 warnings. |
+| `npm.cmd run test` | Passed: 5 test files, 29/29 tests. |
+| `npm.cmd run build` | Passed: TypeScript project build and Vite 8.3.1 production bundle; 70 modules transformed. |
+| `npm.cmd run check` | Passed; runs lint, tests, TypeScript, and production build in repository order. |
+| Browser/device smoke test | Not Verified: no sanitized live Grid Operator account/API configuration was supplied for an authenticated browser session. |
+| Screenshot evidence | Not Verified: screenshots of populated, empty, forbidden, offline/error, filtered history, and responsive mobile layouts still need capture in a configured browser environment. |
+
 ## Traceability checklist
 
 | Requirement/evidence | Status | Evidence or blocker |
@@ -212,7 +240,9 @@ The earlier Prompt 2 dashboard integration result is superseded by the successfu
 | Propose compatible API routes, roles, DTOs, errors/status codes | Completed | `docs/member-4/contracts.md`. |
 | Record security rules | Completed | `docs/member-4/contracts.md`. |
 | Implement dashboard API | Completed | `DashboardController`, `DashboardService`, interfaces/DTOs, DI registration, OpenAPI response metadata, and query indexes are present. |
-| Implement dashboard web/Android clients | Not Started | Not part of Prompt 2; existing clients remain unchanged. |
+| Implement Grid Operator dashboard web client | Completed | Role-protected responsive dashboard, navigation, live states, and refresh behavior use Member 4 APIs. |
+| Implement Grid Operator booking-history web client | Completed | Search/status/station/date filters and server pagination are implemented without local business logic. |
+| Implement dashboard Android client | Not Started | Not part of Prompt 4; Android remains unchanged. |
 | Implement QR issue/verification API | Completed | Opaque issue and assigned-operator verification routes, hash-only persistence, settings, indexes, and OpenAPI metadata are implemented. |
 | Implement QR display/scanner clients | Not Started | Not part of Prompt 3; web and Android remain unchanged. |
 | Implement atomic completion and replay protection | Completed | Transaction/CAS workflow and one-winner race test pass against MongoDB replica set. |
@@ -228,4 +258,6 @@ The earlier Prompt 2 dashboard integration result is superseded by the successfu
 | Build .NET solution | Completed | Release build passed with 0 warnings/errors. |
 | Run available Mongo-independent .NET tests | Completed | 69/69 `SolarMicrogrid.Tests` and 11/11 focused API policy/controller tests passed. |
 | Run web lint/tests/production build | Completed | ESLint, 22/22 tests, TypeScript, and Vite build passed. |
+| Verify Prompt 4 web checks | Completed | ESLint, 29/29 tests, TypeScript, and Vite production build passed. |
+| Capture Prompt 4 browser screenshots | Not Verified | Requires a configured API, authenticated Grid Operator fixture, and browser session. |
 | Run Android tests/build/lint | Blocked | Android SDK location is absent in the execution environment. |
