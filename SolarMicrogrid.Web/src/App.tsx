@@ -11,6 +11,9 @@ import { RoleRoute } from './routes/RoleRoute'
 import { ReservationCreatePage } from './features/reservations/ReservationCreatePage'
 import { ReservationDetailPage } from './features/reservations/ReservationDetailPage'
 import { ReservationListPage } from './features/reservations/ReservationListPage'
+import { StationDetailPage } from './features/stations/StationDetailPage'
+import { StationFormPage } from './features/stations/StationFormPage'
+import { StationListPage } from './features/stations/StationListPage'
 
 export default function App() {
   return (
@@ -21,16 +24,8 @@ export default function App() {
         <Route element={<AppLayout />}>
           <Route index element={<HomePage />} />
           <Route path="dashboard" element={<DashboardPage />} />
-          <Route
-            path="stations"
-            element={(
-              <FeaturePlaceholderPage
-                title="Stations & slots"
-                description="Shared route reserved for station, map, schedule, and slot UI integration."
-                ownerNote="The API routes exist. The owning feature team can add screens here without changing authentication or layout infrastructure."
-              />
-            )}
-          />
+          <Route path="stations" element={<StationListPage />} />
+          <Route path="stations/:stationId" element={<StationDetailPage />} />
           <Route path="reservations" element={<ReservationListPage />} />
           <Route path="reservations/new" element={<ReservationCreatePage />} />
           <Route path="reservations/:reservationId" element={<ReservationDetailPage />} />
@@ -59,6 +54,8 @@ export default function App() {
           </Route>
 
           <Route element={<RoleRoute allowedRoles={['Backoffice']} />}>
+            <Route path="stations/new" element={<StationFormPage />} />
+            <Route path="stations/:stationId/edit" element={<StationFormPage />} />
             <Route
               path="backoffice"
               element={(

@@ -5,8 +5,38 @@ export interface StationSummary {
   isActive: boolean
 }
 
+export interface OperatingSchedule {
+  dayOfWeek: string
+  isOpen: boolean
+  openingTime: string | null
+  closingTime: string | null
+}
+
+export interface Station extends StationSummary {
+  description: string | null
+  latitude: number
+  longitude: number
+  energyGenerationCapacityKw: number
+  batteryStorageCapacityKwh: number
+  operatingSchedule: OperatingSchedule[]
+  createdAtUtc: string
+  updatedAtUtc: string
+}
+
+export type StationInput = Pick<Station,
+  'name' | 'description' | 'address' | 'latitude' | 'longitude' |
+  'energyGenerationCapacityKw' | 'batteryStorageCapacityKwh' | 'operatingSchedule'
+>
+
+export interface StationListQuery {
+  search?: string
+  isActive?: boolean
+  page: number
+  pageSize: number
+}
+
 export interface PagedStations {
-  items: StationSummary[]
+  items: Station[]
   totalCount: number
   page: number
   pageSize: number
