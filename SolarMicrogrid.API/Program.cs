@@ -109,6 +109,7 @@ builder.Services.AddScoped<MongoTransactionRunner>();
 builder.Services.AddScoped<ReservationCapacityService>();
 builder.Services.AddScoped<ReservationSchedulingGuardService>();
 builder.Services.AddScoped<ReservationService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<UserService>();
 
 builder.Services.AddOpenApi();

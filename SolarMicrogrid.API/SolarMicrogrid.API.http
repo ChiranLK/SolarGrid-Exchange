@@ -160,6 +160,16 @@ GET {{baseUrl}}/api/reservations?search={{targetProsumerNic}}&page=1&pageSize=20
 Authorization: Bearer {{token}}
 Accept: application/json
 
+### Role-scoped live dashboard
+GET {{baseUrl}}/api/dashboard?recentLimit=5
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Role-scoped booking history with inclusive scheduled-start range and search
+GET {{baseUrl}}/api/dashboard/history?search=RES-00000000&status=Completed&stationId={{stationId}}&fromUtc=2026-09-01T00:00:00Z&toUtc=2026-09-30T23:59:59Z&page=1&pageSize=20
+Authorization: Bearer {{token}}
+Accept: application/json
+
 ### Authorized reservation detail
 GET {{baseUrl}}/api/reservations/{{reservationId}}
 Authorization: Bearer {{token}}

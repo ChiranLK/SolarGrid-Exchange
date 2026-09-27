@@ -45,7 +45,7 @@ There is no CI workflow, Dockerfile, compose file, reverse-proxy configuration, 
 - `MongoDbContext` exposes the shared `Users`, `Stations`, `Slots`, `Reservations`, and `ReservationSchedulingGuards` collections. Member 4 must extend this context rather than create a second database layer.
 - `EnergyReservation` stores references to Member 1/2 data, schedule snapshots, requested kWh, status/version, capacity state, audit fields, status history, and reserved completion fields (`CompletedAtUtc`, `CompletedByActorNic`, `CompletedVerificationId`).
 - `ReservationService` and `ReservationReadPolicy` are authoritative for actor scope, status/view meaning, allowed actions, versioning, and legal transitions.
-- `DashboardController.cs` and `ProsumersController.cs` are zero-byte scaffolds. There is no dashboard service/DTO implementation.
+- `DashboardController.cs` now exposes the Member 4 dashboard and booking-history reads through `DashboardService`; `ProsumersController.cs` remains a zero-byte scaffold outside this prompt.
 - The stable domain-error body is `{ "status": number, "message": string }`. Automatic `[ApiController]` model-validation failures use ASP.NET validation problem details instead.
 
 ### Existing web architecture
@@ -100,7 +100,7 @@ The prompt expressly prohibits Member 4 from owning or duplicating:
 | Stations, slots, schedules, capacity, assigned station, GPS data | Member 2 | API models/services/routes are present; stored GeoJSON and nearby endpoint exist. | Completed |
 | Map client screen | Member 2 | Repository notes say the map UI is not present. Member 4 will not invent it. | Blocked |
 | Reservation creation/update/cancel/approval/rejection and capacity workflow | Member 3 | Present in API/web/Android with tests and shared DTOs. | Completed |
-| Reservation role-scoped list/detail/history views | Member 3 shared service | Present through `GET /api/reservations` and `GET /api/reservations/{id}`. | Completed |
+| Reservation role-scoped list/detail/history views | Member 3 shared service | Member 4 reuses `ReservationReadPolicy` and the shared collection/statuses; the dedicated read-only history projection is exposed at `GET /api/dashboard/history`. | Completed |
 | Completion transition entry point | Member 3 + Member 4 integration | Entity/transition guard reserves `Approved -> Completed`, but no service/controller mutation exists. | Blocked |
 | Accurate QR eligibility | Member 3 + Member 4 integration | `QrEligible` currently means only `Status == Approved`; it does not include current/check-in timing or token state. | Blocked |
 | QR token, verification receipt, replay store, indexes, configuration | Member 4 | Absent. | Not Started |
@@ -144,6 +144,31 @@ The implementation prompt changes documentation only; no Member 4 feature or run
 | `npm.cmd run check` | Passed: ESLint, 4 Vitest files/22 tests, TypeScript compilation, and Vite 8.3.1 production build. |
 | `.\gradlew.bat testDebugUnitTest assembleDebug lintDebug` | Blocked before task execution: Gradle 8.13 downloaded, then reported that no Android SDK location was configured through `ANDROID_HOME` or `SolarGridAndroid/local.properties`. Android tests/build/lint are not verified in this environment. |
 
+## Prompt 2 implementation: dashboard, history, search, and live counts
+
+The server-side Member 4 read surface is implemented without adding reservation mutations or changing Member 3 lifecycle/capacity rules.
+
+- `GET /api/dashboard?recentLimit=5` returns one server-time snapshot for the authenticated role. Prosumer scope is the actor's NIC, Grid Operator scope is the persisted assigned station, and Backoffice scope is global.
+- Dashboard status totals are grouped from MongoDB by the exact shared enum. Semantic counts reuse `ReservationReadPolicy` for current, pending, approved-future, and history definitions.
+- Prosumer output includes current and pending reservations plus recent history. Staff output includes pending reservations, recent approved/completed transfers, active/current transfers, completed transfers, and recent history.
+- `GET /api/dashboard/history` provides role-scoped history with `search`, exact `status`, `stationId`, inclusive `fromUtc`/`toUtc`, `page`, and `pageSize` filters.
+- Date bounds apply to `ScheduledStartTimeUtc`. Results sort by `ScheduledStartTimeUtc` descending and then reservation ObjectId descending, so paging is deterministic.
+- Search trims input, escapes it before case-insensitive MongoDB matching, and covers the displayed `RES-` reference, Prosumer NIC/name, and station name/address. Scope is always combined before results are returned, so a Prosumer cannot reveal another Prosumer's reservations through search.
+- Invalid explicit time kinds/ranges, paging, page size, search length, station IDs, role claims, inactive users, or Grid Operator cross-station filters are rejected. Pages beyond the final page return an empty `items` array with authoritative totals.
+- Responses use UTC timestamps and the shared domain error middleware. `[ApiController]` validation continues to use the repository's existing validation-problem format.
+- Three compound MongoDB indexes support own, station, and global history filters with the implemented descending scheduled-time/ObjectId sort. No speculative text index or duplicate collection was added.
+
+### Prompt 2 verification
+
+| Command/check | Actual result |
+| --- | --- |
+| `dotnet build SolarMicrogrid.API/SolarMicrogrid.API.csproj --configuration Release --no-restore` | Passed: 0 warnings and 0 errors. |
+| `dotnet build SolarMicrogrid.slnx --configuration Release --no-restore -m:1` | Passed: 0 warnings and 0 errors. |
+| Dashboard controller contract tests | Passed: 3/3. Routes require authorization and retain the exact `Prosumer`, `GridOperator`, and `Backoffice` role names. |
+| Dashboard controller plus reservation read-policy tests | Passed: 11/11. |
+| `dotnet test SolarMicrogrid.Tests/SolarMicrogrid.Tests.csproj --configuration Release --no-build --no-restore` | Passed: 69/69. |
+| Dashboard MongoDB integration tests | Blocked: 7/7 test cases failed during shared fixture initialization because no MongoDB replica set was reachable at `localhost:27018` (`SocketException 10061`). No dashboard assertion executed, so integration behavior is `Not Verified`. Docker Desktop was started with approval but its Linux engine returned HTTP 500 and did not provide the required MongoDB dependency. |
+
 ## Traceability checklist
 
 | Requirement/evidence | Status | Evidence or blocker |
@@ -161,17 +186,19 @@ The implementation prompt changes documentation only; no Member 4 feature or run
 | Define dashboard/history/QR/verification/completion terms | Completed | `docs/member-4/contracts.md`. |
 | Propose compatible API routes, roles, DTOs, errors/status codes | Completed | `docs/member-4/contracts.md`. |
 | Record security rules | Completed | `docs/member-4/contracts.md`. |
-| Implement dashboard API/web/Android | Not Started | Later prompt only. |
+| Implement dashboard API | Completed | `DashboardController`, `DashboardService`, interfaces/DTOs, DI registration, OpenAPI response metadata, and query indexes are present. |
+| Implement dashboard web/Android clients | Not Started | Not part of Prompt 2; existing clients remain unchanged. |
 | Implement QR issue/display/scan/verification | Not Started | Later prompt; timing dependency remains blocked. |
 | Implement atomic completion and replay protection | Not Started | Later prompt; shared transition/accounting decisions remain blocked. |
 | Implement deployment configuration | Not Started | Later prompt; deployment target/secrets/TLS/topology are blocked. |
-| Add Member 4 automated tests | Not Started | Later prompt. |
-| Verify live HTTP/JWT and device/browser workflow | Blocked | No sanitized accounts/configuration and no Member 4 implementation. |
+| Add Member 4 dashboard automated tests | Completed | Controller contract and MongoDB integration coverage was added for authorization, isolation, empty data, counts, filters, pagination, invalid inputs, and ordering. |
+| Execute Member 4 MongoDB integration tests | Not Verified | Test fixture could not connect to the required local replica set; 7 tests were blocked before assertions. |
+| Verify live HTTP/JWT and device/browser workflow | Blocked | No sanitized accounts/configuration and the required MongoDB runtime was unavailable. |
 | Verify production deployment | Blocked | No deployment target or credentials/configuration supplied. |
 | Confirm QR lifetime/check-in/completion window | Blocked | Requires explicit team decision. |
 | Confirm consumed-capacity behavior | Blocked | Requires Members 2/3/4 agreement. |
 | Confirm existing `QrEligible` projection matches final rule | Not Verified | Current implementation checks only `Approved`; final time/token rule is unresolved. |
 | Build .NET solution | Completed | Release build passed with 0 warnings/errors. |
-| Run available .NET tests | Not Verified | 69/69 `SolarMicrogrid.Tests` passed; `SolarMicrogrid.API.Tests` reported no discoverable tests. |
+| Run available Mongo-independent .NET tests | Completed | 69/69 `SolarMicrogrid.Tests` and 11/11 focused API policy/controller tests passed. |
 | Run web lint/tests/production build | Completed | ESLint, 22/22 tests, TypeScript, and Vite build passed. |
 | Run Android tests/build/lint | Blocked | Android SDK location is absent in the execution environment. |

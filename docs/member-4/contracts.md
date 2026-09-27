@@ -2,7 +2,7 @@
 
 Contract date: 2026-09-27
 
-Status: proposed integration contract; unresolved cross-owner decisions are explicitly marked `Blocked` or `Not Verified`
+Status: dashboard/history contract implemented; QR, completion, and deployment remain proposed where unresolved cross-owner decisions are explicitly marked `Blocked` or `Not Verified`
 
 ## Authority and ownership
 
@@ -118,7 +118,7 @@ Dashboard data is always constrained before aggregation:
 
 Dashboard cards and lists use the same definitions above and the same reservation MongoDB collection. Counts must be database-derived; clients must not fetch all reservations and count/filter them locally.
 
-### Proposed response DTOs
+### Implemented response DTOs
 
 `DashboardResponseDto`:
 
@@ -127,26 +127,38 @@ Dashboard cards and lists use the same definitions above and the same reservatio
 | `ServerNowUtc` | `DateTime` | Time used for every view/count in this response. |
 | `Role` | string | Exact authenticated API role. |
 | `StationId` | string, nullable | Assigned station for a Grid Operator; otherwise null. |
-| `Metrics` | `DashboardMetricsDto` | Role-scoped counts and totals. |
-| `CurrentReservations` | list of `ReservationListItemResponseDto` | Bounded current list. |
-| `PendingReservations` | list of `ReservationListItemResponseDto` | Bounded pending list. |
-| `ApprovedFutureReservations` | list of `ReservationListItemResponseDto` | Bounded upcoming list. |
-| `RecentHistory` | list of `ReservationListItemResponseDto` | Bounded newest-first history list. |
+| `Scope` | string | `OwnReservations`, `AssignedStation`, or `Global`. |
+| `StatusSummary` | `DashboardStatusSummaryDto` | Exact status totals plus semantic view counts. |
+| `CurrentReservations` | list of `DashboardReservationSummaryDto` | Bounded current list for Prosumers. |
+| `PendingReservations` | list of `DashboardReservationSummaryDto` | Bounded pending list. |
+| `RecentHistory` | list of `DashboardReservationSummaryDto` | Bounded scheduled-time-descending history list. |
+| `RecentTransfers` | list of `DashboardReservationSummaryDto` | Staff-only approved/completed records, updated-time descending. |
+| `ActiveTransfers` | list of `DashboardReservationSummaryDto` | Staff-only current transfers. |
+| `CompletedTransfers` | list of `DashboardReservationSummaryDto` | Staff-only completed-time-descending records. |
 
-`DashboardMetricsDto`:
+`DashboardStatusSummaryDto`:
 
 | Property | Type | Meaning |
 | --- | --- | --- |
+| `PendingTotal` | `long` | All persisted `Pending` records within actor scope. |
+| `ApprovedTotal` | `long` | All persisted `Approved` records within actor scope. |
+| `RejectedTotal` | `long` | All persisted `Rejected` records within actor scope. |
+| `CancelledTotal` | `long` | All persisted `Cancelled` records within actor scope. |
+| `CompletedTotal` | `long` | All persisted `Completed` records within actor scope. |
 | `CurrentCount` | `long` | Current definition above. |
-| `PendingCount` | `long` | Pending definition above. |
+| `PendingCount` | `long` | Pending-view definition above; unlike `PendingTotal`, it excludes ended pending records. |
 | `ApprovedFutureCount` | `long` | Approved-future definition above. |
 | `HistoryCount` | `long` | History definition above. |
-| `CompletedCount` | `long` | Completed reservations within actor scope. |
-| `CompletedEnergyKwh` | `decimal` | Sum of requested kWh for completed reservations within actor scope. |
 
-`CompletedEnergyKwh` is an allocation total, not metered physical delivery; the repository has no meter/actual-energy model. UI labels must not represent it as measured output.
+`DashboardReservationSummaryDto` contains the stable display projection: reservation ID/reference, Prosumer NIC/name, station ID/name/address, slot ID, scheduled start/end UTC, requested kWh, exact status, version, created/updated UTC, and optional completed UTC. It omits capacity/idempotency internals.
 
-The proposed dashboard endpoint accepts an optional `recentLimit` integer from 1 through 20, default 5. Detailed/paged history and search remain on `GET /api/reservations`; the dashboard does not replace or duplicate Member 3's read service.
+The dashboard endpoint accepts an optional `recentLimit` integer from 1 through 20, default 5.
+
+### Implemented booking-history contract
+
+`GET /api/dashboard/history` accepts `search`, nullable exact `status`, `stationId`, inclusive `fromUtc` and `toUtc`, `page` (minimum 1), and `pageSize` (1 through 100, default 20). Both date bounds apply to `ScheduledStartTimeUtc`; a supplied timestamp must include an explicit UTC/offset kind and `fromUtc` cannot be later than `toUtc`.
+
+Search is trimmed, limited to 100 characters, regex-escaped, and matched case-insensitively against the displayed reservation reference, Prosumer NIC/name, and station name/address. The role scope and shared history predicate remain mandatory regardless of filters. Results sort by `ScheduledStartTimeUtc` descending and reservation ObjectId descending. The response includes `serverNowUtc`, `items`, `totalCount`, `page`, `pageSize`, and `totalPages`; a page beyond the result set is valid and empty.
 
 ## QR and verification DTOs
 
@@ -188,14 +200,14 @@ The QR claim set may contain only non-PII protocol fields needed for verificatio
 | `ExpectedVersion` | long | Positive and equal to the verified/current approved version. |
 | `VerificationId` | string | Required opaque, available, unexpired receipt owned by the authenticated operator. |
 
-## Proposed API routes
+## API routes
 
 All routes require the existing JWT bearer authentication. Exact roles use the repository names.
 
 | Method and route | Role and object scope | Request | Success |
 | --- | --- | --- | --- |
 | `GET /api/dashboard?recentLimit=5` | `Prosumer` own; `GridOperator` assigned station; `Backoffice` global | Query only | 200 `DashboardResponseDto` |
-| `GET /api/reservations?view=History...` | Existing role scope | Existing `ReservationListQueryDto` | 200 existing paged response; reused for history/search |
+| `GET /api/dashboard/history?search=...&status=...&stationId=...&fromUtc=...&toUtc=...&page=1&pageSize=20` | `Prosumer` own; `GridOperator` assigned station; `Backoffice` global | `BookingHistoryQueryDto` query | 200 `PagedBookingHistoryResponseDto` |
 | `GET /api/reservations/{reservationId}/qr` | Owning active `Prosumer` only | No body | 200 `ReservationQrResponseDto` |
 | `POST /api/reservations/qr/verify` | Active `GridOperator`, assigned station only | `VerifyReservationQrRequestDto`; required `Idempotency-Key` | 200 `VerifyReservationQrResponseDto` |
 | `POST /api/reservations/{reservationId}/complete` | Active `GridOperator`, assigned station only | `CompleteReservationRequestDto`; required `Idempotency-Key` | 200 existing `ReservationResponseDto` |
@@ -269,7 +281,7 @@ These records reference the existing reservation/station/user identifiers. They 
 - Reuse `apiRequest`, auth context, role routes, shared layout/components, reservation DTOs, and the existing Bootstrap green/gold theme.
 - Implement dashboards in the existing `DashboardPage`/feature structure and operator verification/completion in `src/features/operations`.
 - Render the QR as an opaque API value and never decode it for business decisions.
-- Keep history/search on the shared reservation API. Do not add reservation mutations owned by Member 3.
+- Use the read-only Member 4 dashboard/history routes, which reuse Member 3's shared view predicates and never add reservation mutations.
 
 ### Android
 
@@ -306,8 +318,8 @@ These inputs are currently `Blocked`; no compatible deployment configuration can
 | Existing status enum and legal transitions | Completed | Reused unchanged. |
 | Current/Pending/ApprovedFuture/History definitions | Completed | Reused from `ReservationReadPolicy`. |
 | Role and object scopes | Completed | Reused from JWT roles, reservation read policy, and assigned station. |
-| Dashboard route/DTO proposal | Completed | Documentation only; implementation Not Started. |
-| Shared history/search route | Completed | Existing API; Member 4 consumes it. |
+| Dashboard route/DTO contract | Completed | Implemented at `GET /api/dashboard`. |
+| Role-scoped history/search contract | Completed | Implemented at `GET /api/dashboard/history` with server-side filters/paging. |
 | QR issue/verify/complete route and DTO proposal | Completed | Matches Component 3 boundary; implementation Not Started. |
 | No PII/JWT in QR | Completed | Contracted; implementation/test Not Started. |
 | Server-authoritative decisions | Completed | Contracted; implementation/test Not Started. |
@@ -317,7 +329,8 @@ These inputs are currently `Blocked`; no compatible deployment configuration can
 | Pending reservation at/after start | Blocked | Shared contract lists this as an unresolved team decision. |
 | Completed allocation accounting | Blocked | Requires cross-owner confirmation. |
 | Existing `QrEligible` as final eligibility | Not Verified | It currently checks `Approved` status only. |
-| Dashboard implementation/tests | Not Started | Later prompt. |
+| Dashboard implementation and test coverage | Completed | API, DTOs, indexes, controller contracts, and MongoDB integration cases are implemented. |
+| Dashboard MongoDB integration execution | Not Verified | The local replica set was unavailable; Mongo-independent controller/policy tests pass. |
 | QR client/API implementation/tests | Not Started | Later prompt. |
 | Completion implementation/tests | Not Started | Later prompt. |
 | Deployment implementation/smoke test | Blocked | Target, domains, secrets, topology, and signing inputs absent. |
