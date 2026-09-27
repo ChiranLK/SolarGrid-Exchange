@@ -222,6 +222,35 @@ Both screens use responsive tables/cards, labeled controls, keyboard-native form
 | Browser/device smoke test | Not Verified: no sanitized live Grid Operator account/API configuration was supplied for an authenticated browser session. |
 | Screenshot evidence | Not Verified: screenshots of populated, empty, forbidden, offline/error, filtered history, and responsive mobile layouts still need capture in a configured browser environment. |
 
+## Prompt 5 implementation: Prosumer Android dashboard, history, search, and QR display
+
+The existing `SolarGridAndroid` source was verified as the repository's pure-native Android client before implementation. It remains Java 17 with Android SDK/AndroidX, XML/Material views, Fragments, ViewModels/LiveData, the shared `HttpURLConnection` API client, and Member 1's single app-private SQLite session store. No cross-platform framework, second client, second HTTP stack, or reservation cache/source of truth was introduced.
+
+### Routes and screens
+
+| Android destination | Access and behavior | API usage |
+| --- | --- | --- |
+| `nav_prosumer_home` | Existing Prosumer-only start destination now renders current and pending reservations, approved-future and pending counts, exact status totals, recent history, empty/error/retry states, manual refresh, resume refresh, and a 30-second visible-screen refresh. Rows open the existing Member 3 reservation detail screen. | `GET /api/dashboard?recentLimit=5` through `DashboardRepository`. |
+| `nav_booking_history` | Existing Prosumer drawer destination now provides trimmed reference/text search, exact status, active-station, inclusive from/to date filters, server pagination, refresh, deterministic server order, empty/error/retry states, and filter/page restoration through `SavedStateHandle`. Rows reuse the existing reservation detail screen. | `GET /api/dashboard/history` with `search`, `status`, `stationId`, `fromUtc`, `toUtc`, `page`, and `pageSize=20`; station labels reuse Member 2's existing station repository. |
+| `nav_reservation_qr` | New non-drawer destination is reachable from reservation detail only when the latest reservation DTO's server-provided `allowedActions.canGetQr` is true. It re-reads the owner-scoped reservation, requests a server token, shows a safe reservation summary, renders only the opaque token, counts down to server expiry, clears the image at expiry, and supports explicit reissue. A second server rejection remains authoritative. | `GET /api/reservations/{id}` plus `POST /api/transactions/reservations/{id}/qr`. |
+
+The QR encoder is ZXing Core 3.5.4 from Maven Central. `QrTokenPolicy` accepts only 32-128 character URL-safe opaque values before rendering, rejecting JWT-like, URL, email/PII-shaped, malformed, or incomplete API payloads. The token is held only in the in-memory QR ViewModel and bitmap; it is not written to SQLite, a bundle, saved state, logs, analytics, or screenshots. Rotation retains the in-memory ViewModel, while process recreation performs a fresh owner-scoped read and issuance rather than restoring a raw token.
+
+Client code does not calculate seven-day/twelve-hour windows, reservation lifecycle transitions, transaction eligibility, or completion. It uses API counts, filtering, ordering, `allowedActions`, issuance responses, and error responses. Existing timeout/offline mapping, 401 session clearing/login routing, conflict/forbidden handling, strict JSON field parsing, and retry views cover expired sessions, timeout/offline, malformed response, ineligible state, and server errors.
+
+Accessibility work includes descriptive filter controls, QR/image and refresh descriptions, focusable dashboard rows with reservation summaries, native keyboard search action, labeled date buttons, and live-region result/countdown announcements. Existing theme, dimensions, Material cards/buttons, and status rows are reused.
+
+### Prompt 5 verification
+
+| Command/check | Actual result |
+| --- | --- |
+| `gradlew.bat :app:dependencyInsight --configuration debugRuntimeClasspath --dependency com.google.zxing:core` | Passed. Gradle resolved `com.google.zxing:core:3.5.4` on the Android debug runtime classpath. |
+| `gradlew.bat :app:dependencies --configuration debugUnitTestRuntimeClasspath` | Passed. The existing AndroidX/Material/JUnit graph plus ZXing resolved, and `lifecycle-viewmodel-savedstate:2.9.4` is present transitively for process-restored filters. |
+| Supplemental `javac` + JUnit 4 run for new pure-Java state/query/security/expiry tests | Passed: 9/9 tests. This covers dashboard empty/content mapping, API-owned QR action state, retry/error classification, trimmed/encoded history filters, paging parameters, inclusive date values and invalid ranges, opaque QR payload safety, expiry, and malformed expiry. It is supplemental and is not represented as an Android Gradle test pass. |
+| `gradlew.bat testDebugUnitTest assembleDebug lintDebug --stacktrace` | Blocked before any requested task executed. Gradle reported no `ANDROID_HOME` and no `SolarGridAndroid/local.properties`; no Android SDK exists in the standard user/system paths checked. Android compilation, Gradle unit tests, APK assembly, and lint remain `Not Verified`. |
+| Emulator/device tests | Not Verified: no Android SDK, emulator, or connected device is available in this environment. Rotation, process recreation, TalkBack, offline/timeout, session-expiry, and live QR issuance still require device verification. |
+| Screenshot evidence | Not Verified: capture sanitized populated/empty/error dashboard, filtered/paged history, eligible QR/countdown, expired/ineligible QR, and portrait/landscape layouts after configuring a test API and Prosumer account. Do not include a scannable live token, real NIC, JWT, or other PII. |
+
 ## Traceability checklist
 
 | Requirement/evidence | Status | Evidence or blocker |
@@ -242,9 +271,10 @@ Both screens use responsive tables/cards, labeled controls, keyboard-native form
 | Implement dashboard API | Completed | `DashboardController`, `DashboardService`, interfaces/DTOs, DI registration, OpenAPI response metadata, and query indexes are present. |
 | Implement Grid Operator dashboard web client | Completed | Role-protected responsive dashboard, navigation, live states, and refresh behavior use Member 4 APIs. |
 | Implement Grid Operator booking-history web client | Completed | Search/status/station/date filters and server pagination are implemented without local business logic. |
-| Implement dashboard Android client | Not Started | Not part of Prompt 4; Android remains unchanged. |
+| Implement dashboard Android client | Completed | Existing Prosumer home now consumes the role-scoped dashboard API for counts, current/pending lists, status summary, recent history, and refresh/error states. |
 | Implement QR issue/verification API | Completed | Opaque issue and assigned-operator verification routes, hash-only persistence, settings, indexes, and OpenAPI metadata are implemented. |
-| Implement QR display/scanner clients | Not Started | Not part of Prompt 3; web and Android remain unchanged. |
+| Implement Prosumer Android QR display | Completed | Reservation detail exposes the QR action only from the API action DTO; the dedicated screen revalidates through the API and renders only the short-lived opaque token. |
+| Implement Grid Operator QR scanner client | Not Started | Outside Prompt 5; the existing staff placeholder remains for its later prompt. |
 | Implement atomic completion and replay protection | Completed | Transaction/CAS workflow and one-winner race test pass against MongoDB replica set. |
 | Implement deployment configuration | Not Started | Later prompt; deployment target/secrets/TLS/topology are blocked. |
 | Add Member 4 dashboard automated tests | Completed | Controller contract and MongoDB integration coverage was added for authorization, isolation, empty data, counts, filters, pagination, invalid inputs, and ordering. |
@@ -260,4 +290,8 @@ Both screens use responsive tables/cards, labeled controls, keyboard-native form
 | Run web lint/tests/production build | Completed | ESLint, 22/22 tests, TypeScript, and Vite build passed. |
 | Verify Prompt 4 web checks | Completed | ESLint, 29/29 tests, TypeScript, and Vite production build passed. |
 | Capture Prompt 4 browser screenshots | Not Verified | Requires a configured API, authenticated Grid Operator fixture, and browser session. |
-| Run Android tests/build/lint | Blocked | Android SDK location is absent in the execution environment. |
+| Resolve Android dependency graph | Completed | Gradle resolved the debug and unit-test dependency graphs, including ZXing Core 3.5.4 and saved-state support. |
+| Run Android pure-Java supplemental tests | Completed | 9/9 new Member 4 tests passed through `javac` and JUnit 4. |
+| Run Android Gradle tests/build/lint | Blocked | `testDebugUnitTest assembleDebug lintDebug` stopped before task execution because no Android SDK location is configured or installed; results remain `Not Verified`. |
+| Run Android emulator/device tests | Not Verified | No emulator/device environment is available. |
+| Capture Prompt 5 Android screenshots | Not Verified | Requires a configured API, sanitized Prosumer fixture, Android SDK/emulator or device, and redaction of live QR/token/PII. |

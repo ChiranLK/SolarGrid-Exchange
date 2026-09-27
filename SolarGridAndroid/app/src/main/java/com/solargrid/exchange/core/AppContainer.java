@@ -5,7 +5,9 @@ import android.content.Context;
 import com.solargrid.exchange.data.local.SessionDatabaseHelper;
 import com.solargrid.exchange.data.local.SessionStore;
 import com.solargrid.exchange.features.auth.AuthRepository;
+import com.solargrid.exchange.features.dashboard.DashboardRepository;
 import com.solargrid.exchange.features.operations.OperatorTransactionRepository;
+import com.solargrid.exchange.features.transactions.QrTransactionRepository;
 import com.solargrid.exchange.features.reservations.ReservationRepository;
 import com.solargrid.exchange.features.stations.StationRepository;
 import com.solargrid.exchange.features.users.UserRepository;
@@ -18,6 +20,8 @@ public final class AppContainer {
     private final StationRepository stationRepository;
     private final UserRepository userRepository;
     private final ReservationRepository reservationRepository;
+    private final DashboardRepository dashboardRepository;
+    private final QrTransactionRepository qrTransactionRepository;
     private final OperatorTransactionRepository operatorTransactionRepository;
 
     public AppContainer(Context context) {
@@ -29,6 +33,8 @@ public final class AppContainer {
         stationRepository = new StationRepository(apiClient);
         userRepository = new UserRepository(apiClient);
         reservationRepository = new ReservationRepository(apiClient);
+        dashboardRepository = new DashboardRepository(apiClient);
+        qrTransactionRepository = new QrTransactionRepository(apiClient);
         operatorTransactionRepository = new OperatorTransactionRepository(apiClient);
     }
 
@@ -50,6 +56,14 @@ public final class AppContainer {
 
     public ReservationRepository getReservationRepository() {
         return reservationRepository;
+    }
+
+    public DashboardRepository getDashboardRepository() {
+        return dashboardRepository;
+    }
+
+    public QrTransactionRepository getQrTransactionRepository() {
+        return qrTransactionRepository;
     }
 
     public OperatorTransactionRepository getOperatorTransactionRepository() {
