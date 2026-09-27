@@ -7,7 +7,7 @@ Shared React UI foundation for the SolarGrid-Exchange group project. It is a cli
 - React and TypeScript with Vite
 - Bootstrap 5 plus a small shared theme layer
 - React Router
-- One centralized Fetch-based API client
+- One centralized Axios-based API client
 - Session-based JWT storage and API-backed session restoration
 
 ## Prerequisites
@@ -67,7 +67,7 @@ src/
   styles/       Bootstrap-compatible shared theme additions
 ```
 
-Feature modules should call `apiRequest` through an endpoint module under `src/api`; they must not call `fetch` independently or reproduce API business/authorization rules.
+Feature modules should call `apiRequest` through an endpoint module under `src/api`; they must not make independent HTTP requests or reproduce API business/authorization rules.
 
 ## Verified API integrations
 
