@@ -251,6 +251,40 @@ Accessibility work includes descriptive filter controls, QR/image and refresh de
 | Emulator/device tests | Not Verified: no Android SDK, emulator, or connected device is available in this environment. Rotation, process recreation, TalkBack, offline/timeout, session-expiry, and live QR issuance still require device verification. |
 | Screenshot evidence | Not Verified: capture sanitized populated/empty/error dashboard, filtered/paged history, eligible QR/countdown, expired/ineligible QR, and portrait/landscape layouts after configuring a test API and Prosumer account. Do not include a scannable live token, real NIC, JWT, or other PII. |
 
+## Prompt 6 implementation: Android Grid Operator scanner and completion
+
+The existing native Android role/session, navigation, API client, Material XML system, and SQLite session store were extended without adding a second login, database, network stack, or cross-platform framework.
+
+### Operator routes and workflow
+
+| Android destination | Access and behavior |
+| --- | --- |
+| `nav_operator_home` | Exact `GridOperator` start destination with a clear server-authority notice and scanner entry point. Prosumer reservation actions remain hidden; Backoffice starts at the neutral profile route and cannot see operator scanner navigation. |
+| `nav_qr_operations` | Exact-role CameraX preview with bundled ML Kit QR-only analysis. It explains camera use before requesting the sole new permission, supports retry after ordinary denial, links to app settings after permanent denial, suppresses duplicate frames/scans, and sends only the raw opaque value to `POST /api/transactions/verify`. |
+| `nav_transaction_verification` | Displays only the server verification DTO: reservation reference, pseudonymous Prosumer reference, station, schedule, kWh, exact status, and receipt expiry. Invalid, expired, repeated, completed, ineligible, wrong-station, offline, session-expired, malformed-response, and server failures have explicit non-success states. |
+| `nav_transaction_completion` | Reached only after an explicit confirmation dialog and successful `POST /api/transactions/reservations/{id}/complete`. It shows the server status/reference/completion timestamp and contains no completion action, preventing repeated submission. |
+
+CameraX 1.6.2 and bundled ML Kit Barcode Scanning 17.3.0 are resolved from Google's repository. The bundled model permits on-device QR recognition without a first-use model download. Android does not parse or trust QR contents; ML Kit returns a string and the API performs every authorization, station, expiry, reservation-status, version, replay, and completion decision.
+
+The activity-scoped `OperatorTransactionViewModel` retains safe flow state across rotation but never stores the scanned QR token. It keeps the one-time verification receipt only in memory until completion or flow exit. A navigation listener clears transaction state outside the scanner/verification/completion destinations. Process recreation deliberately shows a restart-scan state instead of restoring a raw token or receipt. In-flight generations ignore late callbacks after reset, scan/completion guards reject duplicate frames and rapid taps, and uncertain network/server completion errors never create a local success.
+
+The verification API response was extended compatibly with `prosumerReference`, a server-generated per-reservation `PRO-` alias derived from the public reservation identifier. It contains no NIC or name. OpenAPI updates automatically from the existing DTO/controller metadata, and `docs/member-4/contracts.md` records the field and native integration boundary.
+
+### Prompt 6 verification
+
+| Command/check | Actual result |
+| --- | --- |
+| `dotnet build SolarMicrogrid.slnx --configuration Release --no-restore -m:1` | Passed: 0 warnings and 0 errors. |
+| Focused `TransactionsControllerContractTests` | Passed: 4/4. |
+| `scripts/run-component3-tests.ps1` | Passed against the repository runner's temporary MongoDB 8 replica set: 60/60 API integration tests, 0 failed, 0 skipped. This includes safe verification output and replay/completion tests. |
+| CameraX dependency insight | Passed. Gradle resolved `androidx.camera:camera-view:1.6.2` and its aligned CameraX 1.6.2 runtime group. |
+| ML Kit dependency insight | Passed. Gradle resolved bundled `com.google.mlkit:barcode-scanning:17.3.0`. |
+| Supplemental `javac` + JUnit 4 operator tests | Passed: 7/7. Coverage includes exact roles and start-destination routing, all camera-permission states, valid/duplicate scan guards, explicit confirmation, rapid double-tap prevention, invalid/expired/completed/wrong-station mapping, and network/server retry versus conflict behavior. This is supplemental and is not represented as an Android Gradle test pass. |
+| XML/resource consistency checks | Passed. All Android resource XML parsed and all project string references resolved. |
+| `gradlew.bat testDebugUnitTest assembleDebug lintDebug` | Blocked before task execution: no Android SDK is configured through `ANDROID_HOME` or `SolarGridAndroid/local.properties`. Android compilation, Gradle unit tests, APK assembly, and lint remain `Not Verified`. |
+| Physical camera/emulator/device verification | Not Verified: no Android SDK, emulator, or connected camera device is available. Permission dialogs/settings return, QR focus/orientation, rotation, process recreation, offline/timeout, session expiry, TalkBack, and live verify/complete behavior require a configured device run. |
+| Screenshot evidence | Not Verified: capture sanitized operator home, permission explanation/denial/settings, scanner, valid/invalid/expired/wrong-station verification, confirmation, conflict, and completion summary states. Never capture a scannable live token, JWT, real NIC, or verification receipt. |
+
 ## Traceability checklist
 
 | Requirement/evidence | Status | Evidence or blocker |
@@ -274,7 +308,8 @@ Accessibility work includes descriptive filter controls, QR/image and refresh de
 | Implement dashboard Android client | Completed | Existing Prosumer home now consumes the role-scoped dashboard API for counts, current/pending lists, status summary, recent history, and refresh/error states. |
 | Implement QR issue/verification API | Completed | Opaque issue and assigned-operator verification routes, hash-only persistence, settings, indexes, and OpenAPI metadata are implemented. |
 | Implement Prosumer Android QR display | Completed | Reservation detail exposes the QR action only from the API action DTO; the dedicated screen revalidates through the API and renders only the short-lived opaque token. |
-| Implement Grid Operator QR scanner client | Not Started | Outside Prompt 5; the existing staff placeholder remains for its later prompt. |
+| Implement Grid Operator QR scanner client | Completed | Exact-role CameraX/ML Kit scanner, permission paths, server verification, confirmation, and completion summary replace the placeholder. |
+| Add safe Prosumer reference to verification DTO | Completed | Server returns a per-reservation pseudonymous `PRO-` alias; integration tests verify the NIC is absent. |
 | Implement atomic completion and replay protection | Completed | Transaction/CAS workflow and one-winner race test pass against MongoDB replica set. |
 | Implement deployment configuration | Not Started | Later prompt; deployment target/secrets/TLS/topology are blocked. |
 | Add Member 4 dashboard automated tests | Completed | Controller contract and MongoDB integration coverage was added for authorization, isolation, empty data, counts, filters, pagination, invalid inputs, and ordering. |
@@ -295,3 +330,8 @@ Accessibility work includes descriptive filter controls, QR/image and refresh de
 | Run Android Gradle tests/build/lint | Blocked | `testDebugUnitTest assembleDebug lintDebug` stopped before task execution because no Android SDK location is configured or installed; results remain `Not Verified`. |
 | Run Android emulator/device tests | Not Verified | No emulator/device environment is available. |
 | Capture Prompt 5 Android screenshots | Not Verified | Requires a configured API, sanitized Prosumer fixture, Android SDK/emulator or device, and redaction of live QR/token/PII. |
+| Resolve Prompt 6 scanner dependencies | Completed | CameraX 1.6.2 and bundled ML Kit Barcode Scanning 17.3.0 resolved through Gradle. |
+| Run Prompt 6 pure-Java operator tests | Completed | 7/7 role/routing, permission, flow guard, and error/retry mapping tests passed. |
+| Run Prompt 6 Android Gradle tests/build/lint | Blocked | Tasks stop before execution because the Android SDK remains absent; results are `Not Verified`. |
+| Verify Prompt 6 on physical camera/device | Not Verified | No emulator/device or camera environment is available. |
+| Capture Prompt 6 screenshots | Not Verified | Requires a configured API, sanitized role fixtures, and Android camera device/emulator. |

@@ -47,4 +47,12 @@ public final class SessionUser {
     public boolean isStaff() {
         return ROLE_GRID_OPERATOR.equals(role) || ROLE_BACKOFFICE.equals(role);
     }
+
+    public boolean isGridOperator() {
+        return ROLE_GRID_OPERATOR.equals(role);
+    }
+
+    public boolean isBackoffice() {
+        return ROLE_BACKOFFICE.equals(role);
+    }
 }

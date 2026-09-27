@@ -189,10 +189,11 @@ The QR contains only `QrToken` (or a client-created application deep link carryi
 | --- | --- | --- |
 | `VerificationId` | string | Opaque one-time receipt ID. |
 | `ReservationId` | string | Re-read authorized reservation. |
+| `ProsumerReference` | string | Server-generated per-reservation pseudonymous `PRO-` reference; never a NIC or name. |
 | `ReservationVersion` | long | Version verified and required for completion. |
 | `VerifiedAtUtc` | `DateTime` | Server verification time. |
 | `ExpiresAtUtc` | `DateTime` | Receipt expiry. |
-| confirmation fields | scalar values | Reservation reference/version, station ID/name, schedule, requested kWh, and exact approved status; no owner, token hash, or internal record fields. |
+| confirmation fields | scalar values | Reservation reference/version, pseudonymous Prosumer reference, station ID/name, schedule, requested kWh, and exact approved status; no NIC/name, token hash, or internal record fields. |
 
 ### `CompleteQrTransactionRequestDto`
 
@@ -291,9 +292,12 @@ These records reference the existing reservation/station/user identifiers. They 
 ### Android
 
 - Reuse `AppContainer`, `ApiClient`, `ApiCallback`, `UiState`, Fragments/ViewModels, XML/Material resources, and the one SQLite session store.
-- Extend the existing `OperatorTransactionRepository` and `nav_qr_operations` destination. Do not add Retrofit/Room/Compose/Kotlin or another session/network stack.
+- The implemented exact-role route sends a `GridOperator` to `nav_operator_home`, exposes `nav_qr_operations` only to that role, and sends Backoffice to the neutral profile route rather than an operator/prosumer workflow.
+- The implemented `OperatorTransactionRepository` uses the shared client for `verify` and `complete`; CameraX provides the lifecycle camera preview and bundled ML Kit reads QR images locally. No Retrofit/Room/Compose/Kotlin or second session/network stack is added.
 - Scanner UI sends only the scanned opaque payload. It must not declare a transfer verified/completed until the server response succeeds.
 - Do not persist QR, verification receipt, or completed outcome as authoritative offline state and do not queue offline completion.
+- Camera is the only additional runtime permission. The scanner explains its use before requesting it, supports retry after ordinary denial, and links to app settings after permanent denial.
+- Verification receipt and transaction state live only in the activity-scoped in-memory ViewModel. Leaving the operator flow clears them; process recreation requires a fresh scan instead of restoring a receipt from `Bundle`, SQLite, or saved state.
 
 ## Deployment contract and blockers
 
@@ -337,6 +341,8 @@ These inputs are currently `Blocked`; no compatible deployment configuration can
 | Dashboard implementation and test coverage | Completed | API, DTOs, indexes, controller contracts, and MongoDB integration cases are implemented. |
 | Dashboard MongoDB integration execution | Completed | Included in the 60/60 full API suite against MongoDB 8 replica set. |
 | Grid Operator web dashboard/history | Completed | Role-protected responsive routes consume live Member 4 APIs; 29/29 web tests and the production build pass. Browser screenshots remain Not Verified. |
-| QR transaction API implementation/tests | Completed | Full API suite passed 60/60 against MongoDB 8 replica set. Client QR UI remains Not Started. |
+| Prosumer QR display client | Completed | Native Android requests and renders only the server-issued opaque value; no raw QR is persisted. |
+| Grid Operator scanner/verification/completion client | Completed | Exact-role native route, CameraX/ML Kit scanner, permission states, server verification, explicit confirmation, completion summary, and in-memory replay guards are implemented. Physical-device verification remains Not Verified. |
+| QR transaction API implementation/tests | Completed | Full API suite passed 60/60 against MongoDB 8 replica set, including the pseudonymous Prosumer-reference confirmation projection. |
 | Completion implementation/tests | Completed | Success, replay, expiry, changed-state, and simultaneous one-winner completion are covered and passing. |
 | Deployment implementation/smoke test | Blocked | Target, domains, secrets, topology, and signing inputs absent. |

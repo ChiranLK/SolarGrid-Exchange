@@ -40,6 +40,8 @@ public sealed class VerifyQrTransactionResponseDto
 
     public string ReservationReference { get; set; } = string.Empty;
 
+    public string ProsumerReference { get; set; } = string.Empty;
+
     public long ReservationVersion { get; set; }
 
     public string StationId { get; set; } = string.Empty;

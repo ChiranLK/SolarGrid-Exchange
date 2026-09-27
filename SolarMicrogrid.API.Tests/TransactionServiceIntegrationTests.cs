@@ -139,6 +139,8 @@ public sealed class TransactionServiceIntegrationTests : IAsyncLifetime
         Assert.Equal(approved.Id, verified.ReservationId);
         Assert.Equal(approved.Version, verified.ReservationVersion);
         Assert.Equal(ReservationStatus.Approved.ToString(), verified.Status);
+        Assert.StartsWith("PRO-", verified.ProsumerReference, StringComparison.Ordinal);
+        Assert.DoesNotContain(Component3MongoFixture.ProsumerOneNic, verified.ProsumerReference);
         Assert.Equal(QrTransactionState.Verified, stored.State);
         Assert.NotEqual(verified.VerificationId, stored.VerificationHash);
         Assert.Equal(64, stored.VerificationHash?.Length);

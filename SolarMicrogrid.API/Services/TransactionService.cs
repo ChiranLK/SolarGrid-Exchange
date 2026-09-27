@@ -226,6 +226,7 @@ public sealed class TransactionService : ITransactionService
                     VerificationId = verificationId,
                     ReservationId = reservation.Id,
                     ReservationReference = BuildReservationReference(reservation.Id),
+                    ProsumerReference = BuildProsumerReference(reservation.Id),
                     ReservationVersion = reservation.Version,
                     StationId = reservation.StationId,
                     StationName = station.Name,
@@ -742,6 +743,13 @@ public sealed class TransactionService : ITransactionService
         // Match the established RES plus final-eight-hex display reference without exposing token data.
         string suffix = reservationId.Length <= 8 ? reservationId : reservationId[^8..];
         return $"RES-{suffix.ToUpperInvariant()}";
+    }
+
+    private static string BuildProsumerReference(string reservationId)
+    {
+        // Return a per-reservation pseudonymous owner reference without exposing the Prosumer NIC or name.
+        string suffix = reservationId.Length <= 8 ? reservationId : reservationId[^8..];
+        return $"PRO-{suffix.ToUpperInvariant()}";
     }
 
     private static DateTime Min(DateTime first, DateTime second)
