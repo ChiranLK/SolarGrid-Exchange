@@ -1,6 +1,7 @@
 package com.solargrid.exchange.features.operations;
 
 import com.solargrid.exchange.data.model.CompletedTransaction;
+import com.solargrid.exchange.data.model.SharedReservationContract;
 import com.solargrid.exchange.data.model.VerifiedTransaction;
 import com.solargrid.exchange.network.ApiCallback;
 import com.solargrid.exchange.network.ApiClient;
@@ -31,6 +32,10 @@ public final class OperatorTransactionRepository {
             @Override
             public void onSuccess(JSONObject value) {
                 try {
+                    String status = value.getString("status");
+                    if (!SharedReservationContract.APPROVED.equals(status)) {
+                        throw new JSONException("The verification status was not Approved.");
+                    }
                     callback.onSuccess(new VerifiedTransaction(
                             value.getString("verificationId"),
                             value.getString("reservationId"),
@@ -42,7 +47,7 @@ public final class OperatorTransactionRepository {
                             value.getString("scheduledStartTimeUtc"),
                             value.getString("scheduledEndTimeUtc"),
                             value.getDouble("requestedEnergyKwh"),
-                            value.getString("status"),
+                            status,
                             value.getString("verifiedAtUtc"),
                             value.getString("expiresAtUtc")));
                 } catch (JSONException exception) {
@@ -75,11 +80,15 @@ public final class OperatorTransactionRepository {
                     @Override
                     public void onSuccess(JSONObject value) {
                         try {
+                            String status = value.getString("status");
+                            if (!SharedReservationContract.COMPLETED.equals(status)) {
+                                throw new JSONException("The completion status was not Completed.");
+                            }
                             callback.onSuccess(new CompletedTransaction(
                                     value.getString("reservationId"),
                                     value.getString("reservationReference"),
                                     value.getString("stationId"),
-                                    value.getString("status"),
+                                    status,
                                     value.getLong("version"),
                                     value.getString("completedAtUtc")));
                         } catch (JSONException exception) {

@@ -1,3 +1,4 @@
+import type { UserRole } from '../../auth/authTypes'
 import type { ReservationStatus } from '../reservations/reservationTypes'
 
 export interface DashboardStatusSummary {
@@ -24,7 +25,7 @@ export interface DashboardReservationSummary {
   scheduledStartTimeUtc: string
   scheduledEndTimeUtc: string
   requestedEnergyKwh: number
-  status: string
+  status: ReservationStatus
   version: number
   createdAtUtc: string
   updatedAtUtc: string
@@ -33,8 +34,8 @@ export interface DashboardReservationSummary {
 
 export interface DashboardResponse {
   serverNowUtc: string
-  role: string
-  scope: string
+  role: UserRole
+  scope: 'OwnReservations' | 'AssignedStation' | 'Global'
   stationId: string | null
   statusSummary: DashboardStatusSummary
   currentReservations: DashboardReservationSummary[]

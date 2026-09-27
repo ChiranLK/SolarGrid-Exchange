@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError } from '../../api/apiClient'
+import { userRoles } from '../../auth/authTypes'
+import { reservationStatuses } from '../reservations/reservationTypes'
 import { buildBookingHistoryPath } from './dashboardApi'
 import type { DashboardResponse, PagedBookingHistory } from './dashboardTypes'
 import {
@@ -38,6 +40,17 @@ const emptyDashboard: DashboardResponse = {
 }
 
 describe('Grid Operator dashboard routing and states', () => {
+  it('uses the exact shared role and reservation status labels', () => {
+    expect(userRoles).toEqual(['Backoffice', 'GridOperator', 'Prosumer'])
+    expect(reservationStatuses).toEqual([
+      'Pending',
+      'Approved',
+      'Rejected',
+      'Cancelled',
+      'Completed',
+    ])
+  })
+
   it('allows only Grid Operators and hides operator navigation from Prosumers', () => {
     expect(canAccessOperatorScreens('GridOperator')).toBe(true)
     expect(canAccessOperatorScreens('Prosumer')).toBe(false)

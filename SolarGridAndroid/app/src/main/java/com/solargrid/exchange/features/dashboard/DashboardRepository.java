@@ -4,6 +4,7 @@ import com.solargrid.exchange.data.model.DashboardReservation;
 import com.solargrid.exchange.data.model.DashboardStatusSummary;
 import com.solargrid.exchange.data.model.PagedBookingHistory;
 import com.solargrid.exchange.data.model.ProsumerDashboard;
+import com.solargrid.exchange.data.model.SharedReservationContract;
 import com.solargrid.exchange.network.ApiCallback;
 import com.solargrid.exchange.network.ApiClient;
 import com.solargrid.exchange.network.ApiError;
@@ -94,6 +95,10 @@ public final class DashboardRepository {
         List<DashboardReservation> reservations = new ArrayList<>();
         for (int index = 0; index < values.length(); index++) {
             JSONObject item = values.getJSONObject(index);
+            String status = item.getString("status");
+            if (!SharedReservationContract.isKnownStatus(status)) {
+                throw new JSONException("The API returned an unknown reservation status.");
+            }
             reservations.add(new DashboardReservation(
                     item.getString("reservationId"),
                     item.getString("reference"),
@@ -103,7 +108,7 @@ public final class DashboardRepository {
                     item.getString("scheduledStartTimeUtc"),
                     item.getString("scheduledEndTimeUtc"),
                     item.getDouble("requestedEnergyKwh"),
-                    item.getString("status")));
+                    status));
         }
         return reservations;
     }

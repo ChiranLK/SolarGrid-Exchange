@@ -285,6 +285,41 @@ The verification API response was extended compatibly with `prosumerReference`, 
 | Physical camera/emulator/device verification | Not Verified: no Android SDK, emulator, or connected camera device is available. Permission dialogs/settings return, QR focus/orientation, rotation, process recreation, offline/timeout, session expiry, TalkBack, and live verify/complete behavior require a configured device run. |
 | Screenshot evidence | Not Verified: capture sanitized operator home, permission explanation/denial/settings, scanner, valid/invalid/expired/wrong-station verification, confirmation, conflict, and completion summary states. Never capture a scannable live token, JWT, real NIC, or verification receipt. |
 
+## Prompt 7 integration pass: Members 1, 2 and 3
+
+This pass did not add authentication, station/map, reservation-mutation, scheduling, approval, rejection, cancellation, or capacity ownership. It verified the current implementations and added only Member 4 response-boundary validation, shared-contract tests, lifecycle/count integration tests, and documentation.
+
+Android Member 4 parsers now fail closed when dashboard history contains an unknown reservation status, verification does not return canonical `Approved`, or completion does not return canonical `Completed`. This detects DTO/status drift but does not calculate eligibility or lifecycle transitions in the client. The web dashboard DTO types now reuse the existing `UserRole` and `ReservationStatus` unions and the exact server scope values.
+
+### Dependency matrix
+
+| Owner | Shared contract | Integration status | Evidence or blocker |
+| --- | --- | --- | --- |
+| Member 1 | JWT `NameIdentifier` is the NIC; role claim uses exact `Backoffice`, `GridOperator`, or `Prosumer`; bearer lifetime is validated. | Completed | New JWT contract test validates signature, issuer, audience, UTC expiry, NIC, and exact Grid Operator role. Controller policy tests and Mongo-backed services revalidate the persisted active actor and exact role. |
+| Member 1 | Prosumer data is owner-scoped and Grid Operators are assigned-station scoped from persisted users rather than request bodies. | Completed | Dashboard isolation and wrong-claim tests pass; QR issue hides another owner, verification/completion use persisted assignment, and wrong-station verification is rejected in the 66-test API suite. |
+| Member 1 | Android uses the existing SQLite session, attaches its JWT, clears it on HTTP 401, and logout clears the same store. | Not Verified | Static inspection confirms one `SessionStore`, authenticated `ApiClient` bearer attachment/401 clearing, `AuthRepository.logout`, and login routing. Runtime/Gradle verification is unavailable because no Android SDK is installed. No second session store was added. |
+| Member 2 | Dashboard/history and verification resolve station names from `SolarStationInfo`; verification compares the operator's stored `AssignedStationId` with the persisted transaction/reservation station. | Completed | Post-completion dashboard integration asserts the real station name; existing and new transaction tests cover correct and mismatched station scope. No client-provided station can authorize verification. |
+| Member 2 | Nearby/map coordinates come from station API latitude/longitude and no second map/station service exists. | Blocked | API station DTOs and Android `Station` parsing preserve latitude/longitude, and the DTO contract test pins both fields. The current web station area is a placeholder and the Android “Nearby stations” screen is a list with no map implementation; Member 4 did not invent a parallel map UI. |
+| Member 3 | Member 4 uses the canonical five statuses and the shared owner/station/view predicates. | Completed | API enum, web unions, Android response validator, and contract tests pin `Pending`, `Approved`, `Rejected`, `Cancelled`, and `Completed`; dashboard code delegates views to `ReservationReadPolicy`. There is no invented `Expired` reservation status. |
+| Member 3 | QR starts only after approval; cancellation, rejection, schedule end, version/status change, and token/receipt expiry prevent use. | Completed | Mongo integration crosses the real create/approve/cancel/reject services, proves Pending and Rejected cannot issue, proves cancellation revokes an issued QR on verification, and proves a reservation at its scheduled end cannot issue. Existing expiry/version tests remain passing. |
+| Member 3 | Completion is the single legal atomic `Approved -> Completed` final transition and consumed capacity is not released. | Completed | Transaction/CAS tests, replay tests, and the simultaneous one-winner race pass against MongoDB 8; the implementation calls the shared legal-transition guard and retains `Consumed`. |
+| Member 3 | Dashboard counts/history are fresh after lifecycle completion. | Completed | New integration test reads the live Prosumer and Grid Operator dashboards before/after completion and verifies Approved/future counts fall, Completed/history counts rise, and the completed station-scoped row is returned. |
+| Members 1–4 | Web and Android share camel-case DTO names, UTC timestamps, exact labels, page/page-size conventions, and `{status,message}` errors. | Completed | New serialization/error contract tests pass 4/4; web exact-label/type checks pass in the 30-test suite; Android UTC/paging/role/status/error supplemental checks pass 13/13. |
+| Members 1–4 | Live browser/device HTTP flow with real JWT expiry, SQLite logout, maps, QR camera, and cross-client completion refresh. | Blocked | No sanitized test accounts/API environment, Android SDK, emulator, device, or completed upstream map UI is available. Service/Mongo and build-time contracts are verified separately without claiming this end-to-end evidence. |
+
+### Prompt 7 verification
+
+| Component/check | Result | Actual evidence |
+| --- | --- | --- |
+| API build | Passed | `dotnet build SolarMicrogrid.slnx --configuration Release --no-restore -m:1`: 0 warnings, 0 errors. |
+| Cross-component contract tests | Passed | Focused `Member4CrossComponentContractTests`: 4/4 passed for JWT claims/expiry, exact roles/statuses, camel-case UTC/paging/station/transaction DTOs, and the shared error envelope. |
+| API Mongo integration | Passed | Direct script invocation was blocked by local PowerShell execution policy; `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\run-component3-tests.ps1` then passed 66/66, 0 failed, 0 skipped. |
+| Existing .NET service tests | Passed | `SolarMicrogrid.Tests`: 69/69 passed, 0 failed, 0 skipped. |
+| Web lint/tests/build | Passed | `npm.cmd run check`: ESLint passed; Vitest passed 5 files and 30/30 tests; TypeScript and Vite 8.3.1 production build passed with 70 modules transformed. |
+| Android supplemental shared-contract tests | Passed | `javac` plus JUnit 4 passed 13/13 role, canonical-status, UTC parsing, history paging/UTC query, permission, replay guard, and error-mapping checks. This is not represented as an Android Gradle pass. |
+| Android Gradle tests/build/lint | Blocked | `gradlew.bat testDebugUnitTest assembleDebug lintDebug` stopped before task dependency resolution because no Android SDK is configured through `ANDROID_HOME` or `local.properties`; no requested task executed. |
+| Live browser/device integration | Not Verified | No configured sanitized HTTP accounts, browser session, Android emulator/device, or camera environment was available. |
+
 ## Traceability checklist
 
 | Requirement/evidence | Status | Evidence or blocker |
@@ -335,3 +370,10 @@ The verification API response was extended compatibly with `prosumerReference`, 
 | Run Prompt 6 Android Gradle tests/build/lint | Blocked | Tasks stop before execution because the Android SDK remains absent; results are `Not Verified`. |
 | Verify Prompt 6 on physical camera/device | Not Verified | No emulator/device or camera environment is available. |
 | Capture Prompt 6 screenshots | Not Verified | Requires a configured API, sanitized role fixtures, and Android camera device/emulator. |
+| Complete Prompt 7 dependency integration matrix | Completed | Matrix above records Members 1–3 contracts, integration state, evidence, and blockers without duplicating their features. |
+| Detect shared DTO/role/status drift | Completed | API serialization/JWT/error tests, strict Android Member 4 response validation, and web shared union tests are implemented and passing. |
+| Verify stale counts after completion | Completed | Mongo integration proves fresh Prosumer/operator dashboard totals and history immediately after the atomic transition. |
+| Verify QR invalidation across Member 3 lifecycle | Completed | Pending/rejected issuance, cancellation-after-issue, schedule end, expiry, version change, station mismatch, and replay cases are covered in the passing API suite. |
+| Verify Member 2 map client integration | Blocked | Stored/API coordinates remain intact, but the repository contains no implemented map screen to exercise. |
+| Run Prompt 7 API and web builds/tests | Completed | API build, 66/66 API tests, 69/69 service tests, and web lint/30 tests/TypeScript/Vite build passed. |
+| Run Prompt 7 Android Gradle checks | Blocked | No Android SDK is installed/configured; supplemental pure-Java contract tests passed 13/13. |
