@@ -1,3 +1,4 @@
+import axios, { isAxiosError } from 'axios'
 import { clearSession, readSession } from '../auth/sessionStorage'
 import { environment } from '../config/environment'
 
@@ -25,6 +26,7 @@ interface ApiRequestOptions extends RequestInit {
 }
 
 let unauthorizedHandler: (() => void) | null = null
+const httpClient = axios.create({ baseURL: environment.apiBaseUrl })
 
 export function setUnauthorizedHandler(handler: (() => void) | null): void {
   unauthorizedHandler = handler
@@ -46,49 +48,37 @@ export async function apiRequest<T>(
     headers.set('Authorization', `Bearer ${session.token}`)
   }
 
-  let response: Response
+  let payload: unknown
   try {
-    response = await fetch(buildUrl(path), { ...requestInit, headers })
-  } catch {
-    throw new ApiError(0, 'Unable to reach the SolarGrid API. Check that it is running and try again.')
-  }
+    const response = await httpClient.request<T>({
+      url: normalizePath(path),
+      method: requestInit.method ?? 'GET',
+      headers: Object.fromEntries(headers.entries()),
+      data: requestInit.body,
+      signal: requestInit.signal ?? undefined,
+    })
+    payload = response.status === 204 ? undefined : response.data
+  } catch (error) {
+    if (isAxiosError(error) && error.response) {
+      const problem = isApiProblem(error.response.data) ? error.response.data : undefined
+      const status = error.response.status
 
-  const payload = await readPayload(response)
-  if (!response.ok) {
-    const problem = isApiProblem(payload) ? payload : undefined
-    const message = getErrorMessage(response.status, problem)
+      if (status === 401 && !anonymous) {
+        clearSession()
+        unauthorizedHandler?.()
+      }
 
-    if (response.status === 401 && !anonymous) {
-      clearSession()
-      unauthorizedHandler?.()
+      throw new ApiError(status, getErrorMessage(status, problem), problem)
     }
 
-    throw new ApiError(response.status, message, problem)
+    throw new ApiError(0, 'Unable to reach the SolarGrid API. Check that it is running and try again.')
   }
 
   return payload as T
 }
 
-function buildUrl(path: string): string {
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`
-  return `${environment.apiBaseUrl}${normalizedPath}`
-}
-
-async function readPayload(response: Response): Promise<unknown> {
-  if (response.status === 204) {
-    return undefined
-  }
-
-  const text = await response.text()
-  if (!text) {
-    return undefined
-  }
-
-  try {
-    return JSON.parse(text) as unknown
-  } catch {
-    return text
-  }
+function normalizePath(path: string): string {
+  return path.startsWith('/') ? path : `/${path}`
 }
 
 function isApiProblem(value: unknown): value is ApiProblem {
