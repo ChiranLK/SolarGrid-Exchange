@@ -51,6 +51,14 @@
             android:layout_marginTop="@dimen/space_lg"
             android:textAppearance="@style/TextAppearance.SolarGrid.Title" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/station_view_all_slots"
+            style="@style/Widget.SolarGrid.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_sm"
+            android:text="@string/view_available_slots" />
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

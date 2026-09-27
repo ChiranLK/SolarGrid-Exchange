@@ -6,6 +6,10 @@ def configuredApiBaseUrl = providers.gradleProperty('SOLARGRID_API_BASE_URL')
         .orElse(providers.environmentVariable('SOLARGRID_API_BASE_URL'))
         .orElse('http://10.0.2.2:5076/api/')
         .get()
+def configuredMapsApiKey = providers.gradleProperty('SOLARGRID_MAPS_API_KEY')
+        .orElse(providers.environmentVariable('SOLARGRID_MAPS_API_KEY'))
+        .orElse('')
+        .get()
 
 android {
     namespace 'com.solargrid.exchange'
@@ -20,6 +24,8 @@ android {
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         buildConfigField 'String', 'API_BASE_URL', '"' + configuredApiBaseUrl + '"'
+        buildConfigField 'boolean', 'MAPS_API_KEY_CONFIGURED', configuredMapsApiKey.trim().isEmpty() ? 'false' : 'true'
+        manifestPlaceholders = [mapsApiKey: configuredMapsApiKey]
     }
 
     buildTypes {
@@ -54,8 +60,11 @@ dependencies {
     implementation 'androidx.navigation:navigation-ui:2.9.5'
     implementation 'androidx.drawerlayout:drawerlayout:1.2.0'
     implementation 'com.google.android.material:material:1.13.0'
+    implementation 'com.google.android.gms:play-services-maps:20.0.0'
+    implementation 'com.google.android.gms:play-services-location:21.4.0'
 
     testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20260719'
     androidTestImplementation 'androidx.test.ext:junit:1.3.0'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.7.0'
 }

@@ -1,6 +1,7 @@
 package com.solargrid.exchange.features.stations;
 
 import com.solargrid.exchange.data.model.Slot;
+import com.solargrid.exchange.data.model.NearbyStation;
 import com.solargrid.exchange.data.model.Station;
 import com.solargrid.exchange.network.ApiCallback;
 import com.solargrid.exchange.network.ApiClient;
@@ -30,6 +31,28 @@ public final class StationRepository {
             @Override
             public void onSuccess(JSONObject value) {
                 callback.onSuccess(parseStations(value.optJSONArray("items")));
+            }
+
+            @Override
+            public void onError(ApiError error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void getNearbyStations(
+            double latitude,
+            double longitude,
+            ApiCallback<List<NearbyStation>> callback) {
+        String path = String.format(
+                Locale.US,
+                "stations/nearby?latitude=%.7f&longitude=%.7f&radiusKm=25&maximumResults=50",
+                latitude,
+                longitude);
+        apiClient.getArray(path, new ApiCallback<>() {
+            @Override
+            public void onSuccess(JSONArray value) {
+                callback.onSuccess(parseNearbyStations(value));
             }
 
             @Override
@@ -71,12 +94,30 @@ public final class StationRepository {
         loadAvailableSlots(encode(stationId), callback);
     }
 
+    public void getAvailableSlotsPage(
+            String stationId,
+            int page,
+            ApiCallback<AvailableSlotPage> callback) {
+        String fromUtc = currentUtcQueryValue();
+        apiClient.get("stations/" + encode(stationId) + "/slots/available?fromUtc=" +
+                        fromUtc + "&page=" + page + "&pageSize=20", new ApiCallback<>() {
+                    @Override
+                    public void onSuccess(JSONObject value) {
+                        callback.onSuccess(new AvailableSlotPage(
+                                parseSlots(value.optJSONArray("items")),
+                                value.optInt("page", page),
+                                value.optInt("totalPages", 0)));
+                    }
+
+                    @Override
+                    public void onError(ApiError error) {
+                        callback.onError(error);
+                    }
+                });
+    }
+
     private void loadAvailableSlots(String encodedStationId, ApiCallback<List<Slot>> callback) {
-        SimpleDateFormat utcFormat = new SimpleDateFormat(
-                "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
-                Locale.US);
-        utcFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-        String fromUtc = encode(utcFormat.format(new Date()));
+        String fromUtc = currentUtcQueryValue();
         apiClient.get(
                 "stations/" + encodedStationId + "/slots/available?fromUtc=" + fromUtc +
                         "&page=1&pageSize=100",
@@ -91,6 +132,14 @@ public final class StationRepository {
                         callback.onError(error);
                     }
                 });
+    }
+
+    private static String currentUtcQueryValue() {
+        SimpleDateFormat utcFormat = new SimpleDateFormat(
+                "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+                Locale.US);
+        utcFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+        return encode(utcFormat.format(new Date()));
     }
 
     private static String encode(String value) {
@@ -113,6 +162,34 @@ public final class StationRepository {
             }
         }
         return stations;
+    }
+
+    static List<NearbyStation> parseNearbyStations(JSONArray values) {
+        List<NearbyStation> nearby = new ArrayList<>();
+        if (values == null) {
+            return nearby;
+        }
+        for (int index = 0; index < values.length(); index++) {
+            JSONObject item = values.optJSONObject(index);
+            JSONObject stationValue = item == null ? null : item.optJSONObject("station");
+            if (stationValue == null || !stationValue.has("latitude") ||
+                    !stationValue.has("longitude") || !stationValue.has("id")) {
+                continue;
+            }
+            Station station = parseStation(stationValue);
+            if (station.getId().isEmpty() || !Double.isFinite(station.getLatitude()) ||
+                    !Double.isFinite(station.getLongitude()) ||
+                    station.getLatitude() < -90 || station.getLatitude() > 90 ||
+                    station.getLongitude() < -180 || station.getLongitude() > 180) {
+                continue;
+            }
+            double distanceKm = item.optDouble("distanceKm", Double.NaN);
+            if (!Double.isFinite(distanceKm) || distanceKm < 0) {
+                continue;
+            }
+            nearby.add(new NearbyStation(station, distanceKm));
+        }
+        return nearby;
     }
 
     private static Station parseStation(JSONObject value) {
