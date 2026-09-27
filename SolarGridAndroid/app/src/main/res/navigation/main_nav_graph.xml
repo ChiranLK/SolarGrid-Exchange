@@ -11,6 +11,9 @@
     <fragment android:id="@+id/nav_station_detail" android:name="com.solargrid.exchange.ui.stations.StationDetailFragment" android:label="@string/station_details">
         <argument android:name="stationId" app:argType="string" />
     </fragment>
+    <fragment android:id="@+id/nav_available_slots" android:name="com.solargrid.exchange.ui.stations.AvailableSlotsFragment" android:label="@string/available_slots_live">
+        <argument android:name="stationId" app:argType="string" />
+    </fragment>
     <fragment android:id="@+id/nav_my_reservations" android:name="com.solargrid.exchange.ui.reservations.ReservationListFragment" android:label="@string/my_reservations">
         <argument android:name="defaultView" android:defaultValue="Pending" app:argType="string" />
     </fragment>
