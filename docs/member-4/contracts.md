@@ -2,7 +2,7 @@
 
 Contract date: 2026-09-27
 
-Status: dashboard/history contract implemented; QR, completion, and deployment remain proposed where unresolved cross-owner decisions are explicitly marked `Blocked` or `Not Verified`
+Status: dashboard/history and secure QR transaction contracts implemented; deployment remains proposed where unresolved cross-owner decisions are explicitly marked `Blocked` or `Not Verified`
 
 ## Authority and ownership
 
@@ -67,42 +67,43 @@ History is a read projection, not a new status or collection. Web and Android mu
 
 ### QR eligibility
 
-An eligible reservation is a server-authorized candidate for QR issuance, not merely a client-visible `Approved` label. The final rule must require all of the following:
+An eligible reservation is a server-authorized candidate for QR issuance, not merely a client-visible `Approved` label. The implemented rule requires all of the following:
 
 1. The authenticated actor is the owning active `Prosumer`.
-2. The reservation is in the actor's authorized scope and `Status == Approved`.
-3. The token binds the reservation's current `Version` and station.
-4. Server time is within the agreed issuance/check-in window.
-5. The reservation/version has not been completed, cancelled, updated, revoked, or superseded.
+2. The reservation exists in the actor's owner-scoped MongoDB query.
+3. The reservation is `Approved`, its capacity state is `Held`, and its scheduled end is after server time.
+4. The token record binds the reservation's current `Version`, station, and a one-way owner-reference hash.
+5. The referenced Member 2 station still exists and is active.
+6. The reservation/version has not been completed, cancelled, updated, revoked, or superseded.
 
-The exact issuance/check-in window is `Blocked` because the assignment/team plan provides no value. Until it is agreed, the existing `QrEligible = Status == Approved` and `AllowedActions.CanGetQr` are only preliminary candidate flags and are `Not Verified` as final Member 4 eligibility.
+No narrower pre-start check-in window was supplied. To avoid inventing one, issuance is allowed for approved future/current reservations but not after `ScheduledEndTimeUtc`. The older `QrEligible = Status == Approved` projection remains broader than the transaction API rule and clients must treat successful issuance as authoritative.
 
 ### Verified transaction
 
-A verified transaction is a short-lived, server-stored verification receipt produced only after an assigned active `GridOperator` submits a valid, unexpired, unconsumed QR payload and the API re-reads the reservation. It records at minimum:
+A verified transaction is the same server-stored transaction record after an assigned active `GridOperator` submits a valid, unexpired, unconsumed opaque QR token and the API re-reads the reservation. It records:
 
-- opaque verification ID;
+- only a hash of the returned opaque verification ID;
 - reservation ID and exact reservation version;
 - station ID;
-- verifying operator NIC on the server (never inside the QR payload);
+- a one-way verifying-operator reference hash (never inside the QR payload);
 - verified and expiry UTC timestamps;
-- receipt state (`Available`, `Consumed`, or `Expired`); and
-- token-identifier digest/replay evidence, never the raw QR value.
+- state (`Issued`, `Verified`, `Completed`, `Expired`, or `Revoked`); and
+- token hash/replay evidence, never the raw QR or verification value.
 
-Verification does not itself change the reservation to `Completed` under this proposed two-step contract. The receipt is bound to one operator, station, reservation, and version and can authorize one completion only.
+Verification does not change the reservation to `Completed`. The returned receipt is bound to one operator, station, reservation, and version and can authorize one explicit completion only.
 
 ### Completed transfer
 
-A completed transfer is the result of an atomic, idempotent `Approved -> Completed` mutation by the assigned active `GridOperator` using an available verification receipt and the current expected reservation version. The operation:
+A completed transfer is the result of an atomic `Approved -> Completed` mutation by the same assigned active `GridOperator` using an unexpired verified receipt and the current expected reservation version. The operation:
 
 - consumes the receipt once;
 - increments the reservation version once;
-- sets `CompletedAtUtc`, `CompletedByActorNic`, and `CompletedVerificationId` from server data;
+- sets `CompletedAtUtc`, `CompletedByActorNic`, and an internal transaction audit reference in `CompletedVerificationId` from server data;
 - appends one status-history entry;
 - makes every QR for the reservation/version unusable; and
-- returns the authoritative `ReservationResponseDto`.
+- returns the safe `CompleteQrTransactionResponseDto`.
 
-The shared contract proposes changing the held allocation to `Consumed` without restoring it to available slot capacity. Final accounting is `Blocked` pending explicit agreement between Members 2, 3, and 4.
+The implemented transition changes the reservation capacity state to `Consumed` and retains the existing slot allocation; it does not restore delivered energy to available capacity.
 
 ## Dashboard contract
 
@@ -164,25 +165,25 @@ Search is trimmed, limited to 100 characters, regex-escaped, and matched case-in
 
 ASP.NET Core serializes the C# property names below as camelCase JSON.
 
-### `ReservationQrResponseDto`
+### `IssueQrTransactionResponseDto`
 
 | Property | Type | Rule |
 | --- | --- | --- |
 | `ReservationId` | string | Authorized reservation ObjectId. |
 | `ReservationVersion` | long | Version at issue time. |
-| `QrPayload` | string | Opaque or signed, compact value rendered by clients without interpretation. |
+| `QrToken` | string | URL-safe, 256-bit random opaque value rendered by clients without interpretation. |
 | `IssuedAtUtc` | `DateTime` | Server issue time. |
 | `ExpiresAtUtc` | `DateTime` | Server expiry time. |
 
-The QR claim set may contain only non-PII protocol fields needed for verification: random token identifier, reservation ID, reservation version, station ID, issued time, expiry, and cryptographic integrity data. It must never contain a JWT, bearer token, NIC, name, email, phone, address, credentials, signing secret, or editable business outcome.
+The QR contains only `QrToken` (or a client-created application deep link carrying only that token). Reservation/version/timestamps are response metadata outside the QR image. It must never contain a JWT, NIC, name, email, phone, address, reservation/station details, credentials, signing secret, or editable business outcome.
 
-### `VerifyReservationQrRequestDto`
+### `VerifyQrTransactionRequestDto`
 
 | Property | Type | Rule |
 | --- | --- | --- |
-| `QrPayload` | string | Required, bounded opaque value from the scanner. No actor/station identity is accepted from the body. |
+| `Token` | string | Required, 32-128 character URL-safe opaque value from the scanner. No actor/station identity is accepted from the body. |
 
-### `VerifyReservationQrResponseDto`
+### `VerifyQrTransactionResponseDto`
 
 | Property | Type | Rule |
 | --- | --- | --- |
@@ -191,14 +192,16 @@ The QR claim set may contain only non-PII protocol fields needed for verificatio
 | `ReservationVersion` | long | Version verified and required for completion. |
 | `VerifiedAtUtc` | `DateTime` | Server verification time. |
 | `ExpiresAtUtc` | `DateTime` | Receipt expiry. |
-| `Reservation` | `ReservationResponseDto` | Authorized current summary; no raw token or signing data. |
+| confirmation fields | scalar values | Reservation reference/version, station ID/name, schedule, requested kWh, and exact approved status; no owner, token hash, or internal record fields. |
 
-### `CompleteReservationRequestDto`
+### `CompleteQrTransactionRequestDto`
 
 | Property | Type | Rule |
 | --- | --- | --- |
 | `ExpectedVersion` | long | Positive and equal to the verified/current approved version. |
 | `VerificationId` | string | Required opaque, available, unexpired receipt owned by the authenticated operator. |
+
+`CompleteQrTransactionResponseDto` returns only the reservation ID/reference, station ID, `Completed` status, incremented version, and completion UTC timestamp.
 
 ## API routes
 
@@ -208,13 +211,13 @@ All routes require the existing JWT bearer authentication. Exact roles use the r
 | --- | --- | --- | --- |
 | `GET /api/dashboard?recentLimit=5` | `Prosumer` own; `GridOperator` assigned station; `Backoffice` global | Query only | 200 `DashboardResponseDto` |
 | `GET /api/dashboard/history?search=...&status=...&stationId=...&fromUtc=...&toUtc=...&page=1&pageSize=20` | `Prosumer` own; `GridOperator` assigned station; `Backoffice` global | `BookingHistoryQueryDto` query | 200 `PagedBookingHistoryResponseDto` |
-| `GET /api/reservations/{reservationId}/qr` | Owning active `Prosumer` only | No body | 200 `ReservationQrResponseDto` |
-| `POST /api/reservations/qr/verify` | Active `GridOperator`, assigned station only | `VerifyReservationQrRequestDto`; required `Idempotency-Key` | 200 `VerifyReservationQrResponseDto` |
-| `POST /api/reservations/{reservationId}/complete` | Active `GridOperator`, assigned station only | `CompleteReservationRequestDto`; required `Idempotency-Key` | 200 existing `ReservationResponseDto` |
+| `POST /api/transactions/reservations/{reservationId}/qr` | Owning active `Prosumer` only | No body | 200 `IssueQrTransactionResponseDto` |
+| `POST /api/transactions/verify` | Active `GridOperator`, assigned station only | `VerifyQrTransactionRequestDto` | 200 `VerifyQrTransactionResponseDto` |
+| `POST /api/transactions/reservations/{reservationId}/complete` | Same active assigned `GridOperator` that verified | `CompleteQrTransactionRequestDto` | 200 `CompleteQrTransactionResponseDto` |
 
 Backoffice may see dashboard/history data but may not obtain a Prosumer QR, verify it, or complete a transfer. A Prosumer may not verify or complete. Web versus Android never changes permission.
 
-The verification route uses one idempotency key per logical scan. A retry with the same actor/key/fingerprint may return the same receipt; reuse with different input conflicts. A different request after the QR token was consumed is a replay conflict. Completion follows the repository's existing expected-version and actor-scoped idempotency patterns.
+Scanning consumes the issued token exactly once; repeat scans return 409 rather than another receipt. Completion uses the receipt hash, expected reservation version, operator binding, reservation CAS, and transaction-state CAS. It is intentionally non-replayable: a repeat or concurrent losing request returns 409 rather than a second success.
 
 ## HTTP outcomes and error format
 
@@ -222,12 +225,12 @@ The verification route uses one idempotency key per logical scan. A retry with t
 
 | Status | Member 4 meaning |
 | --- | --- |
-| 200 | Successful dashboard read, QR issue, verification, or completion; an idempotent retry may return the original result with `Idempotency-Replayed: true`. |
-| 400 | Malformed ObjectId, invalid/bounded query, malformed QR/request, invalid expected version shape, missing/invalid idempotency key, or model-validation failure. |
+| 200 | Successful dashboard read, QR issue, verification, or completion. |
+| 400 | Malformed ObjectId, invalid/bounded query, malformed opaque token/receipt, invalid expected version shape, or model-validation failure. |
 | 401 | Missing, invalid, or expired bearer JWT. |
 | 403 | Authenticated role is not permitted, Grid Operator has no valid assigned station, or known object is outside staff station scope. |
 | 404 | Authorized resource is absent; also used by existing reservation reads to hide another Prosumer's object. |
-| 409 | Reservation is ineligible/stale/final, QR is expired/revoked/replayed/wrong-version, receipt is expired/consumed/mismatched, expected version is stale, invalid transition, or idempotency key conflicts. |
+| 409 | Reservation is ineligible/stale/final, QR is expired/revoked/replayed/wrong-version, receipt is expired/consumed/mismatched, expected version is stale, or the transition is invalid. |
 | 500 | Unexpected server failure with no internal details exposed. |
 
 To avoid token enumeration, scanner failures should use a generic safe message such as `The QR code is invalid or no longer usable.` Logs may retain a correlation ID and detailed reason but must not log the raw QR or JWT.
@@ -250,27 +253,28 @@ Automatic ASP.NET model validation currently returns validation problem details 
 1. The API re-reads user, assigned station, reservation, version, status, and receipt for every sensitive operation. QR signature/decoding alone never authorizes an action.
 2. Clients do not calculate eligibility, current state, completion windows, status transitions, or dashboard counts. They use returned flags, reasons, server timestamps, and refreshed DTOs.
 3. QR data contains no PII, JWT, bearer token, password, credential, signing key, or trusted editable status/energy result.
-4. QR and receipt lifetimes are server configuration with validated positive bounds. The exact values remain `Blocked`; clients render `ExpiresAtUtc` and never extend expiry locally.
+4. QR and receipt lifetimes are server configuration validated from 1-30 minutes. Both default to five minutes; receipt expiry is additionally capped at the reservation's scheduled end. Clients render `ExpiresAtUtc` and never extend expiry locally.
 5. A material reservation update changes an approved reservation to `Pending` and changes its version, invalidating every prior QR/receipt. Cancellation, rejection, and completion also invalidate outstanding artifacts.
 6. Verification checks active operator status and exact assigned station, approved status, current version, time window, QR expiry/revocation, and unique token consumption in one authoritative workflow.
 7. QR replay protection uses a random high-entropy token identifier and a unique server-side digest/consumption record. Raw QR values are never persisted or logged.
 8. A verification receipt is high entropy, short-lived, server stored, bound to operator/station/reservation/version, and consumed once with completion.
 9. Completion atomically compares `Approved` status, expected version, station scope, receipt state/bindings, and expiry; consumes the receipt and updates reservation audit/history exactly once. Concurrent/repeated completion cannot win twice.
-10. Idempotency stores scoped hashes/fingerprints rather than raw keys. A matching retry returns the persisted result; mismatched reuse is 409.
-11. MongoDB unique indexes/CAS filters, not process memory or client state, enforce replay and one-time completion. Deployment must use the repository's transaction-capable path or test the existing compensation strategy against the chosen topology.
-12. General reservation/dashboard responses never include raw QR payloads, token digests, signing material, or internal replay records.
-13. HTTPS is mandatory outside local debug. Android cleartext remains debug-only; production web should use a same-origin `/api` reverse proxy unless a narrowly scoped API CORS policy is explicitly configured.
-14. MongoDB connection strings, JWT/QR signing secrets, web domains, Android release keys, and deployment credentials come from environment/secret storage and are never committed.
-15. Logs, analytics, screenshots, and test fixtures must redact JWTs, QR payloads, signing secrets, credentials, and personal data.
+10. MongoDB unique indexes/CAS filters, not process memory or client state, enforce replay and one-time completion. The reservation and transaction updates run in a MongoDB transaction on the supported replica-set topology; the existing standalone fallback still uses reservation-first CAS so only one request can win.
+11. General reservation/dashboard responses never include raw QR payloads, token digests, signing material, or internal replay records.
+12. HTTPS is mandatory outside local debug. Android cleartext remains debug-only; production web should use a same-origin `/api` reverse proxy unless a narrowly scoped API CORS policy is explicitly configured.
+13. MongoDB connection strings, JWT secrets, web domains, Android release keys, and deployment credentials come from environment/secret storage and are never committed.
+14. Logs, analytics, screenshots, and test fixtures must redact JWTs, QR payloads, credentials, and personal data.
 
 ## Persistence and index boundary
 
-Member 4 may add replay/receipt collections through the existing `MongoDbContext` and `MongoSettings`. Suggested server-only records are:
+Member 4 uses the existing `MongoDbContext`/`MongoSettings` with one `QrTransactions` collection. Each record stores only:
 
-- QR token record: token-identifier digest, reservation ID/version, station ID, issue/expiry, consumed/revoked timestamps, and concurrency version.
-- verification receipt: opaque ID/digest, reservation ID/version, station ID, operator NIC, verified/expiry/consumed timestamps, state, and idempotency hashes.
+- SHA-256 token hash and nullable SHA-256 verification-receipt hash;
+- reservation ID/version, station ID, and one-way owner/operator reference hashes;
+- issue/token-expiry, verification/receipt-expiry, completion, and update timestamps; and
+- the exact transaction state.
 
-Required database guarantees are unique token digest, unique verification ID/digest, an index supporting reservation/version invalidation, a TTL cleanup index for expired artifacts, and compare-and-swap filters for consumption. TTL deletion is cleanup only; every request must explicitly compare expiry because MongoDB TTL removal is asynchronous.
+Database guarantees are unique token hash, sparse unique verification hash, reservation/version/state lookup, expiry lookup, and compare-and-swap filters for verification/completion. Every request explicitly compares expiry; records are retained for replay/audit evidence rather than relying on asynchronous TTL deletion.
 
 These records reference the existing reservation/station/user identifiers. They must not embed or duplicate user, station, slot, or reservation documents.
 
@@ -304,7 +308,7 @@ Before production deployment, the team must supply or decide:
 - same-origin reverse proxy versus explicit trusted-origin CORS;
 - transaction-capable MongoDB topology and backup/retention policy;
 - secret manager/environment injection and rotation for the tracked JWT key;
-- QR signing/key-rotation strategy and lifetimes;
+- operational confirmation of the configured QR/verification lifetimes;
 - TLS certificates, health/readiness checks, logging/monitoring, and rollback procedure;
 - Android application signing identity and secure signing pipeline; and
 - sanitized smoke-test accounts for all three roles.
@@ -320,17 +324,17 @@ These inputs are currently `Blocked`; no compatible deployment configuration can
 | Role and object scopes | Completed | Reused from JWT roles, reservation read policy, and assigned station. |
 | Dashboard route/DTO contract | Completed | Implemented at `GET /api/dashboard`. |
 | Role-scoped history/search contract | Completed | Implemented at `GET /api/dashboard/history` with server-side filters/paging. |
-| QR issue/verify/complete route and DTO proposal | Completed | Matches Component 3 boundary; implementation Not Started. |
-| No PII/JWT in QR | Completed | Contracted; implementation/test Not Started. |
-| Server-authoritative decisions | Completed | Contracted; implementation/test Not Started. |
-| Replay and one-time completion design | Completed | Contracted; persistence implementation Not Started. |
-| QR and verification receipt lifetime values | Blocked | No official/team value supplied. |
+| QR issue/verify/complete route and DTO contract | Completed | Implemented under `/api/transactions`. |
+| No PII/JWT in QR | Completed | Opaque 256-bit token only; integration test verifies no owner/reservation/station data and hashed persistence. |
+| Server-authoritative decisions | Completed | User, station, reservation, version, capacity, time, and transaction state are re-read by the API. |
+| Replay and one-time completion design | Completed | Unique hashes, state/version CAS, MongoDB transaction, and race test implemented. |
+| QR and verification receipt lifetime values | Completed | Configurable 1-30 minutes; both default to five minutes. |
 | Check-in/completion window | Blocked | No official/team rule supplied. |
 | Pending reservation at/after start | Blocked | Shared contract lists this as an unresolved team decision. |
-| Completed allocation accounting | Blocked | Requires cross-owner confirmation. |
-| Existing `QrEligible` as final eligibility | Not Verified | It currently checks `Approved` status only. |
+| Completed allocation accounting | Completed | Reservation becomes `Consumed`; existing slot allocation is retained and not restored. |
+| Existing `QrEligible` projection as final eligibility | Not Verified | It remains a preliminary status-only UI flag; the transaction API applies the authoritative stronger rule. |
 | Dashboard implementation and test coverage | Completed | API, DTOs, indexes, controller contracts, and MongoDB integration cases are implemented. |
-| Dashboard MongoDB integration execution | Not Verified | The local replica set was unavailable; Mongo-independent controller/policy tests pass. |
-| QR client/API implementation/tests | Not Started | Later prompt. |
-| Completion implementation/tests | Not Started | Later prompt. |
+| Dashboard MongoDB integration execution | Completed | Included in the 60/60 full API suite against MongoDB 8 replica set. |
+| QR transaction API implementation/tests | Completed | Full API suite passed 60/60 against MongoDB 8 replica set. Client QR UI remains Not Started. |
+| Completion implementation/tests | Completed | Success, replay, expiry, changed-state, and simultaneous one-winner completion are covered and passing. |
 | Deployment implementation/smoke test | Blocked | Target, domains, secrets, topology, and signing inputs absent. |

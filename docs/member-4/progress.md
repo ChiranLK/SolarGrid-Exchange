@@ -101,11 +101,12 @@ The prompt expressly prohibits Member 4 from owning or duplicating:
 | Map client screen | Member 2 | Repository notes say the map UI is not present. Member 4 will not invent it. | Blocked |
 | Reservation creation/update/cancel/approval/rejection and capacity workflow | Member 3 | Present in API/web/Android with tests and shared DTOs. | Completed |
 | Reservation role-scoped list/detail/history views | Member 3 shared service | Member 4 reuses `ReservationReadPolicy` and the shared collection/statuses; the dedicated read-only history projection is exposed at `GET /api/dashboard/history`. | Completed |
-| Completion transition entry point | Member 3 + Member 4 integration | Entity/transition guard reserves `Approved -> Completed`, but no service/controller mutation exists. | Blocked |
-| Accurate QR eligibility | Member 3 + Member 4 integration | `QrEligible` currently means only `Status == Approved`; it does not include current/check-in timing or token state. | Blocked |
-| QR token, verification receipt, replay store, indexes, configuration | Member 4 | Absent. | Not Started |
-| QR/completion timing and expiry values | Team decision | No agreed values are tracked. | Blocked |
-| Completed-capacity accounting | Member 2 + Member 3 + Member 4 | Contract proposes consumed capacity is not restored, but records it as requiring confirmation. | Blocked |
+| Completion transition entry point | Member 3 + Member 4 integration | `TransactionService` uses the reserved `Approved -> Completed` transition, existing completion audit fields, version CAS, and `Consumed` capacity state. | Completed |
+| Accurate QR eligibility | Member 3 + Member 4 integration | Transaction API requires owner scope, active Prosumer/station, `Approved`, `Held`, unended schedule, and matching version/station/owner bindings. The older status-only UI flag remains preliminary. | Completed |
+| QR token, verification receipt, replay store, indexes, configuration | Member 4 | Implemented with opaque random values, hash-only persistence, `QrTransactions`, unique indexes, bounded settings, and CAS states. | Completed |
+| QR/verification expiry values | Member 4 configuration | Both default to five minutes and are validated from 1-30 minutes; verification cannot outlive scheduled end. | Completed |
+| Narrow check-in/completion window | Team decision | No narrower start-relative window is tracked, so Member 4 does not invent one. | Blocked |
+| Completed-capacity accounting | Member 2 + Member 3 + Member 4 | Reuses the reserved `Consumed` state and retains the existing slot allocation without restoring delivered capacity. | Completed |
 | Official assignment brief, rubric, current team plan | Team/course | Absent from repository. | Blocked |
 | Deployment target, domains, MongoDB topology, TLS, secret source, Android signing identity | Team/infrastructure | Not supplied. | Blocked |
 | CORS or same-origin production routing decision | Team/infrastructure | No API CORS policy or reverse-proxy config exists. | Blocked |
@@ -169,6 +170,30 @@ The server-side Member 4 read surface is implemented without adding reservation 
 | `dotnet test SolarMicrogrid.Tests/SolarMicrogrid.Tests.csproj --configuration Release --no-build --no-restore` | Passed: 69/69. |
 | Dashboard MongoDB integration tests | Blocked: 7/7 test cases failed during shared fixture initialization because no MongoDB replica set was reachable at `localhost:27018` (`SocketException 10061`). No dashboard assertion executed, so integration behavior is `Not Verified`. Docker Desktop was started with approval but its Linux engine returned HTTP 500 and did not provide the required MongoDB dependency. |
 
+## Prompt 3 implementation: secure QR transactions and replay protection
+
+The server-side two-step workflow is implemented under `api/transactions` without adding a second authentication, station, or reservation lifecycle implementation.
+
+- An active owning Prosumer issues a token with `POST /api/transactions/reservations/{reservationId}/qr`. Eligibility is checked from MongoDB against owner scope, exact `Approved` status, `Held` capacity, current version, active station, and a scheduled end after server time.
+- The QR value is a URL-safe 256-bit random bearer token. Only its SHA-256 hash is stored; the token contains no NIC, JWT, reservation/station data, credentials, or business outcome.
+- `QrTransactions` stores the token/receipt hashes, reservation ID/version, station ID, one-way actor-reference hashes, state, and audit/expiry timestamps. Unique token/receipt indexes and reservation/state/expiry indexes match actual operations.
+- An active assigned Grid Operator verifies with `POST /api/transactions/verify`. The API re-reads the user, station, reservation, status, capacity, version, owner binding, state, and server expiry before atomically consuming `Issued -> Verified` and returning a separate opaque receipt.
+- The same operator explicitly completes with `POST /api/transactions/reservations/{reservationId}/complete`. A MongoDB transaction updates the verified transaction and performs the shared `Approved -> Completed` reservation CAS, increments the version, marks capacity `Consumed`, writes completion audit fields, and appends one status-history entry.
+- Repeat scans, repeated completion, concurrent losing completion, expired/revoked values, changed reservations, wrong roles, and wrong stations are rejected through the shared 400/401/403/404/409 error conventions. No raw token, receipt, JWT, or NIC is logged by the workflow.
+- QR and verification lifetimes are server settings, each five minutes by default and validated from 1 through 30 minutes. Receipt expiry is capped by `ScheduledEndTimeUtc`.
+
+### Prompt 3 verification
+
+| Command/check | Actual result |
+| --- | --- |
+| `dotnet build SolarMicrogrid.slnx --configuration Release --no-restore -m:1` | Passed: 0 warnings and 0 errors. |
+| Transaction controller contract tests | Passed: 4/4. Controller authentication and exact Prosumer/GridOperator boundaries are intact. |
+| `scripts/run-component3-tests.ps1` with a process-scoped execution-policy bypass | Passed against a temporary MongoDB 8 replica set: 60/60 API tests, 0 failed, 0 skipped. The script removed its temporary container. |
+| Transaction integration coverage within the full API suite | Passed: ownership/authorization, hash-only/no-PII payload, invalid/expired token, wrong role/station, changed reservation, successful verification/completion, repeat scan/completion, receipt expiry, and simultaneous completion race. The race produced exactly one success. |
+| `dotnet test SolarMicrogrid.Tests/SolarMicrogrid.Tests.csproj --configuration Release --no-build --no-restore` | Passed: 69/69, 0 failed, 0 skipped. |
+
+The earlier Prompt 2 dashboard integration result is superseded by the successful full API run: its MongoDB tests are now verified as part of the 60/60 suite.
+
 ## Traceability checklist
 
 | Requirement/evidence | Status | Evidence or blocker |
@@ -188,16 +213,18 @@ The server-side Member 4 read surface is implemented without adding reservation 
 | Record security rules | Completed | `docs/member-4/contracts.md`. |
 | Implement dashboard API | Completed | `DashboardController`, `DashboardService`, interfaces/DTOs, DI registration, OpenAPI response metadata, and query indexes are present. |
 | Implement dashboard web/Android clients | Not Started | Not part of Prompt 2; existing clients remain unchanged. |
-| Implement QR issue/display/scan/verification | Not Started | Later prompt; timing dependency remains blocked. |
-| Implement atomic completion and replay protection | Not Started | Later prompt; shared transition/accounting decisions remain blocked. |
+| Implement QR issue/verification API | Completed | Opaque issue and assigned-operator verification routes, hash-only persistence, settings, indexes, and OpenAPI metadata are implemented. |
+| Implement QR display/scanner clients | Not Started | Not part of Prompt 3; web and Android remain unchanged. |
+| Implement atomic completion and replay protection | Completed | Transaction/CAS workflow and one-winner race test pass against MongoDB replica set. |
 | Implement deployment configuration | Not Started | Later prompt; deployment target/secrets/TLS/topology are blocked. |
 | Add Member 4 dashboard automated tests | Completed | Controller contract and MongoDB integration coverage was added for authorization, isolation, empty data, counts, filters, pagination, invalid inputs, and ordering. |
-| Execute Member 4 MongoDB integration tests | Not Verified | Test fixture could not connect to the required local replica set; 7 tests were blocked before assertions. |
-| Verify live HTTP/JWT and device/browser workflow | Blocked | No sanitized accounts/configuration and the required MongoDB runtime was unavailable. |
+| Execute Member 4 MongoDB integration tests | Completed | Full API suite passed 60/60 against the repository runner's temporary MongoDB 8 replica set. |
+| Verify live HTTP/JWT and device/browser workflow | Blocked | No sanitized end-to-end accounts/configuration; service and controller integration are verified, but no external client smoke test was performed. |
 | Verify production deployment | Blocked | No deployment target or credentials/configuration supplied. |
-| Confirm QR lifetime/check-in/completion window | Blocked | Requires explicit team decision. |
-| Confirm consumed-capacity behavior | Blocked | Requires Members 2/3/4 agreement. |
-| Confirm existing `QrEligible` projection matches final rule | Not Verified | Current implementation checks only `Approved`; final time/token rule is unresolved. |
+| Confirm QR/verification lifetime | Completed | Five-minute defaults, bounded configuration, and expiry tests are implemented. |
+| Confirm narrower check-in/completion window | Blocked | No official start-relative window was supplied. |
+| Confirm consumed-capacity behavior | Completed | Reuses `Consumed` and retains the allocation rather than restoring capacity. |
+| Confirm existing `QrEligible` projection matches final rule | Not Verified | Current projection checks only `Approved`; transaction API eligibility is authoritative and stronger. |
 | Build .NET solution | Completed | Release build passed with 0 warnings/errors. |
 | Run available Mongo-independent .NET tests | Completed | 69/69 `SolarMicrogrid.Tests` and 11/11 focused API policy/controller tests passed. |
 | Run web lint/tests/production build | Completed | ESLint, 22/22 tests, TypeScript, and Vite build passed. |

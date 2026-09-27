@@ -36,6 +36,8 @@ builder.Services
         "MongoSettings:ReservationsCollectionName is required.")
     .Validate(settings => !string.IsNullOrWhiteSpace(settings.ReservationSchedulingGuardsCollectionName),
         "MongoSettings:ReservationSchedulingGuardsCollectionName is required.")
+    .Validate(settings => !string.IsNullOrWhiteSpace(settings.QrTransactionsCollectionName),
+        "MongoSettings:QrTransactionsCollectionName is required.")
     .ValidateOnStart();
 
 builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
@@ -69,6 +71,15 @@ builder.Services
         "BusinessRules:MaxBookingDaysAhead must be greater than 0.")
     .Validate(rules => rules.MinChangeNoticeHours > 0,
         "BusinessRules:MinChangeNoticeHours must be greater than 0.")
+    .ValidateOnStart();
+
+builder.Services
+    .AddOptions<TransactionSettings>()
+    .Bind(builder.Configuration.GetSection(TransactionSettings.SectionName))
+    .Validate(settings => settings.QrTokenLifetimeMinutes is >= 1 and <= 30,
+        "TransactionSettings:QrTokenLifetimeMinutes must be between 1 and 30.")
+    .Validate(settings => settings.VerificationLifetimeMinutes is >= 1 and <= 30,
+        "TransactionSettings:VerificationLifetimeMinutes must be between 1 and 30.")
     .ValidateOnStart();
 
 // Creates tokens at login (used by AuthService).
@@ -110,6 +121,7 @@ builder.Services.AddScoped<ReservationCapacityService>();
 builder.Services.AddScoped<ReservationSchedulingGuardService>();
 builder.Services.AddScoped<ReservationService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<UserService>();
 
 builder.Services.AddOpenApi();
