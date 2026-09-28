@@ -212,6 +212,16 @@
                 android:textAppearance="@style/TextAppearance.SolarGrid.Body"
                 android:visibility="gone" />
 
+            <Button
+                android:id="@+id/reservation_qr_button"
+                style="@style/Widget.SolarGrid.Button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_md"
+                android:contentDescription="@string/open_reservation_qr"
+                android:text="@string/open_reservation_qr"
+                android:visibility="gone" />
+
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

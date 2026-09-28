@@ -2,7 +2,7 @@
  * MongoDbContext.cs
  * -----------------------------------------------------------------------------
  * Purpose : Exposes the application's MongoDB collections through one shared
- *           context, including the Component 3 energy-reservation collection.
+ *           context, including reservations and Member 4 QR transactions.
  * Indexes : Creates the user indexes retained from the existing implementation.
  * -----------------------------------------------------------------------------
  */
@@ -31,6 +31,8 @@ public sealed class MongoDbContext
         Reservations = database.GetCollection<EnergyReservation>(settings.ReservationsCollectionName);
         ReservationSchedulingGuards = database.GetCollection<ReservationSchedulingGuard>(
             settings.ReservationSchedulingGuardsCollectionName);
+        QrTransactions = database.GetCollection<QrTransaction>(
+            settings.QrTransactionsCollectionName);
     }
 
     public IMongoCollection<User> Users { get; }
@@ -42,6 +44,8 @@ public sealed class MongoDbContext
     public IMongoCollection<EnergyReservation> Reservations { get; }
 
     public IMongoCollection<ReservationSchedulingGuard> ReservationSchedulingGuards { get; }
+
+    public IMongoCollection<QrTransaction> QrTransactions { get; }
 
     public async Task EnsureIndexesAsync(CancellationToken cancellationToken)
     {

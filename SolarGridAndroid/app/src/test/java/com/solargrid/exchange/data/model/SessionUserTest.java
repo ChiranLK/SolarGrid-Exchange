@@ -17,7 +17,12 @@ public final class SessionUserTest {
 
         assertTrue(prosumer.isProsumer());
         assertFalse(prosumer.isStaff());
+        assertFalse(prosumer.isGridOperator());
         assertTrue(operator.isStaff());
+        assertTrue(operator.isGridOperator());
+        assertFalse(operator.isProsumer());
         assertTrue(backoffice.isStaff());
+        assertTrue(backoffice.isBackoffice());
+        assertFalse(backoffice.isGridOperator());
     }
 }

@@ -5,6 +5,8 @@
 @reservationId = 000000000000000000000000
 @targetProsumerNic = 000000000V
 @idempotencyKey = create-reservation-example-001
+@qrToken = replace-with-opaque-qr-token
+@verificationId = replace-with-opaque-verification-id
 
 ### List stations
 GET {{baseUrl}}/api/stations?page=1&pageSize=20&isActive=true
@@ -160,10 +162,44 @@ GET {{baseUrl}}/api/reservations?search={{targetProsumerNic}}&page=1&pageSize=20
 Authorization: Bearer {{token}}
 Accept: application/json
 
+### Role-scoped live dashboard
+GET {{baseUrl}}/api/dashboard?recentLimit=5
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Role-scoped booking history with inclusive scheduled-start range and search
+GET {{baseUrl}}/api/dashboard/history?search=RES-00000000&status=Completed&stationId={{stationId}}&fromUtc=2026-09-01T00:00:00Z&toUtc=2026-09-30T23:59:59Z&page=1&pageSize=20
+Authorization: Bearer {{token}}
+Accept: application/json
+
 ### Authorized reservation detail
 GET {{baseUrl}}/api/reservations/{{reservationId}}
 Authorization: Bearer {{token}}
 Accept: application/json
+
+### Owning Prosumer issues a short-lived opaque QR token
+POST {{baseUrl}}/api/transactions/reservations/{{reservationId}}/qr
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Assigned Grid Operator verifies the scanned opaque token
+POST {{baseUrl}}/api/transactions/verify
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "token": "{{qrToken}}"
+}
+
+### Same assigned Grid Operator explicitly completes the verified transfer
+POST {{baseUrl}}/api/transactions/reservations/{{reservationId}}/complete
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "verificationId": "{{verificationId}}",
+  "expectedVersion": 1
+}
 
 ### Active Backoffice or assigned Grid Operator creates for an eligible Prosumer
 POST {{baseUrl}}/api/reservations/staff
