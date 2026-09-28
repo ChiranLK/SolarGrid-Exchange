@@ -55,6 +55,13 @@ builder.Services.AddSingleton<MongoDbContext>();
 builder.Services.AddHostedService<MongoDbIndexInitializer>();
 builder.Services.AddSingleton(TimeProvider.System);
 
+// Optional first-Backoffice bootstrap; disabled unless BootstrapBackoffice:Enabled=true.
+// Registered after the index initializer so the unique email index exists first.
+builder.Services
+    .AddOptions<BootstrapBackofficeSettings>()
+    .Bind(builder.Configuration.GetSection(BootstrapBackofficeSettings.SectionName));
+builder.Services.AddHostedService<BackofficeBootstrapInitializer>();
+
 builder.Services
     .AddOptions<DeploymentSettings>()
     .Bind(builder.Configuration.GetSection(DeploymentSettings.SectionName))
