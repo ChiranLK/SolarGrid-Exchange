@@ -42,45 +42,63 @@ public final class ApiClient {
     }
 
     public void get(String relativePath, ApiCallback<JSONObject> callback) {
-        request("GET", relativePath, null, true, Collections.emptyMap(), callback);
+        request("GET", relativePath, null, true, Collections.emptyMap(), callback, ApiClient::parseObject);
+    }
+
+    public void getArray(String relativePath, ApiCallback<JSONArray> callback) {
+        request("GET", relativePath, null, true, Collections.emptyMap(), callback, ApiClient::parseArray);
     }
 
     public void postAnonymous(String relativePath, JSONObject body, ApiCallback<JSONObject> callback) {
-        request("POST", relativePath, body, false, Collections.emptyMap(), callback);
+        request("POST", relativePath, body, false, Collections.emptyMap(), callback, ApiClient::parseObject);
     }
 
     public void post(String relativePath, JSONObject body, ApiCallback<JSONObject> callback) {
-        request("POST", relativePath, body, true, Collections.emptyMap(), callback);
+        request("POST", relativePath, body, true, Collections.emptyMap(), callback, ApiClient::parseObject);
     }
 
     public void post(String relativePath, JSONObject body, Map<String, String> headers,
                      ApiCallback<JSONObject> callback) {
-        request("POST", relativePath, body, true, headers, callback);
+        request("POST", relativePath, body, true, headers, callback, ApiClient::parseObject);
     }
 
     public void put(String relativePath, JSONObject body, Map<String, String> headers,
                     ApiCallback<JSONObject> callback) {
-        request("PUT", relativePath, body, true, headers, callback);
+        request("PUT", relativePath, body, true, headers, callback, ApiClient::parseObject);
     }
 
-    private void request(
+    private interface ResponseParser<T> {
+        T parse(String responseBody) throws JSONException;
+    }
+
+    private static JSONObject parseObject(String responseBody) throws JSONException {
+        return responseBody.isEmpty() ? new JSONObject() : new JSONObject(responseBody);
+    }
+
+    private static JSONArray parseArray(String responseBody) throws JSONException {
+        return responseBody.isEmpty() ? new JSONArray() : new JSONArray(responseBody);
+    }
+
+    private <T> void request(
             String method,
             String relativePath,
             @Nullable JSONObject body,
             boolean authenticated,
             Map<String, String> headers,
-            ApiCallback<JSONObject> callback) {
+            ApiCallback<T> callback,
+            ResponseParser<T> parser) {
         executor.execute(() -> executeRequest(
-                method, relativePath, body, authenticated, headers, callback));
+                method, relativePath, body, authenticated, headers, callback, parser));
     }
 
-    private void executeRequest(
+    private <T> void executeRequest(
             String method,
             String relativePath,
             @Nullable JSONObject body,
             boolean authenticated,
             Map<String, String> headers,
-            ApiCallback<JSONObject> callback) {
+            ApiCallback<T> callback,
+            ResponseParser<T> parser) {
         HttpURLConnection connection = null;
         try {
             String normalizedPath = relativePath.startsWith("/")
@@ -124,7 +142,7 @@ public final class ApiClient {
                             : connection.getErrorStream());
 
             if (statusCode >= 200 && statusCode < 300) {
-                JSONObject payload = responseBody.isEmpty() ? new JSONObject() : new JSONObject(responseBody);
+                T payload = parser.parse(responseBody);
                 deliverSuccess(callback, payload);
                 return;
             }

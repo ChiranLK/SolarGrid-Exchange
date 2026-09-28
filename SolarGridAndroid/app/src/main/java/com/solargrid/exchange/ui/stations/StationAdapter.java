@@ -10,12 +10,13 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 
 import com.solargrid.exchange.R;
-import com.solargrid.exchange.data.model.Station;
+import com.solargrid.exchange.data.model.NearbyStation;
 
 import java.util.List;
+import java.util.Locale;
 
-public final class StationAdapter extends ArrayAdapter<Station> {
-    public StationAdapter(Context context, List<Station> stations) {
+public final class StationAdapter extends ArrayAdapter<NearbyStation> {
+    public StationAdapter(Context context, List<NearbyStation> stations) {
         super(context, 0, stations);
     }
 
@@ -26,10 +27,13 @@ public final class StationAdapter extends ArrayAdapter<Station> {
         if (row == null) {
             row = LayoutInflater.from(getContext()).inflate(R.layout.item_station, parent, false);
         }
-        Station station = getItem(position);
-        if (station != null) {
-            ((TextView) row.findViewById(R.id.station_item_name)).setText(station.getName());
-            ((TextView) row.findViewById(R.id.station_item_address)).setText(station.getAddress());
+        NearbyStation nearby = getItem(position);
+        if (nearby != null) {
+            ((TextView) row.findViewById(R.id.station_item_name)).setText(nearby.getStation().getName());
+            ((TextView) row.findViewById(R.id.station_item_address)).setText(nearby.getStation().getAddress());
+            ((TextView) row.findViewById(R.id.station_item_distance)).setText(String.format(
+                    Locale.getDefault(), getContext().getString(R.string.station_distance_km),
+                    nearby.getDistanceKm()));
         }
         return row;
     }
