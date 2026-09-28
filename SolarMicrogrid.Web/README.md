@@ -7,7 +7,7 @@ Shared React UI foundation for the SolarGrid-Exchange group project. It is a cli
 - React and TypeScript with Vite
 - Bootstrap 5 plus a small shared theme layer
 - React Router
-- One centralized Fetch-based API client
+- One centralized Axios-based API client
 - Session-based JWT storage and API-backed session restoration
 
 ## Prerequisites
@@ -67,7 +67,7 @@ src/
   styles/       Bootstrap-compatible shared theme additions
 ```
 
-Feature modules should call `apiRequest` through an endpoint module under `src/api`; they must not call `fetch` independently or reproduce API business/authorization rules.
+Feature modules should call `apiRequest` through an endpoint module under `src/api`; they must not make independent HTTP requests or reproduce API business/authorization rules.
 
 ## Verified API integrations
 
@@ -81,18 +81,20 @@ Feature modules should call `apiRequest` through an endpoint module under `src/a
 | `POST /api/reservations/staff` | Reviewed staff booking with one logical idempotency key, timeout reconciliation, and a dedicated saved summary. |
 | Reservation create/update/cancel/approve/reject routes | Accessible action forms submit expected versions and idempotency keys; the API remains authoritative. |
 | Station and available-slot reads | Populate reservation filters, creation, and rescheduling controls. |
+| `GET /api/dashboard` | Grid Operator dashboard counts, operational status, pending/active/recent/completed summaries, and refresh. |
+| `GET /api/dashboard/history` | Grid Operator booking-history search, filters, inclusive UTC dates, and server-side pagination. |
 
 The web guards use the API's exact role names: `Backoffice`, `GridOperator`, and `Prosumer`. They improve navigation and user experience only. Every protected backend operation must retain its API authorization attribute and object-level checks.
 
 ## Deliberately pending integrations
 
-- `DashboardController` and `ProsumersController` are empty, so dashboard and Prosumer-specific data calls are not implemented.
+- Prosumer-specific dashboard screens remain pending; the implemented operator routes are role-protected at `/operator/dashboard` and `/operator/history`.
 - Registration exists at `POST /api/auth/register`, but a registration screen is outside this foundation task.
 - User administration and station-management screens remain owned follow-up work. The reservation feature only reuses the authorized eligible-Prosumer lookup; it does not duplicate user management.
 - The API has no logout or refresh-token endpoint. Sign-out therefore removes the browser session locally; token expiry is handled on the next API request.
-- The API currently has no cross-origin CORS policy. Local development uses Vite's same-origin `/api` proxy. A separately hosted production UI requires an explicit trusted-origin API policy or same-origin reverse proxy.
-- Dashboard metrics, QR verification, and reservation completion endpoints are not available and must not be simulated in the client.
+- Local development uses Vite's same-origin `/api` proxy. A separately hosted production UI must be listed through the API's `Cors__AllowedOrigins__N` environment values; a same-origin reverse proxy needs no cross-origin entry.
+- Web QR display/scanner/confirmation screens remain pending even though the server transaction endpoints and native Android workflow exist; a future web client must not simulate verification or completion.
 
 ## Deployment note
 
-`VITE_API_BASE_URL` is embedded at build time. Prefer `/api` behind a same-origin reverse proxy. If an absolute API URL is used, the API must explicitly allow the deployed web origin.
+`VITE_API_BASE_URL` is embedded at build time. Prefer `/api` behind a same-origin reverse proxy. If an absolute API URL is used, it must be HTTPS and the API must explicitly allow the deployed web origin. Production builds fail when this value targets a loopback HTTP address; copy `.env.production.example` only as a key/template and supply the real hosted value through the build environment.

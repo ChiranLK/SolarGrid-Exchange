@@ -16,13 +16,16 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.navigation.NavController;
 import androidx.navigation.NavGraph;
 import androidx.navigation.fragment.NavHostFragment;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.google.android.material.navigation.NavigationView;
 import com.solargrid.exchange.R;
 import com.solargrid.exchange.SolarGridApplication;
 import com.solargrid.exchange.data.model.SessionUser;
 import com.solargrid.exchange.features.auth.AuthRepository;
+import com.solargrid.exchange.features.operations.RoleRoutePolicy;
 import com.solargrid.exchange.ui.auth.LoginActivity;
+import com.solargrid.exchange.ui.operations.OperatorTransactionViewModel;
 
 public final class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
@@ -63,12 +66,16 @@ public final class MainActivity extends AppCompatActivity
         }
         navController = host.getNavController();
         NavGraph graph = navController.getNavInflater().inflate(R.navigation.main_nav_graph);
-        graph.setStartDestination(session.isProsumer()
-                ? R.id.nav_prosumer_home
-                : R.id.nav_operator_home);
+        graph.setStartDestination(startDestinationFor(session));
         navController.setGraph(graph);
-        navController.addOnDestinationChangedListener((controller, destination, arguments) ->
-                toolbar.setTitle(destination.getLabel()));
+        OperatorTransactionViewModel operatorFlow = new ViewModelProvider(this)
+                .get(OperatorTransactionViewModel.class);
+        navController.addOnDestinationChangedListener((controller, destination, arguments) -> {
+            toolbar.setTitle(destination.getLabel());
+            if (!isOperatorTransactionDestination(destination.getId())) {
+                operatorFlow.clearSensitiveState();
+            }
+        });
 
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
@@ -111,8 +118,25 @@ public final class MainActivity extends AppCompatActivity
         menu.findItem(R.id.nav_prosumer_home).setVisible(session.isProsumer());
         menu.findItem(R.id.nav_my_reservations).setVisible(session.isProsumer());
         menu.findItem(R.id.nav_booking_history).setVisible(session.isProsumer());
-        menu.findItem(R.id.nav_operator_home).setVisible(session.isStaff());
-        menu.findItem(R.id.nav_qr_operations).setVisible(session.isStaff());
+        menu.findItem(R.id.nav_operator_home).setVisible(session.isGridOperator());
+        menu.findItem(R.id.nav_qr_operations).setVisible(session.isGridOperator());
+    }
+
+    static int startDestinationFor(SessionUser session) {
+        switch (RoleRoutePolicy.resolve(session)) {
+            case PROSUMER:
+                return R.id.nav_prosumer_home;
+            case GRID_OPERATOR:
+                return R.id.nav_operator_home;
+            default:
+                return R.id.nav_profile;
+        }
+    }
+
+    private static boolean isOperatorTransactionDestination(int destinationId) {
+        return destinationId == R.id.nav_qr_operations
+                || destinationId == R.id.nav_transaction_verification
+                || destinationId == R.id.nav_transaction_completion;
     }
 
     private void routeToLogin() {

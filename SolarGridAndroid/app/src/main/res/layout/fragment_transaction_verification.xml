@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/solar_surface">
+
+    <ScrollView
+        android:id="@+id/transaction_verification_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="@dimen/space_lg">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/verification_confirmed_title"
+                android:textAppearance="@style/TextAppearance.SolarGrid.Headline" />
+
+            <TextView
+                android:id="@+id/verification_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_md"
+                android:background="@color/solar_green_100"
+                android:padding="@dimen/space_sm"
+                android:textColor="@color/solar_green_900"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/verification_summary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_md"
+                android:textAppearance="@style/TextAppearance.SolarGrid.Body"
+                android:textIsSelectable="true" />
+
+            <TextView
+                android:id="@+id/verification_expiry"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_md"
+                android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_lg"
+                android:text="@string/completion_authority_notice"
+                android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
+
+            <Button
+                android:id="@+id/verification_complete"
+                style="@style/Widget.SolarGrid.Button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_lg"
+                android:text="@string/confirm_transfer_completion" />
+
+            <TextView
+                android:id="@+id/verification_completion_progress"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_sm"
+                android:accessibilityLiveRegion="polite"
+                android:text="@string/completing_transfer"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/verification_completion_error"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_md"
+                android:accessibilityLiveRegion="assertive"
+                android:textColor="@color/solar_error"
+                android:visibility="gone" />
+
+            <Button
+                android:id="@+id/verification_retry_completion"
+                style="@style/Widget.SolarGrid.Button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_sm"
+                android:text="@string/retry_completion"
+                android:visibility="gone" />
+
+            <Button
+                android:id="@+id/verification_scan_again"
+                style="@style/Widget.SolarGrid.Button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_sm"
+                android:text="@string/scan_another_qr" />
+        </LinearLayout>
+    </ScrollView>
+
+    <com.solargrid.exchange.ui.common.UiStateView
+        android:id="@+id/transaction_verification_state"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center" />
+</FrameLayout>

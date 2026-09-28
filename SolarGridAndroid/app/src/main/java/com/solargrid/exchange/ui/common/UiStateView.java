@@ -50,11 +50,20 @@ public final class UiStateView extends LinearLayout {
             String emptyTitle,
             String emptyMessage,
             @Nullable OnClickListener retryListener) {
+        showEmpty(emptyTitle, emptyMessage, getContext().getString(R.string.retry), retryListener);
+    }
+
+    public void showEmpty(
+            String emptyTitle,
+            String emptyMessage,
+            String actionLabel,
+            @Nullable OnClickListener retryListener) {
         setVisibility(VISIBLE);
         progress.setVisibility(GONE);
         title.setText(emptyTitle);
         message.setText(emptyMessage);
         retry.setVisibility(retryListener == null ? GONE : VISIBLE);
+        retry.setText(actionLabel);
         retry.setOnClickListener(retryListener);
     }
 
@@ -64,6 +73,7 @@ public final class UiStateView extends LinearLayout {
         title.setText(titleFor(error));
         message.setText(error.getMessage());
         retry.setVisibility(retryListener == null ? GONE : VISIBLE);
+        retry.setText(R.string.retry);
         retry.setOnClickListener(retryListener);
     }
 

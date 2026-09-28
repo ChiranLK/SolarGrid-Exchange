@@ -30,7 +30,12 @@ public final class StationDetailFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_station_detail, container, false);
+        return inflater.inflate(R.layout.fragment_station_detail, container, false);
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
         View content = view.findViewById(R.id.station_detail_content);
         UiStateView stateView = view.findViewById(R.id.station_detail_state);
         StationDetailViewModel viewModel = new ViewModelProvider(this).get(StationDetailViewModel.class);
@@ -58,8 +63,12 @@ public final class StationDetailFragment extends Fragment {
         });
 
         String stationId = getArguments() == null ? "" : getArguments().getString("stationId", "");
+        view.findViewById(R.id.station_view_all_slots).setOnClickListener(ignored -> {
+            Bundle arguments = new Bundle();
+            arguments.putString("stationId", stationId);
+            Navigation.findNavController(view).navigate(R.id.nav_available_slots, arguments);
+        });
         viewModel.load(stationId);
-        return view;
     }
 
     private void bind(View view, StationDetailData data) {

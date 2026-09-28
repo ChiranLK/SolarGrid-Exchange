@@ -49,17 +49,18 @@ The implementation was matched to the repository's controllers and DTOs:
 | `POST /api/auth/login` | Login and local session creation |
 | `GET /api/auth/me` | Startup token validation and email/role refresh |
 | `GET /api/stations?isActive=true&page=1&pageSize=100` | Active station list |
+| `GET /api/stations/nearby?latitude=...&longitude=...` | Device-location-scoped nearby markers and list; the response nests each station and distance |
 | `GET /api/stations/{stationId}` | Station details |
-| `GET /api/stations/{stationId}/slots/available` | Live available-slot display |
+| `GET /api/stations/{stationId}/slots/available` | Live, paged available-slot display |
 | `GET /api/reservations?view=...` | Role-scoped current, pending, approved-future, all, and history lists |
 | `GET /api/reservations/{reservationId}` | Authoritative details, status history, and allowed actions |
 | `POST /api/reservations` | Prosumer booking creation with an idempotency key |
 | `PUT /api/reservations/{reservationId}` | Versioned slot/energy modification with an idempotency key |
 | `POST /api/reservations/{reservationId}/cancel` | Versioned cancellation with an optional reason and idempotency key |
 
-`GET /api/stations/nearby` also exists, but acquiring runtime location and rendering Member 2's map are deliberately left to that feature integration. The current nearby-stations destination displays API-backed active stations and identifies slot availability as a live, unconfirmed API result. No availability is cached in SQLite.
+The nearby-stations destination requests approximate or precise location, obtains a device location through Google Play services, and sends its coordinates to the API. Only the API's returned station coordinates become map markers. If location is denied or unavailable, the screen offers recovery; network errors retain the shared retry state. Station details link to a read-only, paged available-slot screen. No availability is cached in SQLite.
 
-Component 3 adds API-backed booking creation from Member 2's available-slot screen, including a fresh station-slot query, single selection, required kWh input, seven-day guidance, and a signed-in Prosumer review screen before submission. Back navigation preserves the valid draft, while the central API remains authoritative for availability and capacity at confirmation. Creation sends only slot and quantity because ownership comes from authenticated claims. One idempotency key is retained for each logical request; after a network interruption, the client reconciles against a pre-submit reservation baseline before reporting an uncertain outcome. Successful creation opens a dedicated server-response summary and refreshes the Pending list endpoint used by Android and web. The app also provides filtered current/pending reservation lists, history, details, modification, cancellation, and update/cancel response summaries. Failed or offline requests are never queued or represented as confirmed. QR verification/operator transactions remain placeholders because the corresponding Component 4 API endpoints are not implemented. No fake production data is returned.
+Component 3 adds API-backed booking creation from Member 2's available-slot screen, including a fresh station-slot query, single selection, required kWh input, seven-day guidance, and a signed-in Prosumer review screen before submission. Back navigation preserves the valid draft, while the central API remains authoritative for availability and capacity at confirmation. Creation sends only slot and quantity because ownership comes from authenticated claims. One idempotency key is retained for each logical request; after a network interruption, the client reconciles against a pre-submit reservation baseline before reporting an uncertain outcome. Successful creation opens a dedicated server-response summary and refreshes the Pending list endpoint used by Android and web. The app also provides filtered current/pending reservation lists, history, details, modification, cancellation, and update/cancel response summaries. Failed or offline requests are never queued or represented as confirmed. Member 4 adds API-authoritative Prosumer QR display and Grid Operator scan, verification, confirmation, and completion flows without storing raw QR values or receipts. No fake production data is returned.
 
 ## Open in Android Studio
 
@@ -70,7 +71,7 @@ Component 3 adds API-backed booking creation from Member 2's available-slot scre
 
 ## API URL configuration
 
-The build-time `SOLARGRID_API_BASE_URL` Gradle property or environment variable overrides the default. It must include the `/api/` suffix.
+The build-time `SOLARGRID_API_BASE_URL` Gradle property or environment variable overrides the debug default. It must include the `/api/` suffix.
 
 ```powershell
 $env:SOLARGRID_API_BASE_URL = 'http://192.168.1.25:5076/api/'
@@ -80,8 +81,19 @@ $env:SOLARGRID_API_BASE_URL = 'http://192.168.1.25:5076/api/'
 The debug default is `http://10.0.2.2:5076/api/`, matching the API's HTTP launch profile through the Android emulator host alias. `10.0.2.2` is only appropriate for an emulator connecting to an API running on the same development computer.
 
 - Physical device: use the computer's reachable LAN address, run the API on an appropriate network binding, and allow the port through the firewall.
-- Production: use HTTPS and a trusted certificate. Cleartext traffic is disabled in the main manifest and enabled only by the debug manifest overlay for local development.
+- Production: `SOLARGRID_API_BASE_URL` is required. The release task rejects HTTP, loopback/emulator hosts, and URLs that do not end in `/api/`. Use HTTPS and a trusted certificate. Cleartext traffic is disabled in the main manifest and enabled only by the debug manifest overlay for local development.
 - Never commit tokens, credentials, signing keys, `local.properties`, or secret configuration.
+
+Example hosted release build (replace the URL through the deployment environment, not a tracked file):
+
+```powershell
+$env:SOLARGRID_API_BASE_URL = 'https://api.example.invalid/api/'
+.\gradlew.bat assembleRelease
+```
+
+## Google Maps key
+
+Maps SDK for Android needs a key for map tiles. Provide `SOLARGRID_MAPS_API_KEY` as a local Gradle property (for example, in your user-level Gradle properties) or environment variable before building. Enable Maps SDK for Android in the Google Cloud project and restrict the key to the Android application IDs and signing certificate fingerprints. The key is intentionally absent from Git; when it is not configured, nearby API results remain available as a list and the map area explains the missing key. Use a Google Play-enabled emulator or device for Maps and fused location testing. Do not commit a key in `local.properties`, source, or screenshots.
 
 ## Build and test
 

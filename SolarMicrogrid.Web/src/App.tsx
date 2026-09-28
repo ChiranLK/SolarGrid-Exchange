@@ -1,6 +1,5 @@
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from './layouts/AppLayout'
-import { DashboardPage } from './pages/DashboardPage'
 import { FeaturePlaceholderPage } from './pages/FeaturePlaceholderPage'
 import { ForbiddenPageWithNavigation } from './pages/ForbiddenPage'
 import { HomePage } from './pages/HomePage'
@@ -11,6 +10,14 @@ import { RoleRoute } from './routes/RoleRoute'
 import { ReservationCreatePage } from './features/reservations/ReservationCreatePage'
 import { ReservationDetailPage } from './features/reservations/ReservationDetailPage'
 import { ReservationListPage } from './features/reservations/ReservationListPage'
+import { BookingHistoryPage } from './features/operations/BookingHistoryPage'
+import { OperatorDashboardPage } from './features/operations/OperatorDashboardPage'
+import { operatorRoles, operatorRoutes } from './features/operations/operatorDashboardModel'
+import { StationDetailPage } from './features/stations/StationDetailPage'
+import { StationFormPage } from './features/stations/StationFormPage'
+import { StationListPage } from './features/stations/StationListPage'
+import { StationSchedulePage } from './features/stations/StationSchedulePage'
+import { SlotFormPage } from './features/stations/SlotFormPage'
 
 export default function App() {
   return (
@@ -20,17 +27,8 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route index element={<HomePage />} />
-          <Route path="dashboard" element={<DashboardPage />} />
-          <Route
-            path="stations"
-            element={(
-              <FeaturePlaceholderPage
-                title="Stations & slots"
-                description="Shared route reserved for station, map, schedule, and slot UI integration."
-                ownerNote="The API routes exist. The owning feature team can add screens here without changing authentication or layout infrastructure."
-              />
-            )}
-          />
+          <Route path="stations" element={<StationListPage />} />
+          <Route path="stations/:stationId" element={<StationDetailPage />} />
           <Route path="reservations" element={<ReservationListPage />} />
           <Route path="reservations/new" element={<ReservationCreatePage />} />
           <Route path="reservations/:reservationId" element={<ReservationDetailPage />} />
@@ -58,7 +56,18 @@ export default function App() {
             />
           </Route>
 
+          <Route element={<RoleRoute allowedRoles={operatorRoles} />}>
+            <Route path={operatorRoutes.dashboard} element={<OperatorDashboardPage />} />
+            <Route path={operatorRoutes.history} element={<BookingHistoryPage />} />
+            <Route path="dashboard" element={<Navigate to={`/${operatorRoutes.dashboard}`} replace />} />
+          </Route>
+
           <Route element={<RoleRoute allowedRoles={['Backoffice']} />}>
+            <Route path="stations/new" element={<StationFormPage />} />
+            <Route path="stations/:stationId/edit" element={<StationFormPage />} />
+            <Route path="stations/:stationId/schedule" element={<StationSchedulePage />} />
+            <Route path="stations/:stationId/slots/new" element={<SlotFormPage />} />
+            <Route path="stations/:stationId/slots/:slotId/edit" element={<SlotFormPage />} />
             <Route
               path="backoffice"
               element={(

@@ -21,6 +21,8 @@ mono_crash.*
 
 # Build results
 [Dd]ebug/
+# Android's debug source set contains the local-only manifest overlay.
+!SolarGridAndroid/app/src/debug/
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
@@ -72,6 +74,7 @@ artifacts/
 **/.env
 **/.env.*
 !**/.env.example
+!**/.env.*.example
 
 # Android Studio, Gradle, device captures, local SDK paths, and signing material
 **/.gradle/
@@ -214,6 +217,7 @@ publish/
 # Note: Comment the next line if you want to checkin your web deploy settings,
 # but database connection strings (with potential passwords) will be unencrypted
 *.pubxml
+!SolarMicrogrid.API/Properties/PublishProfiles/IIS-Release.pubxml
 *.publishproj
 
 # Microsoft Azure Web App publish settings. Comment the next line if you want to
