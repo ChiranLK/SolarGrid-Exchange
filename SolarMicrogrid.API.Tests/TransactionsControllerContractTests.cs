@@ -8,6 +8,7 @@
 
 using System.Reflection;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SolarMicrogrid.API.Controllers;
 using SolarMicrogrid.API.Models.Entities;
@@ -41,5 +42,16 @@ public sealed class TransactionsControllerContractTests
         AuthorizeAttribute? authorization = method.GetCustomAttribute<AuthorizeAttribute>();
 
         Assert.Equal(expectedRole, authorization?.Roles);
+
+        int[] statusCodes = method.GetCustomAttributes<ProducesResponseTypeAttribute>()
+            .Select(attribute => attribute.StatusCode)
+            .ToArray();
+        Assert.Contains(StatusCodes.Status200OK, statusCodes);
+        Assert.Contains(StatusCodes.Status400BadRequest, statusCodes);
+        Assert.Contains(StatusCodes.Status401Unauthorized, statusCodes);
+        Assert.Contains(StatusCodes.Status403Forbidden, statusCodes);
+        Assert.Contains(StatusCodes.Status404NotFound, statusCodes);
+        Assert.Contains(StatusCodes.Status409Conflict, statusCodes);
+        Assert.Contains(StatusCodes.Status500InternalServerError, statusCodes);
     }
 }

@@ -8,12 +8,16 @@
 
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using SolarMicrogrid.API.Data;
+using SolarMicrogrid.API.Health;
 using SolarMicrogrid.API.Helpers;
 using SolarMicrogrid.API.Middleware;
+using SolarMicrogrid.API.OpenApi;
 using SolarMicrogrid.API.Settings;
 using SolarMicrogrid.API.Services;
 
@@ -50,6 +54,47 @@ builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
 builder.Services.AddSingleton<MongoDbContext>();
 builder.Services.AddHostedService<MongoDbIndexInitializer>();
 builder.Services.AddSingleton(TimeProvider.System);
+
+builder.Services
+    .AddOptions<DeploymentSettings>()
+    .Bind(builder.Configuration.GetSection(DeploymentSettings.SectionName))
+    .Validate(settings => settings.MongoHealthTimeoutSeconds is >= 1 and <= 30,
+        "Deployment:MongoHealthTimeoutSeconds must be between 1 and 30.")
+    .ValidateOnStart();
+
+bool requireHttpsCorsOrigins = !builder.Environment.IsDevelopment();
+builder.Services
+    .AddOptions<CorsSettings>()
+    .Bind(builder.Configuration.GetSection(CorsSettings.SectionName))
+    .Validate(settings => settings.HasValidOrigins(requireHttpsCorsOrigins),
+        "Cors:AllowedOrigins must contain exact HTTP(S) origins without wildcards, paths, or credentials; production origins must use HTTPS.")
+    .ValidateOnStart();
+
+builder.Services
+    .AddOptions<OpenApiSettings>()
+    .Bind(builder.Configuration.GetSection(OpenApiSettings.SectionName));
+
+CorsSettings configuredCorsSettings = builder.Configuration
+    .GetSection(CorsSettings.SectionName)
+    .Get<CorsSettings>() ?? new CorsSettings();
+string[] allowedOrigins = configuredCorsSettings.GetNormalizedOrigins();
+builder.Services.AddCors(options =>
+{
+    // Bearer authentication does not require browser credentials; keep the policy origin-specific.
+    options.AddPolicy("WebClient", policy =>
+    {
+        if (allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins.Select(origin => origin.Trim().TrimEnd('/')).ToArray())
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        }
+    });
+});
+
+builder.Services.AddHealthChecks()
+    .AddCheck("api", () => HealthCheckResult.Healthy("API process is available."))
+    .AddCheck<MongoDbHealthCheck>("database");
 
 builder.Services
     .AddOptions<JwtSettings>()
@@ -124,23 +169,45 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<UserService>();
 
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+{
+    // Keep OpenAPI metadata centralized and generated from the real controller/DTO surface.
+    options.AddDocumentTransformer<BearerSecurityDocumentTransformer>();
+    options.AddOperationTransformer<Member4OperationTransformer>();
+});
 
 var app = builder.Build();
 
 
-if (app.Environment.IsDevelopment())
+OpenApiSettings openApiSettings = app.Services
+    .GetRequiredService<IOptions<OpenApiSettings>>()
+    .Value;
+if (openApiSettings.Enabled)
 {
     app.MapOpenApi();
 }
 
 app.UseHttpsRedirection();
 
+app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<ExceptionMiddleware>();
+
+app.UseCors("WebClient");
 
 // Authentication (who are you?) must come before authorization (what may you do?).
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResultStatusCodes =
+    {
+        [HealthStatus.Healthy] = StatusCodes.Status200OK,
+        [HealthStatus.Degraded] = StatusCodes.Status503ServiceUnavailable,
+        [HealthStatus.Unhealthy] = StatusCodes.Status503ServiceUnavailable
+    },
+    ResponseWriter = SafeHealthResponseWriter.WriteAsync
+});
 
 app.MapControllers();
 

@@ -92,9 +92,9 @@ The web guards use the API's exact role names: `Backoffice`, `GridOperator`, and
 - Registration exists at `POST /api/auth/register`, but a registration screen is outside this foundation task.
 - User administration and station-management screens remain owned follow-up work. The reservation feature only reuses the authorized eligible-Prosumer lookup; it does not duplicate user management.
 - The API has no logout or refresh-token endpoint. Sign-out therefore removes the browser session locally; token expiry is handled on the next API request.
-- The API currently has no cross-origin CORS policy. Local development uses Vite's same-origin `/api` proxy. A separately hosted production UI requires an explicit trusted-origin API policy or same-origin reverse proxy.
-- QR display/scanner/confirmation screens remain pending even though the server transaction endpoints now exist; clients must not simulate verification or completion.
+- Local development uses Vite's same-origin `/api` proxy. A separately hosted production UI must be listed through the API's `Cors__AllowedOrigins__N` environment values; a same-origin reverse proxy needs no cross-origin entry.
+- Web QR display/scanner/confirmation screens remain pending even though the server transaction endpoints and native Android workflow exist; a future web client must not simulate verification or completion.
 
 ## Deployment note
 
-`VITE_API_BASE_URL` is embedded at build time. Prefer `/api` behind a same-origin reverse proxy. If an absolute API URL is used, the API must explicitly allow the deployed web origin.
+`VITE_API_BASE_URL` is embedded at build time. Prefer `/api` behind a same-origin reverse proxy. If an absolute API URL is used, it must be HTTPS and the API must explicitly allow the deployed web origin. Production builds fail when this value targets a loopback HTTP address; copy `.env.production.example` only as a key/template and supply the real hosted value through the build environment.

@@ -41,6 +41,7 @@ public sealed class TransactionsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<IssueQrTransactionResponseDto>> Issue(
         string reservationId,
         CancellationToken cancellationToken)
@@ -63,6 +64,7 @@ public sealed class TransactionsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<VerifyQrTransactionResponseDto>> Verify(
         [FromBody] VerifyQrTransactionRequestDto request,
         CancellationToken cancellationToken)
@@ -85,6 +87,7 @@ public sealed class TransactionsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<CompleteQrTransactionResponseDto>> Complete(
         string reservationId,
         [FromBody] CompleteQrTransactionRequestDto request,

@@ -8,6 +8,7 @@
 
 using System.Reflection;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SolarMicrogrid.API.Controllers;
 using SolarMicrogrid.API.Models.Entities;
@@ -44,5 +45,14 @@ public sealed class DashboardControllerContractTests
         Assert.Contains(nameof(UserRole.Prosumer), roles);
         Assert.Contains(nameof(UserRole.Backoffice), roles);
         Assert.Contains(nameof(UserRole.GridOperator), roles);
+
+        int[] statusCodes = method.GetCustomAttributes<ProducesResponseTypeAttribute>()
+            .Select(attribute => attribute.StatusCode)
+            .ToArray();
+        Assert.Contains(StatusCodes.Status200OK, statusCodes);
+        Assert.Contains(StatusCodes.Status400BadRequest, statusCodes);
+        Assert.Contains(StatusCodes.Status401Unauthorized, statusCodes);
+        Assert.Contains(StatusCodes.Status403Forbidden, statusCodes);
+        Assert.Contains(StatusCodes.Status500InternalServerError, statusCodes);
     }
 }

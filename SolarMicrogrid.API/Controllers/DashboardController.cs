@@ -40,6 +40,7 @@ public sealed class DashboardController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<DashboardResponseDto>> GetDashboard(
         [FromQuery] DashboardQueryDto query,
         CancellationToken cancellationToken)
@@ -61,6 +62,7 @@ public sealed class DashboardController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<PagedBookingHistoryResponseDto>> GetBookingHistory(
         [FromQuery] BookingHistoryQueryDto query,
         CancellationToken cancellationToken)

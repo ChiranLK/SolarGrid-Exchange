@@ -34,18 +34,18 @@ The audit covered all 258 tracked files, the solution and project manifests, REA
 | `SolarMicrogrid.Web/` | Existing web application | React 19, TypeScript, Vite, Bootstrap 5, React Router, centralized Fetch client, session storage, shared layout/design states, and reservation workflows. |
 | `SolarGridAndroid/` | Existing pure-native Android application | Java 17, AndroidX, XML layouts, Fragments/ViewModels/LiveData, `HttpURLConnection`, and one SQLite session store. It is not Kotlin, Compose, Flutter, or React Native. |
 | `docs/component-3/` | Shared reservation documentation | Defines status, views, lifecycle, roles, DTOs, capacity behavior, and the Member 4 integration boundary. |
-| `scripts/` | Test helpers | Contains only the Component 3 PowerShell test runner. |
+| `scripts/` | Test helpers | Contains the Component 3 test runner and the Prompt 8 disposable deployment-contract verifier. |
 | `.gitignore` | Generated file and secret exclusions | Covers .NET, Node/Vite, Android, local environment, signing, and build output. |
 
-There is no CI workflow, Dockerfile, compose file, reverse-proxy configuration, health endpoint, publish profile, infrastructure-as-code, or other deployment implementation in the tracked tree.
+There is no CI workflow, Dockerfile, compose file, reverse-proxy configuration, or infrastructure-as-code. Prompt 8 adds the bounded health endpoint, environment-driven CORS/OpenAPI configuration, IIS publish support, and a reproducible runbook.
 
 ### Existing C# Web API and MongoDB architecture
 
-- `Program.cs` registers one `IMongoClient`, `MongoDbContext`, index initializer, JWT authentication, controllers, shared exception middleware, `TimeProvider.System`, and feature services.
+- `Program.cs` registers one `IMongoClient`, `MongoDbContext`, index initializer, JWT authentication, controllers, shared exception/correlation middleware, bounded health checks, named CORS, configurable OpenAPI, `TimeProvider.System`, and feature services.
 - `MongoDbContext` exposes the shared `Users`, `Stations`, `Slots`, `Reservations`, and `ReservationSchedulingGuards` collections. Member 4 must extend this context rather than create a second database layer.
 - `EnergyReservation` stores references to Member 1/2 data, schedule snapshots, requested kWh, status/version, capacity state, audit fields, status history, and reserved completion fields (`CompletedAtUtc`, `CompletedByActorNic`, `CompletedVerificationId`).
 - `ReservationService` and `ReservationReadPolicy` are authoritative for actor scope, status/view meaning, allowed actions, versioning, and legal transitions.
-- `DashboardController.cs` now exposes the Member 4 dashboard and booking-history reads through `DashboardService`; `ProsumersController.cs` remains a zero-byte scaffold outside this prompt.
+- `DashboardController.cs` exposes the Member 4 dashboard and booking-history reads through `DashboardService`; `ProsumersController.cs` remains a zero-byte scaffold outside this prompt.
 - The stable domain-error body is `{ "status": number, "message": string }`. Automatic `[ApiController]` model-validation failures use ASP.NET validation problem details instead.
 
 ### Existing web architecture
@@ -53,16 +53,16 @@ There is no CI workflow, Dockerfile, compose file, reverse-proxy configuration, 
 - `src/api/apiClient.ts` is the sole Fetch wrapper. It attaches the stored bearer token, maps shared API errors, and clears an invalid session on 401.
 - Feature endpoint modules live under `src/api` or the relevant `src/features` folder. New Member 4 calls must use `apiRequest`; direct feature-level `fetch` calls are incompatible.
 - Exact roles are `Backoffice`, `GridOperator`, and `Prosumer`. Route guards improve navigation only; the API remains the authorization boundary.
-- `DashboardPage.tsx` is a placeholder. `src/features/operations/` is the intended location for Grid Operator/Backoffice operational workflows.
+- Role-protected dashboard/history pages use `src/features/operations/` for Grid Operator workflows.
 - The design system is Bootstrap plus the existing green/gold theme, shared page header, status badge, loading/empty/error states, pagination, and confirmation dialog.
-- The web build embeds `VITE_API_BASE_URL`; local development uses the Vite `/api` proxy because the API currently has no CORS policy.
+- The web build embeds `VITE_API_BASE_URL`; local development uses the Vite `/api` proxy, while separately hosted HTTPS web origins use the explicit configured CORS allow-list.
 
 ### Existing native Android architecture
 
 - `AppContainer` manually provides the shared session store, API client, and feature repositories.
 - `ApiClient` is the single `HttpURLConnection` client with bearer attachment, bounded timeouts, main-thread callbacks, and shared API-error mapping.
 - `SessionDatabaseHelper`/`SessionStore` own the only app-private SQLite session database. Member 4 must not create a second account/session store.
-- Existing navigation has role-specific home fragments, reservation lists/details, booking history, and a `nav_qr_operations` placeholder.
+- Existing navigation now has role-specific home fragments, reservation lists/details, booking history, Prosumer QR display, and the Grid Operator QR scan/verification/completion workflow.
 - `OperatorTransactionRepository` is an empty shell and must be extended rather than replaced with a parallel network stack.
 - The Material 3 XML theme uses the established green/gold palette and shared UI-state view. Member 4 screens must reuse those resources and Fragment/ViewModel patterns.
 
@@ -108,11 +108,11 @@ The prompt expressly prohibits Member 4 from owning or duplicating:
 | Narrow check-in/completion window | Team decision | No narrower start-relative window is tracked, so Member 4 does not invent one. | Blocked |
 | Completed-capacity accounting | Member 2 + Member 3 + Member 4 | Reuses the reserved `Consumed` state and retains the existing slot allocation without restoring delivered capacity. | Completed |
 | Official assignment brief, rubric, current team plan | Team/course | Absent from repository. | Blocked |
-| Deployment target, domains, MongoDB topology, TLS, secret source, Android signing identity | Team/infrastructure | Not supplied. | Blocked |
-| CORS or same-origin production routing decision | Team/infrastructure | No API CORS policy or reverse-proxy config exists. | Blocked |
+| Deployment target, domains, MongoDB topology, TLS, secret source, Android signing identity | Team/infrastructure | Code/runbook are complete, but real values and target access are not supplied. | Blocked |
+| CORS or same-origin production routing decision | Team/infrastructure | Explicit HTTPS-origin configuration and same-origin support are implemented; the real hosted origin remains unsupplied. | Blocked |
 | Sanitized end-to-end accounts/configuration | Member 1/team | Not supplied. | Blocked |
 
-Security attention: the tracked base `appsettings.json` contains a non-empty JWT signing value while the MongoDB connection is empty. The signing value must be rotated and externalized before deployment; it is intentionally not copied into Member 4 documentation.
+Security attention: tracked configuration now leaves both the JWT signing key and MongoDB connection string empty. Deployment must inject rotated values from an external secret source; neither value is copied into Member 4 documentation.
 
 ## Existing lifecycle and legal transitions
 
@@ -320,6 +320,37 @@ Android Member 4 parsers now fail closed when dashboard history contains an unkn
 | Android Gradle tests/build/lint | Blocked | `gradlew.bat testDebugUnitTest assembleDebug lintDebug` stopped before task dependency resolution because no Android SDK is configured through `ANDROID_HOME` or `local.properties`; no requested task executed. |
 | Live browser/device integration | Not Verified | No configured sanitized HTTP accounts, browser session, Android emulator/device, or camera environment was available. |
 
+## Prompt 8 implementation: database health, CORS, OpenAPI and IIS deployment
+
+The deployment implementation preserves the existing central API/MongoDB/FAT service pattern and introduces no second database or service layer.
+
+- `GET /health` is anonymous and checks both the API process and MongoDB with a configured 1-30 second timeout. Healthy returns 200; degraded/unhealthy returns 503. Output is limited to overall/component states and a correlation ID, with no exception, connection string, database name, topology, credential, or stack trace.
+- The named `WebClient` CORS policy reads exact origins from `Cors:AllowedOrigins`. Wildcards, paths, embedded credentials, and production HTTP origins fail startup validation. Credentials are not enabled. Development loopback origins live only in `appsettings.Development.json`; production defaults to an empty same-origin allow-list and receives real HTTPS origins through environment configuration.
+- OpenAPI is enabled in Development and disabled by default in Production. The generated document declares JWT bearer authentication and attaches it to authenticated operations. All dashboard/history/QR issue/verify/complete operations contain role descriptions, generated DTO schemas, applicable response status metadata, and predefined redacted examples.
+- `CorrelationIdMiddleware` validates or generates `X-Correlation-ID`, returns it on responses, and adds it to the structured log scope. Unexpected errors retain the generic public 500 body and log only exception type, method, path, and correlation ID; exception objects, queries, headers, bodies, JWTs, QR values, receipts, NICs, and configuration are not logged.
+- The tracked framework-dependent .NET 10 `IIS-Release.pubxml` and ANCM `web.config` use in-process `AspNetCoreModuleV2`, keep stdout logs disabled, and contain no secret. The publish profile emits to ignored `artifacts/iis/api`.
+- Web production builds accept same-origin `/api` or a hosted HTTPS API URL and fail when configured with loopback/HTTP. Android retains `10.0.2.2` only as a debug default; release tasks require a non-loopback hosted HTTPS URL ending `/api/`.
+- `docs/deployment/iis-deployment.md` records prerequisites, publish and IIS commands, app-pool/file-permission/log guidance, environment key names only, MongoDB/TLS/CORS/OpenAPI/client checks, smoke tests, rollback, and troubleshooting. `scripts/verify-member4-deployment.ps1` reproduces local health/OpenAPI/CORS verification against a disposable MongoDB replica set.
+- The previously tracked JWT signing value was removed. JWT and MongoDB secrets must be injected outside tracked files.
+
+### Prompt 8 verification
+
+| Component/check | Result | Actual evidence |
+| --- | --- | --- |
+| Release solution build | Passed | `dotnet build SolarMicrogrid.slnx --configuration Release --no-restore -m:1`: 0 warnings, 0 errors. |
+| Deployment/controller/cross-component tests | Passed | Focused Mongo-independent run passed 16/16, including bounded/safe unhealthy health output, CORS validation, correlation headers, exact roles, DTO/error contracts, and endpoint status metadata. |
+| Full API Mongo integration | Passed | `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\run-component3-tests.ps1`: 71/71 passed against a disposable MongoDB 8 replica set. |
+| Existing service tests | Passed | `SolarMicrogrid.Tests`: 69/69 passed. |
+| Live local deployment contract | Passed | `scripts\verify-member4-deployment.ps1` started the Release API with generated test-only configuration and disposable MongoDB; healthy API/database status, bearer and all five Member 4 OpenAPI operations/status metadata/redacted examples, and configured CORS preflight passed. This is not a hosted deployment claim. |
+| IIS Release publish | Passed | `dotnet publish ... -p:PublishProfile=IIS-Release` completed. Published DLL and `web.config` exist; parsed output uses `dotnet`, `AspNetCoreModuleV2`, in-process hosting, `ASPNETCORE_ENVIRONMENT=Production`, and disabled stdout logging. Published configuration contains an empty connection string/key and no detected prior signing value. |
+| Web verification | Passed | ESLint passed; Vitest passed 5 files/30 tests; TypeScript/Vite production build passed with 70 modules. A loopback production URL failed closed, while same-origin `/api` built successfully. |
+| Android URL/build verification | Not Verified | A missing release URL failed closed with the configured message; a hosted HTTPS `/api/` URL passed that guard and reached Gradle task resolution. `testDebugUnitTest assembleDebug lintDebug` and the release APK remain `Not Verified` because no Android SDK is configured. |
+| Hosted IIS/MongoDB/HTTPS deployment | Not Verified | No IIS host, production MongoDB, domain, certificate, secret source, signed Android release, or sanitized production accounts are available. No successful hosted deployment is claimed. |
+
+Remaining deployment gates are infrastructure-owned: install/confirm the .NET 10 Hosting Bundle, provision the IIS site/app pool and restrictive file ACLs, inject secret/environment values, permit TLS MongoDB replica-set access from the IIS host, bind a trusted HTTPS certificate/domain, choose same-origin routing or supply exact web CORS origins, build/sign Android with the real hosted URL, and execute the documented sanitized smoke/rollback checks.
+
+Focused commit message: `feat(deployment): add secure IIS deployment support`
+
 ## Traceability checklist
 
 | Requirement/evidence | Status | Evidence or blocker |
@@ -346,11 +377,11 @@ Android Member 4 parsers now fail closed when dashboard history contains an unkn
 | Implement Grid Operator QR scanner client | Completed | Exact-role CameraX/ML Kit scanner, permission paths, server verification, confirmation, and completion summary replace the placeholder. |
 | Add safe Prosumer reference to verification DTO | Completed | Server returns a per-reservation pseudonymous `PRO-` alias; integration tests verify the NIC is absent. |
 | Implement atomic completion and replay protection | Completed | Transaction/CAS workflow and one-winner race test pass against MongoDB replica set. |
-| Implement deployment configuration | Not Started | Later prompt; deployment target/secrets/TLS/topology are blocked. |
+| Implement deployment configuration | Completed | Bounded health, exact-origin CORS, secured OpenAPI metadata/examples, correlation-safe errors/logging, IIS profile/ANCM config, hosted client URL guards, verifier, and runbook are implemented. |
 | Add Member 4 dashboard automated tests | Completed | Controller contract and MongoDB integration coverage was added for authorization, isolation, empty data, counts, filters, pagination, invalid inputs, and ordering. |
-| Execute Member 4 MongoDB integration tests | Completed | Full API suite passed 60/60 against the repository runner's temporary MongoDB 8 replica set. |
+| Execute Member 4 MongoDB integration tests | Completed | Full API suite now passes 71/71 against the repository runner's temporary MongoDB 8 replica set, including Prompt 8 deployment contracts. |
 | Verify live HTTP/JWT and device/browser workflow | Blocked | No sanitized end-to-end accounts/configuration; service and controller integration are verified, but no external client smoke test was performed. |
-| Verify production deployment | Blocked | No deployment target or credentials/configuration supplied. |
+| Verify production deployment | Not Verified | Local Release publish/configuration checks passed, but no IIS target, hosted MongoDB, domain/certificate, secret source, or production accounts were supplied. |
 | Confirm QR/verification lifetime | Completed | Five-minute defaults, bounded configuration, and expiry tests are implemented. |
 | Confirm narrower check-in/completion window | Blocked | No official start-relative window was supplied. |
 | Confirm consumed-capacity behavior | Completed | Reuses `Consumed` and retains the allocation rather than restoring capacity. |
