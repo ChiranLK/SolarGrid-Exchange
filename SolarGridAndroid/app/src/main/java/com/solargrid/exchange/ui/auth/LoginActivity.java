@@ -13,10 +13,16 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.solargrid.exchange.R;
-import com.solargrid.exchange.ui.MainActivity;
+import com.solargrid.exchange.SolarGridApplication;
+import com.solargrid.exchange.data.model.SessionUser;
+import com.solargrid.exchange.features.auth.AccountRoutePolicy;
+import com.solargrid.exchange.network.ApiError;
 import com.solargrid.exchange.ui.common.UiState;
 
 public final class LoginActivity extends AppCompatActivity {
+    /** Optional explanation shown above the form (e.g. why the previous session ended). */
+    public static final String EXTRA_NOTICE = "com.solargrid.exchange.extra.LOGIN_NOTICE";
+
     private EditText emailInput;
     private EditText passwordInput;
     private Button submitButton;
@@ -35,6 +41,13 @@ public final class LoginActivity extends AppCompatActivity {
         progress = findViewById(R.id.login_progress);
         errorMessage = findViewById(R.id.login_error);
 
+        String notice = getIntent().getStringExtra(EXTRA_NOTICE);
+        TextView noticeView = findViewById(R.id.login_notice);
+        if (notice != null && !notice.trim().isEmpty()) {
+            noticeView.setText(notice);
+            noticeView.setVisibility(View.VISIBLE);
+        }
+
         LoginViewModel viewModel = new ViewModelProvider(this).get(LoginViewModel.class);
         viewModel.getState().observe(this, state -> {
             boolean loading = state.getStatus() == UiState.Status.LOADING;
@@ -42,17 +55,22 @@ public final class LoginActivity extends AppCompatActivity {
             submitButton.setEnabled(!loading);
 
             if (state.getStatus() == UiState.Status.ERROR && state.getError() != null) {
-                errorMessage.setText(state.getError().getMessage());
+                ApiError error = state.getError();
+                if (AccountRoutePolicy.afterLoginFailure(error) == AccountRoutePolicy.Destination.PENDING_ACTIVATION) {
+                    // Correct credentials but not yet approved: explain instead of showing an error.
+                    viewModel.acknowledgeResult();
+                    startActivity(PendingActivationActivity.intent(this, emailInput.getText().toString().trim()));
+                    return;
+                }
+                errorMessage.setText(error.getMessage());
                 errorMessage.setVisibility(View.VISIBLE);
             } else {
                 errorMessage.setVisibility(View.GONE);
             }
 
-            if (!routed && state.getStatus() == UiState.Status.SUCCESS) {
+            if (!routed && state.getStatus() == UiState.Status.SUCCESS && state.getData() != null) {
                 routed = true;
-                Intent intent = new Intent(this, MainActivity.class);
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                startActivity(intent);
+                routeAfterLogin(state.getData());
             }
         });
 
@@ -69,5 +87,18 @@ public final class LoginActivity extends AppCompatActivity {
             }
             viewModel.login(email, password);
         });
+
+        findViewById(R.id.login_register).setOnClickListener(
+                ignored -> startActivity(new Intent(this, RegisterActivity.class)));
+    }
+
+    private void routeAfterLogin(SessionUser session) {
+        if (AccountRoutePolicy.afterAuthentication(session) == AccountRoutePolicy.Destination.BACKOFFICE_WEB_ONLY) {
+            // Backoffice work is web-only: do not keep a Backoffice token on the device.
+            ((SolarGridApplication) getApplication()).getAppContainer().getAuthRepository().logout();
+            AccountNavigator.toBackofficeWebOnly(this);
+            return;
+        }
+        AccountNavigator.toMainApp(this);
     }
 }

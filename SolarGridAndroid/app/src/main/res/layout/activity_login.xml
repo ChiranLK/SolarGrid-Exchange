@@ -44,7 +44,19 @@
             android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
 
         <TextView
+            android:id="@+id/login_notice"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_md"
+            android:accessibilityLiveRegion="polite"
+            android:background="@color/solar_green_100"
+            android:padding="@dimen/space_md"
+            android:textColor="@color/solar_text"
+            android:visibility="gone" />
+
+        <TextView
             android:id="@+id/login_error"
+            android:accessibilityLiveRegion="assertive"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/space_md"
@@ -89,5 +101,21 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/space_md"
             android:visibility="gone" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_xl"
+            android:text="@string/login_register_prompt"
+            android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/login_register"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_sm"
+            android:minHeight="48dp"
+            android:text="@string/create_prosumer_account" />
     </LinearLayout>
 </ScrollView>

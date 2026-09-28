@@ -29,6 +29,13 @@ public final class LoginViewModel extends AndroidViewModel {
         return state;
     }
 
+    /** Returns to idle after the screen has acted on a result (prevents re-routing on rotation). */
+    public void acknowledgeResult() {
+        if (!requestInFlight) {
+            state.setValue(UiState.idle());
+        }
+    }
+
     public void login(String email, String password) {
         if (requestInFlight) {
             return;

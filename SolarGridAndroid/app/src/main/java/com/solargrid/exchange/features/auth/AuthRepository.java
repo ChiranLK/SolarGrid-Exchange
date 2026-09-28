@@ -3,7 +3,9 @@ package com.solargrid.exchange.features.auth;
 import androidx.annotation.Nullable;
 
 import com.solargrid.exchange.data.local.SessionStore;
+import com.solargrid.exchange.data.model.ProsumerProfile;
 import com.solargrid.exchange.data.model.SessionUser;
+import com.solargrid.exchange.features.users.ProfileController;
 import com.solargrid.exchange.network.ApiCallback;
 import com.solargrid.exchange.network.ApiClient;
 import com.solargrid.exchange.network.ApiError;
@@ -11,13 +13,51 @@ import com.solargrid.exchange.network.ApiError;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-public final class AuthRepository {
+public final class AuthRepository implements RegistrationController.Gateway, ProfileController.ProfileCache {
     private final ApiClient apiClient;
     private final SessionStore sessionStore;
 
     public AuthRepository(ApiClient apiClient, SessionStore sessionStore) {
         this.apiClient = apiClient;
         this.sessionStore = sessionStore;
+    }
+
+    /**
+     * POST /api/auth/register. The new account is PendingActivation, so nothing is stored locally
+     * and no session is started. The password is sent once and never kept.
+     */
+    @Override
+    public void register(RegistrationForm form, ApiCallback<String> callback) {
+        JSONObject body;
+        try {
+            body = form.toRequestJson();
+        } catch (JSONException exception) {
+            callback.onError(new ApiError(ApiError.Kind.VALIDATION, 0, "Registration details are invalid."));
+            return;
+        }
+
+        apiClient.postAnonymous("auth/register", body, new ApiCallback<>() {
+            @Override
+            public void onSuccess(JSONObject value) {
+                String email = value.optString("email", form.getEmail());
+                callback.onSuccess(email.isEmpty() ? form.getEmail() : email);
+            }
+
+            @Override
+            public void onError(ApiError error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    /** Refreshes the cached display fields of the signed-in Prosumer with API-confirmed values. */
+    @Override
+    public void cacheProfile(ProsumerProfile profile) {
+        SessionUser stored = sessionStore.read();
+        if (stored == null || !stored.getNic().equalsIgnoreCase(profile.getNic())) {
+            return;
+        }
+        sessionStore.save(stored.withProfile(profile.getFullName(), profile.getEmail(), profile.getStatus()));
     }
 
     public void login(String email, String password, ApiCallback<SessionUser> callback) {

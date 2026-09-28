@@ -22,8 +22,11 @@ import com.google.android.material.navigation.NavigationView;
 import com.solargrid.exchange.R;
 import com.solargrid.exchange.SolarGridApplication;
 import com.solargrid.exchange.data.model.SessionUser;
+import com.solargrid.exchange.features.auth.AccountRoutePolicy;
 import com.solargrid.exchange.features.auth.AuthRepository;
 import com.solargrid.exchange.features.operations.RoleRoutePolicy;
+import com.solargrid.exchange.network.ApiError;
+import com.solargrid.exchange.ui.auth.AccountNavigator;
 import com.solargrid.exchange.ui.auth.LoginActivity;
 import com.solargrid.exchange.ui.operations.OperatorTransactionViewModel;
 
@@ -40,6 +43,12 @@ public final class MainActivity extends AppCompatActivity
         SessionUser session = authRepository.getStoredSession();
         if (session == null) {
             routeToLogin();
+            return;
+        }
+        if (AccountRoutePolicy.afterAuthentication(session) == AccountRoutePolicy.Destination.BACKOFFICE_WEB_ONLY) {
+            // Backoffice administration is web-only; never open the mobile workspace for it.
+            authRepository.logout();
+            AccountNavigator.toBackofficeWebOnly(this);
             return;
         }
 
@@ -111,6 +120,19 @@ public final class MainActivity extends AppCompatActivity
     public void handleAuthenticationExpiry() {
         authRepository.logout();
         routeToLogin();
+    }
+
+    /**
+     * Called by Member 1 screens when the API reports that this account is pending or has been
+     * deactivated while the token was still valid. The local session is cleared either way.
+     */
+    public void handleAccountNoLongerActive(ApiError error) {
+        authRepository.logout();
+        if (AccountRoutePolicy.afterSessionFailure(error) == AccountRoutePolicy.Destination.PENDING_ACTIVATION) {
+            AccountNavigator.toPendingActivation(this, null);
+        } else {
+            AccountNavigator.toSignIn(this, getString(R.string.account_no_longer_active, error.getMessage()));
+        }
     }
 
     private void configureRoleNavigation(NavigationView navigationView, SessionUser session) {
