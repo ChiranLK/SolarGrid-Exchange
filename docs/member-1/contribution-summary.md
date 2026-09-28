@@ -22,7 +22,8 @@
 | `64f5933` | Web: role-based login redirects, Backoffice user management, pending activation, deactivation requests, station assignment |
 | `5ffd2a6` | Android: removed duplicate string resources left by an earlier merge (build fix) |
 | `d1fd703` | Android: Prosumer registration, pending activation, Backoffice web-only screen, server-authoritative profile edit, deactivation request |
-| *(Phase 5, uncommitted at time of writing)* | Standard headers and method comments on remaining Member 1 C# files; final audit documents |
+| `a8f5afb` | Standard headers and method comments on remaining Member 1 C# files; final audit documents |
+| *(manual verification, uncommitted at time of writing)* | Android edge-to-edge fix so the app-shell menu button is tappable on Android 15+; manual verification results |
 
 Note: the completion commits were created with the Git identity configured on the development machine.
 
@@ -40,7 +41,8 @@ Note: the completion commits were created with the Git identity configured on th
 ## Tests
 
 144 Member 1 backend unit tests, 78 Member 1 web tests, 48 Member 1 Android unit tests and 3 instrumented
-SQLite tests, plus a 42-step HTTP runtime check against a real MongoDB (see `final-audit.md`).
+SQLite tests, plus a 42-step HTTP runtime check against a real MongoDB and a manual browser/emulator
+verification on 2026-09-29 (6 of 8 checkpoints passed; see `final-audit.md`).
 
 ## Disclosure
 

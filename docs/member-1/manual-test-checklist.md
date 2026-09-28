@@ -70,3 +70,23 @@ note the date, device/browser and result. Record screenshots for the report only
 - [ ] Web: phone width (375 px) — tables scroll horizontally inside their card; forms stack to one column.
 - [ ] Android: TalkBack reads field labels, errors and the dialog; buttons are at least 48 dp.
 - [ ] Android: small phone and large phone emulators; landscape orientation for registration and profile.
+
+## Results — 2026-09-29
+
+Environment: Windows 11; API `http` profile on `localhost:5076` with user secrets; MongoDB 8.0 replica set in
+Docker (local); Chrome with the Vite dev server; Android debug build on the Pixel_9 emulator (API 36).
+Synthetic accounts only. Evidence: tester observation plus MongoDB status fields of the synthetic accounts.
+
+| Section | Result | Notes |
+| --- | --- | --- |
+| 0. Environment | Passed | Bootstrap created one Backoffice, then disabled; API restarted without bootstrap settings |
+| 1. Android registration and pending flow | Passed (partial) | Registration → Awaiting activation. Pending-login repeat, empty-form and rotation checks not confirmed |
+| 2. Web activation | Passed | Activated from Pending activation; server status Active |
+| 3. Profile update (Android) | Passed (partial) | Name, phone and email saved and confirmed on the server; old email refused, new email accepted. Rotation and offline checks not confirmed. Required the edge-to-edge menu fix first |
+| 4. Deactivation request and approval | Passed (partial) | Request and approval confirmed on the server; sign-out observed after app refresh. Web reactivation not performed |
+| 5. Role routing | Not Verified | Skipped (no station or Grid Operator created; Backoffice on Android not tried) |
+| 6. SQLite session behaviour | Passed (partial) | Session restore and post-deactivation sign-out observed; instrumented tests 3/3 |
+| 7. Accessibility and layout | Passed (partial) | Web dialog keyboard open/Escape and 375 px layouts passed; keyboard confirm and TalkBack not verified |
+
+Still to do before claiming full completion: section 5, web reactivation, Android rotation and offline checks,
+keyboard confirm and TalkBack.
