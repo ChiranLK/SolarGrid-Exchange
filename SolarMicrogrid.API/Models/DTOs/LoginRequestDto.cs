@@ -1,3 +1,15 @@
+/*
+ * LoginRequestDto.cs
+ * -----------------------------------------------------------------------------
+ * File        : LoginRequestDto.cs
+ * Author      : H.A.S MADUWANTHA
+ * IT Number   : IT23472020
+ * Description : Request body for POST /api/auth/login: email and password, both
+ *               required. The password is only compared with the stored BCrypt hash.
+ * Date        : 2026-09-29
+ * -----------------------------------------------------------------------------
+ */
+
 using System.ComponentModel.DataAnnotations;
 
 namespace SolarMicrogrid.API.Models.DTOs
