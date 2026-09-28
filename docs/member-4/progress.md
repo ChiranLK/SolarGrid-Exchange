@@ -367,6 +367,24 @@ Prompt 9 adds verification only within Member 4 ownership: one authenticated cro
 
 Focused commit message: `test(member-4): verify dashboard and QR workflows`
 
+## Prompt 10: final audit and submission support
+
+The final audit re-ran every available command instead of relying on earlier results. The full traceability table, gate checks and remaining manual steps are in `docs/member-4/final-audit.md`.
+
+- Results:
+  - Release build: 0 warnings, 0 errors.
+  - API tests: 73/73 against disposable MongoDB 8.
+  - Service tests: 69/69.
+  - Web: ESLint, 34/34 Vitest and production build passed.
+  - Android supplemental JUnit: 17/17.
+  - Local deployment verifier and IIS Release publish: passed.
+- Android Gradle `testDebugUnitTest assembleDebug lintDebug` remains `Blocked` because there is no Android SDK.
+- Device, hosted IIS and live cross-client journeys remain `Not Verified`.
+- The SE4040 Assignment 1 PDF and EAD Plan.pdf were not available in the repository or workspace. The student must reconcile the audit against them.
+- Added the consolidated root README, `final-audit.md`, `screenshot-checklist.md`, `video-script.md` and `viva-notes.md`. No screenshots or video were produced.
+
+Focused commit message: `docs(member-4): add final audit and submission guide`
+
 ## Traceability checklist
 
 | Requirement/evidence | Status | Evidence or blocker |
