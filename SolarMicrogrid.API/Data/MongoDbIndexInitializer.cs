@@ -2,7 +2,7 @@
  * MongoDbIndexInitializer.cs
  * -----------------------------------------------------------------------------
  * Purpose : Creates MongoDB indexes for users, stations, slots, and Component 3
- *           reservations when the API starts.
+ *           reservations and Member 4 QR transactions when the API starts.
  * Safety  : Reservation indexes support real list/ownership queries, capacity
  *           integration, idempotent creation, and active duplicate prevention.
  * -----------------------------------------------------------------------------
@@ -119,6 +119,23 @@ public sealed class MongoDbIndexInitializer(MongoDbContext dbContext) : IHostedS
                     .Descending(reservation => reservation.Id),
                 new CreateIndexOptions { Name = "ix_reservations_created_id" }),
             new(
+                Builders<EnergyReservation>.IndexKeys
+                    .Ascending(reservation => reservation.ProsumerNic)
+                    .Descending(reservation => reservation.ScheduledStartTimeUtc)
+                    .Descending(reservation => reservation.Id),
+                new CreateIndexOptions { Name = "ix_reservations_prosumer_history_start_id" }),
+            new(
+                Builders<EnergyReservation>.IndexKeys
+                    .Ascending(reservation => reservation.StationId)
+                    .Descending(reservation => reservation.ScheduledStartTimeUtc)
+                    .Descending(reservation => reservation.Id),
+                new CreateIndexOptions { Name = "ix_reservations_station_history_start_id" }),
+            new(
+                Builders<EnergyReservation>.IndexKeys
+                    .Descending(reservation => reservation.ScheduledStartTimeUtc)
+                    .Descending(reservation => reservation.Id),
+                new CreateIndexOptions { Name = "ix_reservations_history_start_id" }),
+            new(
                 Builders<EnergyReservation>.IndexKeys.Ascending(
                     reservation => reservation.CreationRequestIdHash),
                 new CreateIndexOptions
@@ -154,6 +171,40 @@ public sealed class MongoDbIndexInitializer(MongoDbContext dbContext) : IHostedS
 
         await dbContext.ReservationSchedulingGuards.Indexes.CreateOneAsync(
             schedulingGuardLeaseIndex,
+            cancellationToken: cancellationToken);
+
+        var transactionIndexes = new CreateIndexModel<QrTransaction>[]
+        {
+            new(
+                Builders<QrTransaction>.IndexKeys.Ascending(item => item.TokenHash),
+                new CreateIndexOptions
+                {
+                    Name = "ux_qr_transactions_token_hash",
+                    Unique = true
+                }),
+            new(
+                Builders<QrTransaction>.IndexKeys.Ascending(item => item.VerificationHash),
+                new CreateIndexOptions
+                {
+                    Name = "ux_qr_transactions_verification_hash",
+                    Unique = true,
+                    Sparse = true
+                }),
+            new(
+                Builders<QrTransaction>.IndexKeys
+                    .Ascending(item => item.ReservationId)
+                    .Ascending(item => item.ReservationVersion)
+                    .Ascending(item => item.State),
+                new CreateIndexOptions { Name = "ix_qr_transactions_reservation_version_state" }),
+            new(
+                Builders<QrTransaction>.IndexKeys
+                    .Ascending(item => item.State)
+                    .Ascending(item => item.TokenExpiresAtUtc),
+                new CreateIndexOptions { Name = "ix_qr_transactions_state_expiry" })
+        };
+
+        await dbContext.QrTransactions.Indexes.CreateManyAsync(
+            transactionIndexes,
             cancellationToken: cancellationToken);
     }
 

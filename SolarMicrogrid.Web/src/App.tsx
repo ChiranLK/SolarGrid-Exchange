@@ -1,6 +1,5 @@
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from './layouts/AppLayout'
-import { DashboardPage } from './pages/DashboardPage'
 import { FeaturePlaceholderPage } from './pages/FeaturePlaceholderPage'
 import { ForbiddenPageWithNavigation } from './pages/ForbiddenPage'
 import { HomePage } from './pages/HomePage'
@@ -11,6 +10,9 @@ import { RoleRoute } from './routes/RoleRoute'
 import { ReservationCreatePage } from './features/reservations/ReservationCreatePage'
 import { ReservationDetailPage } from './features/reservations/ReservationDetailPage'
 import { ReservationListPage } from './features/reservations/ReservationListPage'
+import { BookingHistoryPage } from './features/operations/BookingHistoryPage'
+import { OperatorDashboardPage } from './features/operations/OperatorDashboardPage'
+import { operatorRoles, operatorRoutes } from './features/operations/operatorDashboardModel'
 import { StationDetailPage } from './features/stations/StationDetailPage'
 import { StationFormPage } from './features/stations/StationFormPage'
 import { StationListPage } from './features/stations/StationListPage'
@@ -25,7 +27,6 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route index element={<HomePage />} />
-          <Route path="dashboard" element={<DashboardPage />} />
           <Route path="stations" element={<StationListPage />} />
           <Route path="stations/:stationId" element={<StationDetailPage />} />
           <Route path="reservations" element={<ReservationListPage />} />
@@ -53,6 +54,12 @@ export default function App() {
                 />
               )}
             />
+          </Route>
+
+          <Route element={<RoleRoute allowedRoles={operatorRoles} />}>
+            <Route path={operatorRoutes.dashboard} element={<OperatorDashboardPage />} />
+            <Route path={operatorRoutes.history} element={<BookingHistoryPage />} />
+            <Route path="dashboard" element={<Navigate to={`/${operatorRoutes.dashboard}`} replace />} />
           </Route>
 
           <Route element={<RoleRoute allowedRoles={['Backoffice']} />}>

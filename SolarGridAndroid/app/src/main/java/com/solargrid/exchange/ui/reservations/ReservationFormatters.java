@@ -7,10 +7,10 @@ import java.util.Date;
 import java.util.Locale;
 import java.util.TimeZone;
 
-final class ReservationFormatters {
+public final class ReservationFormatters {
     private ReservationFormatters() { }
 
-    static String localDateTime(String utcValue) {
+    public static String localDateTime(String utcValue) {
         if (utcValue == null || utcValue.trim().isEmpty()) {
             return "Not supplied";
         }
@@ -66,11 +66,11 @@ final class ReservationFormatters {
         return null;
     }
 
-    static String energy(double value) {
+    public static String energy(double value) {
         return String.format(Locale.getDefault(), "%.2f kWh", value);
     }
 
-    static String station(String name, String id) {
+    public static String station(String name, String id) {
         return name == null || name.trim().isEmpty() ? id : name;
     }
 

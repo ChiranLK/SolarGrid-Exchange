@@ -74,6 +74,7 @@ artifacts/
 **/.env
 **/.env.*
 !**/.env.example
+!**/.env.*.example
 
 # Android Studio, Gradle, device captures, local SDK paths, and signing material
 **/.gradle/
@@ -216,6 +217,7 @@ publish/
 # Note: Comment the next line if you want to checkin your web deploy settings,
 # but database connection strings (with potential passwords) will be unencrypted
 *.pubxml
+!SolarMicrogrid.API/Properties/PublishProfiles/IIS-Release.pubxml
 *.publishproj
 
 # Microsoft Azure Web App publish settings. Comment the next line if you want to

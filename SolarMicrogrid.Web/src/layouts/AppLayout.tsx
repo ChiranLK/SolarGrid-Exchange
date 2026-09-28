@@ -1,33 +1,14 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
-import type { UserRole } from '../auth/authTypes'
-
-interface NavigationItem {
-  label: string
-  path: string
-  shortLabel: string
-  roles?: readonly UserRole[]
-}
-
-const navigation: NavigationItem[] = [
-  { label: 'Home', path: '/', shortLabel: 'H' },
-  { label: 'Dashboard', path: '/dashboard', shortLabel: 'D' },
-  { label: 'Users', path: '/users', shortLabel: 'U', roles: ['Backoffice', 'GridOperator'] },
-  { label: 'Stations & slots', path: '/stations', shortLabel: 'S' },
-  { label: 'Reservations', path: '/reservations', shortLabel: 'R' },
-  { label: 'Operations', path: '/operations', shortLabel: 'O', roles: ['Backoffice', 'GridOperator'] },
-  { label: 'Backoffice', path: '/backoffice', shortLabel: 'B', roles: ['Backoffice'] },
-]
+import { getVisibleNavigation } from '../features/operations/operatorNavigation'
 
 export function AppLayout() {
   const { session, logout } = useAuth()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  const visibleNavigation = navigation.filter(
-    (item) => !item.roles || (session && item.roles.includes(session.role)),
-  )
+  const visibleNavigation = getVisibleNavigation(session?.role ?? null)
 
   return (
     <div className="app-shell">

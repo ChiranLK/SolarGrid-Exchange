@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/solar_surface">
+
+    <androidx.camera.view.PreviewView
+        android:id="@+id/operator_camera_preview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@string/camera_preview_description"
+        android:importantForAccessibility="no"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/operator_scan_instruction"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="#CC0B3D2E"
+        android:gravity="center"
+        android:padding="@dimen/space_lg"
+        android:text="@string/scan_instruction"
+        android:textColor="@color/white"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/operator_camera_permission_panel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:padding="@dimen/space_xl">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="@string/camera_permission_title"
+            android:textAppearance="@style/TextAppearance.SolarGrid.Title" />
+
+        <TextView
+            android:id="@+id/operator_camera_permission_message"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_sm"
+            android:gravity="center"
+            android:text="@string/camera_permission_explanation"
+            android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
+
+        <Button
+            android:id="@+id/operator_camera_permission_request"
+            style="@style/Widget.SolarGrid.Button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_lg"
+            android:text="@string/allow_camera" />
+
+        <Button
+            android:id="@+id/operator_camera_settings"
+            style="@style/Widget.SolarGrid.Button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_sm"
+            android:text="@string/open_app_settings"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <com.solargrid.exchange.ui.common.UiStateView
+        android:id="@+id/operator_scanner_state"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="@color/solar_surface" />
+</FrameLayout>
