@@ -11,6 +11,7 @@ import type { DashboardResponse } from './dashboardTypes'
 import {
   classifyDashboardContent,
   nextRefreshToken,
+  type DashboardContentState,
 } from './operatorDashboardModel'
 import { ReservationSummaryTable } from './ReservationSummaryTable'
 import { useOperatorRefresh } from './useOperatorRefresh'
@@ -71,25 +72,49 @@ export function OperatorDashboardPage() {
         )}
       />
 
-      {contentState === 'loading' && <LoadingState label="Loading operator dashboard…" />}
-      {contentState === 'error' && (
-        <ApiErrorState error={error} resourceName="dashboard" onRetry={refresh} />
-      )}
-      {contentState === 'empty' && dashboard && (
-        <>
-          <DashboardMetrics dashboard={dashboard} />
-          <EmptyState
-            title="No operational reservations"
-            description="There are no pending, scheduled, active, or historical transfers for your assigned station."
-            action={<button type="button" className="btn btn-success" onClick={refresh}>Refresh</button>}
-          />
-        </>
-      )}
-      {contentState === 'ready' && dashboard && (
-        <DashboardContent dashboard={dashboard} />
-      )}
+      <OperatorDashboardState
+        contentState={contentState}
+        dashboard={dashboard}
+        error={error}
+        onRetry={refresh}
+      />
     </>
   )
+}
+
+export function OperatorDashboardState({
+  contentState,
+  dashboard,
+  error,
+  onRetry,
+}: {
+  contentState: DashboardContentState
+  dashboard: DashboardResponse | null
+  error: unknown
+  onRetry: () => void
+}) {
+  if (contentState === 'loading') {
+    return <LoadingState label="Loading operator dashboard…" />
+  }
+  if (contentState === 'error') {
+    return <ApiErrorState error={error} resourceName="dashboard" onRetry={onRetry} />
+  }
+  if (contentState === 'empty' && dashboard) {
+    return (
+      <>
+        <DashboardMetrics dashboard={dashboard} />
+        <EmptyState
+          title="No operational reservations"
+          description="There are no pending, scheduled, active, or historical transfers for your assigned station."
+          action={<button type="button" className="btn btn-success" onClick={onRetry}>Refresh</button>}
+        />
+      </>
+    )
+  }
+  if (contentState === 'ready' && dashboard) {
+    return <DashboardContent dashboard={dashboard} />
+  }
+  return null
 }
 
 function DashboardContent({ dashboard }: { dashboard: DashboardResponse }) {

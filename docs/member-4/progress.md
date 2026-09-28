@@ -351,6 +351,22 @@ Remaining deployment gates are infrastructure-owned: install/confirm the .NET 10
 
 Focused commit message: `feat(deployment): add secure IIS deployment support`
 
+## Prompt 9 verification: automated and end-to-end workflow coverage
+
+Prompt 9 adds verification only within Member 4 ownership: one authenticated cross-service Mongo workflow, production-error redaction coverage, server-rendered web state tests, a completion-conflict Android assertion, a reproducible pure-Java Android JUnit runner, and sanitized evidence in `docs/member-4/test-evidence.md`.
+
+- The final Release build passed with 0 warnings/errors.
+- The full API suite passed 73/73 against a real disposable MongoDB 8 replica set. It includes owner/role/station isolation, dashboard counts/history filters/paging, QR privacy/eligibility/expiry/revocation/replay, one-winner simultaneous completion, authenticated login-to-completion refresh, health and production-safe error output.
+- `SolarMicrogrid.Tests` passed 69/69.
+- Web ESLint, 6 Vitest files/34 tests, TypeScript and the Vite production build passed. New server-rendered tests exercise live API content plus loading/empty/error/retry/pagination states; a reservation-change event test proves relevant actions request refresh.
+- The new `scripts/run-member4-android-unit-tests.ps1` passed 17/17 JUnit tests covering exact role routing, dashboard/history mapping, QR payload/expiry safety, camera permission states, scanner error mapping, confirmation, rapid double submit and completion conflict.
+- Android Gradle `testDebugUnitTest assembleDebug lintDebug` remains `Blocked`: dependency resolution stopped because neither `ANDROID_HOME` nor `local.properties` identifies an Android SDK; none of the requested tasks ran.
+- Physical camera/device behavior and complete hosted browser/Android journeys remain `Not Verified`. Component/service evidence is not presented as a live end-to-end pass.
+- End-to-end scenarios 4-9 passed at the real Mongo service/authorization boundary. Scenarios 1-3 and 10 remain `Not Verified` as complete client journeys, although their server and pure-client components passed separately. Exact results and human checks are recorded in `test-evidence.md`.
+- No upstream Member 1-3 defect was found. An initial test-only assertion used the current view for an approved-future reservation; it was corrected to Member 3's authoritative `ApprovedFuture` view without changing production behavior.
+
+Focused commit message: `test(member-4): verify dashboard and QR workflows`
+
 ## Traceability checklist
 
 | Requirement/evidence | Status | Evidence or blocker |
@@ -379,7 +395,7 @@ Focused commit message: `feat(deployment): add secure IIS deployment support`
 | Implement atomic completion and replay protection | Completed | Transaction/CAS workflow and one-winner race test pass against MongoDB replica set. |
 | Implement deployment configuration | Completed | Bounded health, exact-origin CORS, secured OpenAPI metadata/examples, correlation-safe errors/logging, IIS profile/ANCM config, hosted client URL guards, verifier, and runbook are implemented. |
 | Add Member 4 dashboard automated tests | Completed | Controller contract and MongoDB integration coverage was added for authorization, isolation, empty data, counts, filters, pagination, invalid inputs, and ordering. |
-| Execute Member 4 MongoDB integration tests | Completed | Full API suite now passes 71/71 against the repository runner's temporary MongoDB 8 replica set, including Prompt 8 deployment contracts. |
+| Execute Member 4 MongoDB integration tests | Completed | Full API suite passes 73/73 against the repository runner's temporary MongoDB 8 replica set, including the authenticated Prompt 9 workflow and real simultaneous completion race. |
 | Verify live HTTP/JWT and device/browser workflow | Blocked | No sanitized end-to-end accounts/configuration; service and controller integration are verified, but no external client smoke test was performed. |
 | Verify production deployment | Not Verified | Local Release publish/configuration checks passed, but no IIS target, hosted MongoDB, domain/certificate, secret source, or production accounts were supplied. |
 | Confirm QR/verification lifetime | Completed | Five-minute defaults, bounded configuration, and expiry tests are implemented. |
@@ -388,11 +404,11 @@ Focused commit message: `feat(deployment): add secure IIS deployment support`
 | Confirm existing `QrEligible` projection matches final rule | Not Verified | Current projection checks only `Approved`; transaction API eligibility is authoritative and stronger. |
 | Build .NET solution | Completed | Release build passed with 0 warnings/errors. |
 | Run available Mongo-independent .NET tests | Completed | 69/69 `SolarMicrogrid.Tests` and 11/11 focused API policy/controller tests passed. |
-| Run web lint/tests/production build | Completed | ESLint, 22/22 tests, TypeScript, and Vite build passed. |
+| Run web lint/tests/production build | Completed | Current verification passed ESLint, 6 Vitest files/34 tests, TypeScript, and the Vite production build. |
 | Verify Prompt 4 web checks | Completed | ESLint, 29/29 tests, TypeScript, and Vite production build passed. |
 | Capture Prompt 4 browser screenshots | Not Verified | Requires a configured API, authenticated Grid Operator fixture, and browser session. |
 | Resolve Android dependency graph | Completed | Gradle resolved the debug and unit-test dependency graphs, including ZXing Core 3.5.4 and saved-state support. |
-| Run Android pure-Java supplemental tests | Completed | 9/9 new Member 4 tests passed through `javac` and JUnit 4. |
+| Run Android pure-Java supplemental tests | Completed | Reproducible Prompt 9 runner passed 17/17 role/dashboard/history/QR/permission/scanner/confirmation/double-submit/conflict tests through `javac` and JUnit 4. |
 | Run Android Gradle tests/build/lint | Blocked | `testDebugUnitTest assembleDebug lintDebug` stopped before task execution because no Android SDK location is configured or installed; results remain `Not Verified`. |
 | Run Android emulator/device tests | Not Verified | No emulator/device environment is available. |
 | Capture Prompt 5 Android screenshots | Not Verified | Requires a configured API, sanitized Prosumer fixture, Android SDK/emulator or device, and redaction of live QR/token/PII. |
@@ -408,3 +424,7 @@ Focused commit message: `feat(deployment): add secure IIS deployment support`
 | Verify Member 2 map client integration | Blocked | Stored/API coordinates remain intact, but the repository contains no implemented map screen to exercise. |
 | Run Prompt 7 API and web builds/tests | Completed | API build, 66/66 API tests, 69/69 service tests, and web lint/30 tests/TypeScript/Vite build passed. |
 | Run Prompt 7 Android Gradle checks | Blocked | No Android SDK is installed/configured; supplemental pure-Java contract tests passed 13/13. |
+| Document Prompt 9 commands and sanitized evidence | Completed | `docs/member-4/test-evidence.md` separates Passed, Failed, Skipped, Blocked, and Not Verified results with exact prerequisites and commands. |
+| Execute authenticated login-to-completion workflow | Completed | Real Mongo test logs in Prosumer/operator, reads ApprovedFuture, issues/verifies/completes, refreshes dashboard/history, and rejects replay. |
+| Verify all ten scenarios on hosted web and Android clients | Not Verified | Scenarios 4-9 passed at the server boundary; 1-3 and 10 need the documented hosted browser/physical-device run. |
+| Verify physical QR camera/device workflow | Not Verified | No Android SDK, emulator, connected camera device, hosted API, or sanitized device accounts are available. |

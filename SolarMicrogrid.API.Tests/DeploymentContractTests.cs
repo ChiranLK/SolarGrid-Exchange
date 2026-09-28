@@ -12,6 +12,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
+using SolarMicrogrid.API.Exceptions;
 using SolarMicrogrid.API.Health;
 using SolarMicrogrid.API.Middleware;
 using SolarMicrogrid.API.Settings;
@@ -102,6 +103,37 @@ public sealed class DeploymentContractTests
         Assert.Null(result.Exception);
         Assert.Empty(result.Data);
         Assert.True(DateTime.UtcNow - startedAt < TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task UnexpectedErrorsReturnGenericCorrelatedResponseWithoutSensitiveDetail()
+    {
+        // Exercise the production middleware chain and prove exception text never reaches the caller.
+        var context = new DefaultHttpContext();
+        context.Response.Body = new MemoryStream();
+        var exceptions = new ExceptionMiddleware(
+            _ => throw new InvalidOperationException(
+                "Sensitive JWT, QR token, NIC, connection and stack detail."),
+            NullLogger<ExceptionMiddleware>.Instance);
+        var correlation = new CorrelationIdMiddleware(
+            exceptions.InvokeAsync,
+            NullLogger<CorrelationIdMiddleware>.Instance);
+
+        await correlation.InvokeAsync(context);
+        context.Response.Body.Position = 0;
+        using JsonDocument document = await JsonDocument.ParseAsync(context.Response.Body);
+        string serialized = document.RootElement.GetRawText();
+
+        Assert.Equal(StatusCodes.Status500InternalServerError, context.Response.StatusCode);
+        Assert.Equal(
+            "An unexpected error occurred.",
+            document.RootElement.GetProperty("message").GetString());
+        Assert.Equal(
+            context.TraceIdentifier,
+            context.Response.Headers[CorrelationIdMiddleware.HeaderName].ToString());
+        Assert.DoesNotContain("Sensitive", serialized, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("JWT", serialized, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("NIC", serialized, StringComparison.OrdinalIgnoreCase);
     }
 
     [Theory]

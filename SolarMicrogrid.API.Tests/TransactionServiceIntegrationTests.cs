@@ -256,6 +256,7 @@ public sealed class TransactionServiceIntegrationTests : IAsyncLifetime
             Assert.Single(
                 storedReservation.StatusHistory,
                 item => item.ToStatus == ReservationStatus.Completed).ToStatus);
+        await Assert.ThrowsAsync<ConflictException>(() => VerifyAsync(issued.QrToken));
         await Assert.ThrowsAsync<ConflictException>(() => CompleteAsync(verified));
     }
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../api/apiClient'
 import { userRoles } from '../../auth/authTypes'
 import { reservationStatuses } from '../reservations/reservationTypes'
@@ -14,6 +14,11 @@ import {
   validateHistoryDateRange,
 } from './operatorDashboardModel'
 import { getVisibleNavigation } from './operatorNavigation'
+import {
+  reservationChangedEvent,
+  subscribeToReservationChanges,
+  type ReservationChangeNotice,
+} from '../reservations/reservationSync'
 
 const emptyDashboard: DashboardResponse = {
   serverNowUtc: '2026-09-27T00:00:00Z',
@@ -82,6 +87,32 @@ describe('Grid Operator dashboard routing and states', () => {
     expect(nextRefreshToken(0)).toBe(1)
     expect(nextRefreshToken(nextRefreshToken(4))).toBe(6)
   })
+
+  it('requests a refresh when a reservation action announces changed server state', () => {
+    const eventTarget = new EventTarget()
+    vi.stubGlobal('window', eventTarget)
+    const refresh = vi.fn()
+    const unsubscribe = subscribeToReservationChanges(refresh)
+    const notice: ReservationChangeNotice = {
+      reservationId: 'reservation-one',
+      status: 'Completed',
+      version: 3,
+      changedAt: 1,
+    }
+    const event = new Event(reservationChangedEvent) as CustomEvent<ReservationChangeNotice>
+    Object.defineProperty(event, 'detail', { value: notice })
+
+    eventTarget.dispatchEvent(event)
+    unsubscribe()
+    eventTarget.dispatchEvent(event)
+
+    expect(refresh).toHaveBeenCalledTimes(1)
+    expect(refresh).toHaveBeenCalledWith(notice)
+  })
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
 })
 
 describe('Grid Operator booking-history filters', () => {

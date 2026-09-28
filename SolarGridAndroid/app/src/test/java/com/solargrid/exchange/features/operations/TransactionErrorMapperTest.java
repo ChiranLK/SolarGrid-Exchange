@@ -36,6 +36,18 @@ public final class TransactionErrorMapperTest {
         assertFalse(map(ApiError.Kind.FORBIDDEN, 403, "different operator station").isRetryable());
     }
 
+    @Test
+    public void completionConflictNeverBecomesRetryableLocalSuccess() {
+        TransactionErrorMapper.Presentation conflict = map(
+                ApiError.Kind.CONFLICT,
+                409,
+                "The reservation changed before completion.");
+
+        assertEquals(TransactionErrorMapper.Category.UNKNOWN, conflict.getCategory());
+        assertFalse(conflict.isRetryable());
+        assertEquals("The reservation changed before completion.", conflict.getMessage());
+    }
+
     private static TransactionErrorMapper.Presentation map(
             ApiError.Kind kind,
             int status,
