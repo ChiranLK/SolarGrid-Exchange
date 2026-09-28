@@ -1,3 +1,16 @@
+/*
+ * JwtSettings.cs
+ * -----------------------------------------------------------------------------
+ * File        : JwtSettings.cs
+ * Author      : H.A.S MADUWANTHA
+ * IT Number   : IT23472020
+ * Description : Bound from the JwtSettings configuration section: signing key,
+ *               issuer, audience and token lifetime. Program.cs validates it at
+ *               start-up; the key comes from user secrets or the environment only.
+ * Date        : 2026-09-29
+ * -----------------------------------------------------------------------------
+ */
+
 namespace SolarMicrogrid.API.Settings
 {
     public class JwtSettings

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { getHomePathForRole } from '../auth/roleRouting'
 import { useAuth } from '../auth/useAuth'
 import { PageHeader } from '../components/PageHeader'
 import { StatusBadge } from '../components/StatusBadge'
@@ -23,7 +24,7 @@ export function HomePage() {
               <p className="text-body-secondary">
                 Authentication, session restoration, protected routes, and role-aware navigation all use the existing ASP.NET Core API contract.
               </p>
-              <Link to="/dashboard" className="btn btn-success">Open dashboard</Link>
+              {session && <Link to={getHomePathForRole(session.role)} className="btn btn-success">Open your workspace</Link>}
             </div>
           </section>
         </div>

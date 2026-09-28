@@ -40,6 +40,14 @@ public final class SessionUser {
         return new SessionUser(token, nic, fullName, refreshedEmail, refreshedRole, status);
     }
 
+    /**
+     * Copy with the display fields confirmed by GET/PUT /api/prosumers/me. The token, NIC and
+     * role are never changed locally; a new token is only ever issued by the API at login.
+     */
+    public SessionUser withProfile(String refreshedFullName, String refreshedEmail, String refreshedStatus) {
+        return new SessionUser(token, nic, refreshedFullName, refreshedEmail, role, refreshedStatus);
+    }
+
     public boolean isProsumer() {
         return ROLE_PROSUMER.equals(role);
     }

@@ -1,23 +1,19 @@
 /*
  * AuthService.cs
  * -----------------------------------------------------------------------------
- * Purpose : Business logic for registration and login, for all roles. Equivalent
- *           to a Spring AuthService.
- * Depends : MongoDbContext (for the Users collection) and JwtHelper, both
- *           injected. PasswordHasher is static, so it is called directly.
- * Register: builder.Services.AddScoped<AuthService>(); in Program.cs.
- * Notes   : - RegisterAsync only ever creates Prosumer accounts. Backoffice and
- *             Grid Operator (staff) accounts are created by UserService, which
- *             only Backoffice can call.
- *           - The very first Backoffice user has to exist before anyone can use
- *             UserService to create more staff. Either insert one document
- *             directly in Atlas, or add a startup seed (e.g. a hosted service,
- *             like MongoDbIndexInitializer) that inserts a fixed Backoffice
- *             user the first time the app runs if the Users collection is empty.
- *           - Errors are thrown as custom exceptions (ConflictException,
- *             UnauthorizedException, ForbiddenException) and turned into HTTP
- *             status codes by ExceptionMiddleware, the same way Spring's
- *             GlobalExceptionHandler turns exceptions into responses.
+ * File        : AuthService.cs
+ * Author      : H.A.S MADUWANTHA
+ * IT Number   : IT23472020
+ * Description : Business logic for Prosumer self-registration and for login by
+ *               every role. Registration always creates a Prosumer in
+ *               PendingActivation; staff accounts are created by UserService,
+ *               and the first Backoffice account by BackofficeBootstrapInitializer.
+ * Depends     : MongoDbContext (Users collection) and JwtHelper, both injected.
+ *               PasswordHasher is static, so it is called directly.
+ * Errors      : Throws ConflictException, UnauthorizedException and
+ *               ForbiddenException, which ExceptionMiddleware turns into the
+ *               shared { status, message } response.
+ * Date        : 2026-09-29
  * -----------------------------------------------------------------------------
  */
 
@@ -37,14 +33,16 @@ namespace SolarMicrogrid.API.Services
 
         public AuthService(MongoDbContext context, JwtHelper jwtHelper)
         {
+            // Receive the shared MongoDB context and JWT helper through dependency injection.
             _context = context;
             _jwtHelper = jwtHelper;
         }
 
-       
+
         public async Task<UserResponseDto> RegisterAsync(RegisterRequestDto request)
         {
-            
+            // Create a Prosumer account in PendingActivation after normalising the NIC/email
+            // and rejecting duplicates; Backoffice must activate it before the user can log in.
             string nic = request.Nic.ToUpperInvariant();
             string email = request.Email.ToLowerInvariant();
 

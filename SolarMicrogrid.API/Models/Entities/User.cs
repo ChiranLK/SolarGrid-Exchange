@@ -1,3 +1,16 @@
+/*
+ * User.cs
+ * -----------------------------------------------------------------------------
+ * File        : User.cs
+ * Author      : H.A.S MADUWANTHA
+ * IT Number   : IT23472020
+ * Description : MongoDB document for every SolarGrid account (Backoffice,
+ *               Grid Operator and Prosumer). The NIC is the document primary
+ *               key. Also defines the UserRole and UserStatus enums.
+ * Date        : 2026-09-29
+ * -----------------------------------------------------------------------------
+ */
+
 using System;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
@@ -54,6 +67,12 @@ namespace SolarMicrogrid.API.Models.Entities
         
         [BsonElement("deactivation_requested")]
         public bool DeactivationRequested { get; set; } = false;
+
+        // When the Prosumer asked for deactivation; lets Backoffice review requests oldest first.
+        [BsonElement("deactivation_requested_at")]
+        [BsonIgnoreIfNull]
+        [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+        public DateTime? DeactivationRequestedAtUtc { get; set; }
 
         
         [BsonElement("assigned_station_id")]

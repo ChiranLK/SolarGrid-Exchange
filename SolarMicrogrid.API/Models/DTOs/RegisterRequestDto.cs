@@ -1,3 +1,16 @@
+/*
+ * RegisterRequestDto.cs
+ * -----------------------------------------------------------------------------
+ * File        : RegisterRequestDto.cs
+ * Author      : H.A.S MADUWANTHA
+ * IT Number   : IT23472020
+ * Description : Request body for Prosumer self-registration (POST /api/auth/register).
+ *               Validates the NIC format, required fields, lengths and the minimum
+ *               password length before AuthService runs.
+ * Date        : 2026-09-29
+ * -----------------------------------------------------------------------------
+ */
+
 using System.ComponentModel.DataAnnotations;
 
 namespace SolarMicrogrid.API.Models.DTOs
