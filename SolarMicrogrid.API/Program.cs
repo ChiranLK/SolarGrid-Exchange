@@ -168,6 +168,7 @@ builder.Services.AddScoped<ReservationService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<ProsumerService>();
 
 builder.Services.AddOpenApi(options =>
 {
