@@ -195,8 +195,6 @@
     <string name="no_history_results">No booking history found</string>
     <string name="no_history_filter_results">No records match these filters. Clear filters or refresh to try again.</string>
     <string name="station_filter_unavailable">Station choices could not be refreshed. History remains available with the current selection.</string>
-    <string name="previous_page">Previous</string>
-    <string name="next_page">Next</string>
     <string name="page_of_pages">Page %1$d of %2$d</string>
     <plurals name="history_result_count">
         <item quantity="one">%d matching booking</item>
@@ -228,7 +226,6 @@
     <string name="camera_permission_denied">Camera access was denied. You can try again to scan a QR code.</string>
     <string name="camera_permission_permanently_denied">Camera access is disabled for SolarGrid. Open app settings to allow Camera access, then return here.</string>
     <string name="allow_camera">Allow camera</string>
-    <string name="open_app_settings">Open app settings</string>
     <string name="continue_action">Continue</string>
     <string name="camera_start_failed">The camera could not start. Check whether another app is using it, then retry.</string>
     <string name="verifying_qr">Sending the opaque QR token to the central API for verification…</string>

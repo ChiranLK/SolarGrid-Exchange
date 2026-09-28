@@ -27,6 +27,16 @@
             android:name=".ui.auth.LoginActivity"
             android:exported="false" />
         <activity
+            android:name=".ui.auth.RegisterActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".ui.auth.PendingActivationActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.auth.BackofficeWebOnlyActivity"
+            android:exported="false" />
+        <activity
             android:name=".ui.StartupActivity"
             android:exported="true"
             android:theme="@style/Theme.SolarGrid.Splash">

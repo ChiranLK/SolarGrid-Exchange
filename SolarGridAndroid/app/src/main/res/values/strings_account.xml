@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Member 1: registration, account status, profile and deactivation-request text. -->
+<resources>
+    <!-- Login additions -->
+    <string name="create_prosumer_account">Create a Prosumer account</string>
+    <string name="login_register_prompt">New to SolarGrid?</string>
+
+    <!-- Registration -->
+    <string name="register_title">Create your Prosumer account</string>
+    <string name="register_description">Your account will be reviewed by Backoffice before you can sign in.</string>
+    <string name="nic">NIC</string>
+    <string name="nic_hint">9 digits followed by V or X, or 12 digits</string>
+    <string name="full_name">Full name</string>
+    <string name="phone">Phone</string>
+    <string name="address_optional">Address (optional)</string>
+    <string name="confirm_password">Confirm password</string>
+    <string name="password_rule_hint">At least 8 characters</string>
+    <string name="register_submit">Create account</string>
+    <string name="registering">Creating your account…</string>
+    <string name="back_to_sign_in">Back to sign in</string>
+
+    <!-- Field validation -->
+    <string name="field_required">This field is required.</string>
+    <string name="field_invalid_nic">NIC must be 9 digits followed by V or X, or 12 digits.</string>
+    <string name="field_invalid_email">Enter a valid email address.</string>
+    <plurals name="field_too_long">
+        <item quantity="one">Use %1$d character or fewer.</item>
+        <item quantity="other">Use %1$d characters or fewer.</item>
+    </plurals>
+    <string name="field_password_too_short">Password must be at least 8 characters.</string>
+    <string name="field_passwords_do_not_match">Passwords do not match.</string>
+    <string name="form_has_errors">Check the highlighted fields and try again.</string>
+
+    <!-- Pending activation -->
+    <string name="pending_activation_title">Awaiting activation</string>
+    <string name="pending_activation_message">Your Prosumer account has been created and is waiting for Backoffice approval. You can sign in once it has been activated.</string>
+    <string name="pending_activation_email">Registered email: %1$s</string>
+    <string name="pending_activation_next_steps">There is no automatic approval time. Try signing in later; if your account is still pending you will see this screen again.</string>
+
+    <!-- Backoffice on mobile -->
+    <string name="backoffice_web_only_title">Use the web application</string>
+    <string name="backoffice_web_only_message">Backoffice account administration is available only in the SolarGrid web application. This mobile app is for Prosumers and Grid Operators.</string>
+    <string name="backoffice_web_only_signed_out">For security you have been signed out of the mobile app.</string>
+
+    <!-- Account status notices -->
+    <string name="account_no_longer_active">Your account is no longer active. %1$s</string>
+
+    <!-- Profile -->
+    <string name="loading_profile">Loading your profile from the API…</string>
+    <string name="profile_account_details">Account details</string>
+    <string name="profile_edit_title">Edit profile</string>
+    <string name="profile_edit_description">NIC, role and account status are managed by SolarGrid and cannot be changed here.</string>
+    <string name="profile_save">Save changes</string>
+    <string name="profile_saving">Saving…</string>
+    <string name="profile_saved">Your profile has been updated.</string>
+    <string name="profile_saved_email_changed">Your profile has been updated. Use your new email address the next time you sign in.</string>
+    <string name="profile_save_failed">Your changes were not saved. %1$s</string>
+    <string name="deactivation_state_label">Deactivation request</string>
+    <string name="deactivation_state_none">No request</string>
+    <string name="deactivation_state_pending">Requested on %1$s — awaiting Backoffice review</string>
+    <string name="deactivation_state_pending_no_date">Requested — awaiting Backoffice review</string>
+
+    <!-- Deactivation request -->
+    <string name="close_account_title">Close your account</string>
+    <string name="close_account_description">You can ask Backoffice to deactivate your account. Your account stays active until Backoffice approves the request.</string>
+    <string name="request_deactivation">Request account deactivation</string>
+    <string name="requesting_deactivation">Sending request…</string>
+    <string name="deactivation_confirm_title">Request account deactivation?</string>
+    <string name="deactivation_confirm_message">Backoffice will review your request. Your account is not deactivated immediately and you can keep using SolarGrid until the request is approved.</string>
+    <string name="deactivation_confirm_action">Send request</string>
+    <string name="cancel">Cancel</string>
+    <string name="deactivation_requested">Your deactivation request has been sent. Backoffice will review it; your account stays active until then.</string>
+    <string name="deactivation_already_pending">A deactivation request is already pending for this account.</string>
+</resources>

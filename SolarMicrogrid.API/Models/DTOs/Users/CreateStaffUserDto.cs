@@ -1,3 +1,16 @@
+/*
+ * CreateStaffUserDto.cs
+ * -----------------------------------------------------------------------------
+ * File        : CreateStaffUserDto.cs
+ * Author      : H.A.S MADUWANTHA
+ * IT Number   : IT23472020
+ * Description : Request body Backoffice uses to create a Backoffice or Grid
+ *               Operator account. A Grid Operator may optionally be assigned
+ *               to an existing station at creation time.
+ * Date        : 2026-09-29
+ * -----------------------------------------------------------------------------
+ */
+
 using System.ComponentModel.DataAnnotations;
 
 namespace SolarMicrogrid.API.Models.DTOs.Users
@@ -38,5 +51,9 @@ namespace SolarMicrogrid.API.Models.DTOs.Users
         [RegularExpression("^(Backoffice|GridOperator)$",
             ErrorMessage = "Role must be either Backoffice or GridOperator.")]
         public string Role { get; set; } = string.Empty;
+
+        // Optional; only valid for GridOperator and must be an existing active station ID.
+        [MaxLength(24, ErrorMessage = "Station ID cannot be longer than 24 characters.")]
+        public string? AssignedStationId { get; set; }
     }
 }

@@ -18,6 +18,12 @@ import { StationFormPage } from './features/stations/StationFormPage'
 import { StationListPage } from './features/stations/StationListPage'
 import { StationSchedulePage } from './features/stations/StationSchedulePage'
 import { SlotFormPage } from './features/stations/SlotFormPage'
+import { CreateStaffPage } from './features/users/CreateStaffPage'
+import { DeactivationRequestsPage } from './features/users/DeactivationRequestsPage'
+import { PendingActivationsPage } from './features/users/PendingActivationsPage'
+import { UserAdminLayout } from './features/users/UserAdminLayout'
+import { UserManagementPage } from './features/users/UserManagementPage'
+import { ProsumerWebNoticePage } from './pages/ProsumerWebNoticePage'
 
 export default function App() {
   return (
@@ -34,16 +40,6 @@ export default function App() {
           <Route path="reservations/:reservationId" element={<ReservationDetailPage />} />
 
           <Route element={<RoleRoute allowedRoles={['Backoffice', 'GridOperator']} />}>
-            <Route
-              path="users"
-              element={(
-                <FeaturePlaceholderPage
-                  title="Users"
-                  description="Staff-only route for account and Prosumer administration."
-                  ownerNote="User API routes exist; feature-specific views remain with their owning team member."
-                />
-              )}
-            />
             <Route
               path="operations"
               element={(
@@ -62,7 +58,17 @@ export default function App() {
             <Route path="dashboard" element={<Navigate to={`/${operatorRoutes.dashboard}`} replace />} />
           </Route>
 
+          <Route element={<RoleRoute allowedRoles={['Prosumer']} />}>
+            <Route path="prosumer" element={<ProsumerWebNoticePage />} />
+          </Route>
+
           <Route element={<RoleRoute allowedRoles={['Backoffice']} />}>
+            <Route path="users" element={<UserAdminLayout />}>
+              <Route index element={<UserManagementPage />} />
+              <Route path="new" element={<CreateStaffPage />} />
+              <Route path="pending" element={<PendingActivationsPage />} />
+              <Route path="deactivation-requests" element={<DeactivationRequestsPage />} />
+            </Route>
             <Route path="stations/new" element={<StationFormPage />} />
             <Route path="stations/:stationId/edit" element={<StationFormPage />} />
             <Route path="stations/:stationId/schedule" element={<StationSchedulePage />} />
