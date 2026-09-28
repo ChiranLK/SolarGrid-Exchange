@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { ApiError } from '../api/apiClient'
+import { resolvePostLoginDestination } from '../auth/roleRouting'
 import { useAuth } from '../auth/useAuth'
 import { LoadingState } from '../components/LoadingState'
 
@@ -12,9 +13,8 @@ interface LoginLocationState {
 }
 
 export function LoginPage() {
-  const { isAuthenticated, isInitializing, login } = useAuth()
+  const { isAuthenticated, isInitializing, login, session } = useAuth()
   const location = useLocation()
-  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -28,8 +28,10 @@ export function LoginPage() {
     return <LoadingState label="Restoring your session…" />
   }
 
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />
+  // Already signed in (or just signed in): go straight to the role's page, never back to /login.
+  if (isAuthenticated && session) {
+    const state = location.state as LoginLocationState | null
+    return <Navigate to={resolvePostLoginDestination(session.role, state?.from)} replace />
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -38,12 +40,8 @@ export function LoginPage() {
     setIsSubmitting(true)
 
     try {
+      // On success the session is set and the render above redirects to the role's page.
       await login({ email: email.trim(), password })
-      const state = location.state as LoginLocationState | null
-      const destination = state?.from?.pathname
-        ? `${state.from.pathname}${state.from.search ?? ''}`
-        : '/dashboard'
-      navigate(destination, { replace: true })
     } catch (caughtError) {
       setError(
         caughtError instanceof ApiError || caughtError instanceof Error
@@ -122,7 +120,7 @@ export function LoginPage() {
             </button>
           </form>
           <p className="small text-body-secondary mt-4 mb-0">
-            New Prosumer registration is available in the API but is not part of this shared foundation yet.
+            Prosumers register and manage their account in the SolarGrid Android app.
           </p>
         </div>
       </section>
