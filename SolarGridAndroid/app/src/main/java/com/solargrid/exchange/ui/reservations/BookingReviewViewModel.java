@@ -13,6 +13,7 @@ import com.solargrid.exchange.data.model.Reservation;
 import com.solargrid.exchange.features.reservations.ReservationCreationReconciler;
 import com.solargrid.exchange.features.reservations.ReservationRepository;
 import com.solargrid.exchange.network.ApiCallback;
+import com.solargrid.exchange.features.auth.AccountStatusPolicy;
 import com.solargrid.exchange.network.ApiError;
 import com.solargrid.exchange.ui.common.UiState;
 
@@ -175,6 +176,11 @@ public final class BookingReviewViewModel extends AndroidViewModel {
     }
 
     private static ApiError explainCreationError(ApiError error) {
+        if (error.isAuthenticationExpired() ||
+                AccountStatusPolicy.classify(error) != AccountStatusPolicy.AccountState.NONE) {
+            // Keep 401 and account-status 403 unchanged so the screen can end the session (Member 1).
+            return error;
+        }
         String detail = error.getMessage() == null ? "" : error.getMessage().trim();
         String lower = detail.toLowerCase(Locale.US);
         String message;

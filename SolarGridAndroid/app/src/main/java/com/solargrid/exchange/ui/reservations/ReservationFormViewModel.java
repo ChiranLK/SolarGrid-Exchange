@@ -15,6 +15,7 @@ import com.solargrid.exchange.features.reservations.ReservationMutationReconcile
 import com.solargrid.exchange.features.reservations.ReservationRepository;
 import com.solargrid.exchange.features.stations.StationRepository;
 import com.solargrid.exchange.network.ApiCallback;
+import com.solargrid.exchange.features.auth.AccountStatusPolicy;
 import com.solargrid.exchange.network.ApiError;
 import com.solargrid.exchange.ui.common.UiState;
 
@@ -307,6 +308,10 @@ public final class ReservationFormViewModel extends AndroidViewModel {
 
     private static ApiError explainUpdateError(ApiError error) {
         if (error.isAuthenticationExpired()) {
+            return error;
+        }
+        if (AccountStatusPolicy.classify(error) != AccountStatusPolicy.AccountState.NONE) {
+            // Keep the API account-status message so the screen can end the session (Member 1).
             return error;
         }
         String detail = error.getMessage() == null ? "" : error.getMessage().trim();

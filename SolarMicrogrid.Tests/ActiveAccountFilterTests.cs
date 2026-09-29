@@ -145,14 +145,21 @@ public sealed class ActiveAccountFilterTests
     }
 
     [Fact]
-    public void Member3EligibleProsumerSearch_IsUnchanged()
+    public void Member3EligibleProsumerSearch_RequiresActiveStaffAccount()
     {
-        // Proves the Member 3 endpoint hosted in UsersController keeps its original attributes.
+        // Proves the Member 3 search keeps its roles and now also blocks deactivated staff tokens.
         MethodInfo action = typeof(UsersController).GetMethod(nameof(UsersController.SearchEligibleProsumers))!;
 
-        Assert.Null(action.GetCustomAttribute<RequireActiveAccountAttribute>());
+        Assert.NotNull(action.GetCustomAttribute<RequireActiveAccountAttribute>());
         Assert.Null(typeof(UsersController).GetCustomAttribute<RequireActiveAccountAttribute>());
         Assert.Equal("Backoffice,GridOperator", action.GetCustomAttribute<AuthorizeAttribute>()!.Roles);
+    }
+
+    [Fact]
+    public void ReservationsController_RequiresActiveAccount()
+    {
+        // Proves every Component 3 reservation endpoint rechecks the account before the service runs.
+        Assert.NotNull(typeof(ReservationsController).GetCustomAttribute<RequireActiveAccountAttribute>());
     }
 
     private static ClaimsPrincipal Principal(string nic, string role)

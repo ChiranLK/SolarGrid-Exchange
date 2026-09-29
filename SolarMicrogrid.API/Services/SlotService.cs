@@ -94,9 +94,20 @@ public sealed class SlotService
                 "The slot cannot be deleted because a reservation references it.");
         }
 
+        // The reservation check above is not atomic with the delete. A reservation hold adds a
+        // capacity claim to the slot, so requiring "no claims" in the delete filter closes the race.
         DeleteResult result = await _context.Slots.DeleteOneAsync(
-            item => item.Id == slot.Id,
+            Builders<EnergyBookingSlot>.Filter.And(
+                Builders<EnergyBookingSlot>.Filter.Eq(item => item.Id, slot.Id),
+                HasNoCapacityClaims()),
             cancellationToken);
+
+        if (result.IsAcknowledged && result.DeletedCount == 0 &&
+            await _context.Slots.Find(item => item.Id == slot.Id).AnyAsync(cancellationToken))
+        {
+            throw new ConflictException(
+                "The slot cannot be deleted because a reservation references it.");
+        }
 
         return result.DeletedCount == 1;
     }
@@ -204,10 +215,23 @@ public sealed class SlotService
                 ? SlotAvailabilityStatus.FullyBooked
                 : SlotAvailabilityStatus.Available;
 
+        // Reservations copy the slot's start/end; moving a slot that holds claims would leave them
+        // with stale times (the reservation contract forbids it). Enforced in the CAS, not just here.
+        bool timesChanged = startUtc != slot.StartTimeUtc || endUtc != slot.EndTimeUtc;
+        if (timesChanged && slot.CapacityAllocations.Count > 0)
+        {
+            throw new ConflictException(
+                "The slot time cannot be changed while reservations hold capacity in it.");
+        }
+
         FilterDefinition<EnergyBookingSlot> updateFilter = Builders<EnergyBookingSlot>.Filter.And(
             Builders<EnergyBookingSlot>.Filter.Eq(item => item.Id, slotId),
             Builders<EnergyBookingSlot>.Filter.Eq(item => item.TotalCapacityKwh, slot.TotalCapacityKwh),
             Builders<EnergyBookingSlot>.Filter.Eq(item => item.AvailableCapacityKwh, slot.AvailableCapacityKwh));
+        if (timesChanged)
+        {
+            updateFilter &= HasNoCapacityClaims();
+        }
 
         UpdateDefinition<EnergyBookingSlot> update = Builders<EnergyBookingSlot>.Update
             .Set(item => item.StartTimeUtc, startUtc)
@@ -323,6 +347,15 @@ public sealed class SlotService
         }
 
         return updatedSlot is null ? null : MapToResponse(updatedSlot);
+    }
+
+    private static FilterDefinition<EnergyBookingSlot> HasNoCapacityClaims()
+    {
+        // A held or consumed reservation leaves a claim in capacity_allocations; releases remove it.
+        // Older slot documents may not have the array at all, which also means no claims.
+        return Builders<EnergyBookingSlot>.Filter.Or(
+            Builders<EnergyBookingSlot>.Filter.Size(item => item.CapacityAllocations, 0),
+            Builders<EnergyBookingSlot>.Filter.Exists(item => item.CapacityAllocations, false));
     }
 
     private async Task<PagedSlotResponseDto> QuerySlotsAsync(

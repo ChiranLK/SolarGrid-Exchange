@@ -176,6 +176,15 @@ public final class BookingHistoryFragment extends Fragment {
         return view;
     }
 
+    @Override
+    public void onStart() {
+        super.onStart();
+        // Coming back from a reservation detail, cancel or update: show the server's current history.
+        if (viewModel != null) {
+            viewModel.refreshSilently();
+        }
+    }
+
     private void configureStatusSpinner(Spinner spinner) {
         String[] labels = {
                 getString(R.string.all_statuses), "Pending", "Approved", "Rejected", "Cancelled", "Completed"

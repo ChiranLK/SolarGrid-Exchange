@@ -135,6 +135,28 @@ public final class MainActivity extends AppCompatActivity
         }
     }
 
+    /**
+     * Shared entry point for feature screens: ends the session for a 401 (expired/invalid token) or
+     * an account-status 403 (pending/deactivated/not active) and returns true; returns false for
+     * every other error so the screen shows it normally.
+     */
+    public boolean handleSessionFailure(ApiError error) {
+        if (error == null) {
+            return false;
+        }
+        switch (AccountRoutePolicy.afterSessionFailure(error)) {
+            case SIGN_IN:
+                handleAuthenticationExpiry();
+                return true;
+            case PENDING_ACTIVATION:
+            case SIGN_IN_WITH_ACCOUNT_NOTICE:
+                handleAccountNoLongerActive(error);
+                return true;
+            default:
+                return false;
+        }
+    }
+
     private void configureRoleNavigation(NavigationView navigationView, SessionUser session) {
         Menu menu = navigationView.getMenu();
         menu.findItem(R.id.nav_prosumer_home).setVisible(session.isProsumer());

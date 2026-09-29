@@ -13,8 +13,8 @@
  *               returns the result. No business logic here.
  * Security    : Member 1 actions carry [RequireActiveAccount], so a caller
  *               whose account is no longer Active is rejected even with an
- *               unexpired token. The eligible-prosumers search belongs to
- *               Member 3 and is left unchanged.
+ *               unexpired token. The eligible-prosumers search (Member 3) now uses
+ *               the same check so a deactivated staff user cannot list Prosumers.
  * Date        : 2026-09-29
  * -----------------------------------------------------------------------------
  */
@@ -72,6 +72,7 @@ namespace SolarMicrogrid.API.Controllers
 
         [HttpGet("eligible-prosumers")]
         [Authorize(Roles = "Backoffice,GridOperator")]
+        [RequireActiveAccount]
         public async Task<ActionResult<PagedEligibleProsumerResponseDto>> SearchEligibleProsumers(
             [FromQuery] EligibleProsumerListQueryDto query,
             CancellationToken cancellationToken)

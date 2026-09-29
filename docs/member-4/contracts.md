@@ -285,7 +285,7 @@ These records reference the existing reservation/station/user identifiers. They 
 
 - Reuse `apiRequest`, auth context, role routes, shared layout/components, reservation DTOs, and the existing Bootstrap green/gold theme.
 - Grid Operator dashboard/history are implemented in `src/features/operations` at `/operator/dashboard` and `/operator/history`, using the shared exact-role guard and API client.
-- Operator verification/completion UI remains a later integration in the same feature area.
+- Operator verification/completion runs on Android; the web intentionally has no QR display or scanner.
 - Render the QR as an opaque API value and never decode it for business decisions.
 - Use the read-only Member 4 dashboard/history routes, which reuse Member 3's shared view predicates and never add reservation mutations.
 
@@ -320,6 +320,67 @@ Before production deployment, the team must supply or decide:
 
 These inputs are currently `Blocked`; no compatible deployment configuration can be finalized without inventing infrastructure that the repository/team has not selected.
 
+## Component 3 integration (2026-09-29)
+
+Branch `feature/component3-integration`, based on `develop` at `dfe91a9`. Verified against the actual Member 1, Member 2 and Member 4 code, not only this document.
+
+### One authoritative owner per state change
+
+| State change | Only writer | Guarded by |
+| --- | --- | --- |
+| Create (Pending, capacity Held) | Component 3 `ReservationService` | Actor re-read, slot/station/schedule/horizon checks, overlap guard, capacity CAS, station `reservation_write_version` increment, one transaction |
+| Update / reschedule (material change → Pending, version+1) | Component 3 | Version CAS; target slot hold before old claim release; target station counter increment |
+| Approve / reject | Component 3 | `Pending` + version CAS; approval re-validates references, schedule and capacity |
+| Cancel (→ Released) | Component 3 | Status/version/slot/kWh/`Held` CAS; the exact stored claim is released |
+| Complete (Approved → Completed, capacity Consumed) | Member 4 `TransactionService` | Receipt CAS + reservation `Approved`/version/`Held`/station/owner CAS; the slot claim is kept, not released |
+| Slot capacity hold / adjust / release | Component 3 `ReservationCapacityService` | Exact-claim CAS on available capacity **and availability status** |
+| Slot create / edit / availability / delete | Member 2 `SlotService` | Total ≥ reserved CAS; **time change and delete require no capacity claims** |
+| Station edit / activate / deactivate | Member 2 `StationService` | Deactivation: active-reservation check plus a **`reservation_write_version` CAS**; edit: replace only the version that was read |
+| Dashboard counts, history, search | Member 4 `DashboardService` | Read-only; reuses `ReservationReadPolicy` predicates directly |
+
+Every Component 3 mutation and Member 4 completion compares the reservation version and the `Held` capacity state, so exactly one wins. The loser gets 409, whether or not a MongoDB transaction is available.
+
+### Station deactivation vs reservation creation
+
+The previous check-then-act could leave a Pending reservation holding capacity at a deactivated station, because the create transaction only read the station. Now:
+
+- Reservation creation and rescheduling increment `SolarStationInfo.reservation_write_version` with the filter `is_active == true`, inside the reservation transaction. In standalone mode this runs after the insert and before the hold.
+- Deactivation captures that counter before its reservation check and deactivates only while it is unchanged. Otherwise it returns 409 "A reservation changed at this station while it was being deactivated. Try again."
+- Stations stored before the field existed are treated as version 0.
+
+A deterministic integration test holds a reservation transaction open, runs the real deactivation against it and commits. It fails with the counter check disabled and passes with it enabled.
+
+Residual: in standalone (non-replica-set) mode a *reschedule* to a different station still has a small window. Production must use the replica-set topology already required above.
+
+### QR projection
+
+`ReservationAllowedActions.CanGetQr`/`CanVerifyQr` and `QrEligible` now use `ReservationReadPolicy.IsQrUsable`: Approved, capacity `Held`, and scheduled end after server time. This is the reservation-side part of `TransactionService.EnsureReservationEligibleAsync`. Station-active is still checked only at issuance, so the projection can be equal to or broader than the authoritative rule, never narrower. Ended approved reservations no longer show a QR action that always returns 409.
+
+Cancellation, rejection, material update and completion all change the version and/or leave `Approved`/`Held`, so outstanding QR tokens and receipts fail on use. Records are revoked lazily when a stale token is presented. No parallel QR system exists.
+
+### Account status (Member 1)
+
+- `ReservationsController` and the `eligible-prosumers` search use `[RequireActiveAccount]`. A pending or deactivated caller gets the canonical Member 1 403 message, and a stale role claim gets 401. Component 3's in-transaction check uses the same "This account is not active. Please contact Backoffice." text.
+- Android reservation screens route 401 and those 403s through `MainActivity.handleSessionFailure` (session cleared, sign-in or pending screen). The web API client ends the session on those three exact 403 messages.
+
+### Refresh after reservation changes
+
+- **Web:** `announceReservationChange` (same tab and cross-tab) → operator dashboard/history `useOperatorRefresh`, plus 30 s polling and focus refresh.
+- **Android:** dashboard, reservation list and detail refresh in `onStart` and every 30 s. Booking history now also refreshes silently in `onStart`, keeping its filters and page.
+
+### Open cross-member work
+
+| Item | Owner |
+| --- | --- |
+| Member 4 dashboard, history and QR screens (Android) react to 401 only. Their services' inactive-actor 403s use their own texts ("Only active users may …"), so a deactivated user is signed out only on the next app start. Fix: call `MainActivity.handleSessionFailure(error)` and/or adopt the canonical message or `[RequireActiveAccount]`. | Member 4 |
+| Verify reads the reservation outside the receipt CAS, so an operator can see a stale confirmation (completion still refuses it). Several QR tokens can be live per version. In standalone mode completion can commit the reservation and then fail on the transaction record. | Member 4 |
+| Two Android lint errors in the QR scanner (`OperatorScannerFragment.java:295`, camera `uses-feature`) | Member 4 |
+| Station operating-schedule edits are not checked against existing slots/reservations (approval then fails). Availability-toggle vs capacity races inside `SlotService`. `SlotService` uses `DateTime.UtcNow` instead of `TimeProvider`. The "all slots" Android list cannot start a booking. | Member 2 |
+| Policy for reservations on a slot set Unavailable; decimal precision/minimum step for kWh | Team decision |
+| Pending reservation at or after its start (no expiry process); check-in/completion window | Team decision |
+| Android screen for Grid Operator approve/reject. The contract requires staff decisions on web only; they are implemented there and `canApprove`/`canReject` are returned for a future client. | Decision (not required by contract) |
+| A Grid Operator gets 403 (not 404) for another station's reservation ID on update/cancel/approve, revealing that the ID exists. Low risk, not changed. | Component 3 (accepted) |
+
 ## Contract traceability
 
 | Contract item | Status | Notes |
@@ -337,7 +398,7 @@ These inputs are currently `Blocked`; no compatible deployment configuration can
 | Check-in/completion window | Blocked | No official/team rule supplied. |
 | Pending reservation at/after start | Blocked | Shared contract lists this as an unresolved team decision. |
 | Completed allocation accounting | Completed | Reservation becomes `Consumed`; existing slot allocation is retained and not restored. |
-| Existing `QrEligible` projection as final eligibility | Not Verified | It remains a preliminary status-only UI flag; the transaction API applies the authoritative stronger rule. |
+| Existing `QrEligible` projection as final eligibility | Completed | Since 2026-09-29 `QrEligible`, `CanGetQr` and `CanVerifyQr` use `ReservationReadPolicy.IsQrUsable` (Approved, Held, not ended). Station-active remains issuance-only, so the transaction API is still the final authority. |
 | Dashboard implementation and test coverage | Completed | API, DTOs, indexes, controller contracts, and MongoDB integration cases are implemented. |
 | Dashboard MongoDB integration execution | Completed | Included in the 60/60 full API suite against MongoDB 8 replica set. |
 | Grid Operator web dashboard/history | Completed | Role-protected responsive routes consume live Member 4 APIs; 29/29 web tests and the production build pass. Browser screenshots remain Not Verified. |

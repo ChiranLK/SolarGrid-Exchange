@@ -4,6 +4,9 @@
  * Purpose : Exposes authenticated Component 3 reservation REST operations while
  *           delegating identity, permission, validation, and capacity rules to
  *           ReservationService.
+ * Identity: Member 1's [RequireActiveAccount] rechecks the account first, so a
+ *           pending/deactivated user gets the shared account-status 403 and a
+ *           stale role claim gets 401 (clients end the session on both).
  * -----------------------------------------------------------------------------
  */
 
@@ -11,6 +14,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SolarMicrogrid.API.Exceptions;
+using SolarMicrogrid.API.Filters;
 using SolarMicrogrid.API.Models.DTOs.Reservations;
 using SolarMicrogrid.API.Models.Entities;
 using SolarMicrogrid.API.Services;
@@ -19,6 +23,7 @@ namespace SolarMicrogrid.API.Controllers;
 
 [ApiController]
 [Authorize]
+[RequireActiveAccount]
 [Route("api/reservations")]
 public sealed class ReservationsController : ControllerBase
 {

@@ -97,8 +97,8 @@ public final class ReservationDetailFragment extends Fragment {
         viewModel.getRefreshError().observe(getViewLifecycleOwner(), error -> {
             if (error == null) {
                 refreshNotice.setVisibility(View.GONE);
-            } else if (error.isAuthenticationExpired()) {
-                ((MainActivity) requireActivity()).handleAuthenticationExpiry();
+            } else if (((MainActivity) requireActivity()).handleSessionFailure(error)) {
+                // Handled by MainActivity: 401, or a pending/deactivated account (Member 1 session end).
             } else {
                 refreshNotice.setText(getString(R.string.reservation_refresh_failed, error.getMessage()));
                 refreshNotice.setVisibility(View.VISIBLE);
@@ -113,8 +113,8 @@ public final class ReservationDetailFragment extends Fragment {
             cancel.setEnabled(!busy && displayedReservation != null
                     && displayedReservation.getAllowedActions().canCancel());
             if (state.getStatus() == UiState.Status.ERROR && state.getError() != null) {
-                if (state.getError().isAuthenticationExpired()) {
-                    ((MainActivity) requireActivity()).handleAuthenticationExpiry();
+                if (((MainActivity) requireActivity()).handleSessionFailure(state.getError())) {
+                    // Handled by MainActivity: 401, or a pending/deactivated account (Member 1 session end).
                 } else {
                     Toast.makeText(requireContext(), state.getError().getMessage(), Toast.LENGTH_LONG).show();
                 }
@@ -334,8 +334,8 @@ public final class ReservationDetailFragment extends Fragment {
     }
 
     private void handleError(UiStateView stateView, com.solargrid.exchange.network.ApiError error) {
-        if (error != null && error.isAuthenticationExpired()) {
-            ((MainActivity) requireActivity()).handleAuthenticationExpiry();
+        if (error != null && ((MainActivity) requireActivity()).handleSessionFailure(error)) {
+            // Handled by MainActivity: 401, or a pending/deactivated account (Member 1 session end).
         } else if (error != null) {
             stateView.showError(error, ignored -> viewModel.refresh());
         }
