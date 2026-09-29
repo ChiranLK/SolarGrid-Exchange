@@ -84,8 +84,9 @@ internal static class ReservationReadPolicy
         bool staffCanCancel = actor.Role == UserRole.Backoffice || assignedGridOperator;
         bool canUpdate = (ownerProsumer || staffCanUpdate) && mutable && noticeSatisfied;
         bool canCancel = (ownerProsumer || staffCanCancel) && mutable && noticeSatisfied;
-        bool canGetQr = ownerProsumer && reservation.Status == ReservationStatus.Approved;
-        bool canVerifyQr = assignedGridOperator && reservation.Status == ReservationStatus.Approved;
+        bool qrUsable = IsQrUsable(reservation, serverNowUtc);
+        bool canGetQr = ownerProsumer && qrUsable;
+        bool canVerifyQr = assignedGridOperator && qrUsable;
 
         return new ReservationAllowedActionsDto
         {
@@ -127,18 +128,48 @@ internal static class ReservationReadPolicy
             GetQrUnavailableReason = canGetQr
                 ? null
                 : ownerProsumer
-                    ? "Only approved reservations are eligible for a QR code."
+                    ? QrUnavailableReason(reservation, serverNowUtc, "issued")
                     : "Only the owning Prosumer may retrieve the QR code.",
             CanVerifyQr = canVerifyQr,
             VerifyQrUnavailableReason = canVerifyQr
                 ? null
                 : assignedGridOperator
-                    ? "Only approved reservations may be verified."
+                    ? QrUnavailableReason(reservation, serverNowUtc, "verified")
                     : "Only the assigned Grid Operator may verify this reservation.",
             CanComplete = false,
             CompleteUnavailableReason =
                 "Completion requires a current Component 4 verification receipt."
         };
+    }
+
+    /// <summary>
+    /// Reservation-side part of the Component 4 QR rule (TransactionService issue/verify/complete):
+    /// Approved, capacity still Held, and not yet ended. The station-active check needs a station
+    /// lookup and stays with TransactionService, so this projection can only be equal or broader.
+    /// </summary>
+    internal static bool IsQrUsable(EnergyReservation reservation, DateTime serverNowUtc)
+    {
+        return reservation.Status == ReservationStatus.Approved &&
+            reservation.CapacityState == ReservationCapacityState.Held &&
+            reservation.ScheduledEndTimeUtc > serverNowUtc;
+    }
+
+    private static string QrUnavailableReason(EnergyReservation reservation, DateTime serverNowUtc, string verb)
+    {
+        // Explain the first failing condition of IsQrUsable in user-facing terms.
+        if (reservation.Status != ReservationStatus.Approved)
+        {
+            return verb == "issued"
+                ? "Only approved reservations are eligible for a QR code."
+                : "Only approved reservations may be verified.";
+        }
+
+        if (reservation.ScheduledEndTimeUtc <= serverNowUtc)
+        {
+            return $"The reservation has ended, so a QR code can no longer be {verb}.";
+        }
+
+        return "The reservation's energy allocation is being reconciled. Try again shortly.";
     }
 
     internal static int CalculateTotalPages(long totalCount, int pageSize)

@@ -94,8 +94,8 @@ public final class ReservationFormFragment extends Fragment {
                     stateView.showLoading(getString(R.string.loading_reservation_form));
                     break;
                 case ERROR:
-                    if (state.getError() != null && state.getError().isAuthenticationExpired()) {
-                        ((MainActivity) requireActivity()).handleAuthenticationExpiry();
+                    if (state.getError() != null && ((MainActivity) requireActivity()).handleSessionFailure(state.getError())) {
+                        // Handled by MainActivity: 401, or a pending/deactivated account (Member 1 session end).
                     } else if (state.getError() != null) {
                         stateView.showError(state.getError(), ignored -> viewModel.retry());
                     }
@@ -131,8 +131,8 @@ public final class ReservationFormFragment extends Fragment {
             }
 
             if (state.getStatus() == UiState.Status.ERROR && state.getError() != null) {
-                if (state.getError().isAuthenticationExpired()) {
-                    ((MainActivity) requireActivity()).handleAuthenticationExpiry();
+                if (((MainActivity) requireActivity()).handleSessionFailure(state.getError())) {
+                    // Handled by MainActivity: 401, or a pending/deactivated account (Member 1 session end).
                 } else {
                     Toast.makeText(requireContext(), state.getError().getMessage(), Toast.LENGTH_LONG).show();
                 }

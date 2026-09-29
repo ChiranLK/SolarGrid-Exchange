@@ -239,6 +239,11 @@ public sealed class ReservationCapacityService
                     Builders<EnergyBookingSlot>.Filter.Eq(
                         item => item.AvailableCapacityKwh,
                         slot.AvailableCapacityKwh),
+                    // The new status is derived from this read; a concurrent Member 2 availability
+                    // change (e.g. Unavailable) must not be overwritten, so a mismatch retries.
+                    Builders<EnergyBookingSlot>.Filter.Eq(
+                        item => item.AvailabilityStatus,
+                        slot.AvailabilityStatus),
                     Builders<EnergyBookingSlot>.Filter.ElemMatch(
                         item => item.CapacityAllocations,
                         exactClaimFilter));
@@ -324,6 +329,11 @@ public sealed class ReservationCapacityService
                     Builders<EnergyBookingSlot>.Filter.Eq(
                         item => item.AvailableCapacityKwh,
                         slot.AvailableCapacityKwh),
+                    // The new status is derived from this read; a concurrent Member 2 availability
+                    // change (e.g. Unavailable) must not be overwritten, so a mismatch retries.
+                    Builders<EnergyBookingSlot>.Filter.Eq(
+                        item => item.AvailabilityStatus,
+                        slot.AvailabilityStatus),
                     Builders<EnergyBookingSlot>.Filter.ElemMatch(
                         item => item.CapacityAllocations,
                         exactClaimFilter));

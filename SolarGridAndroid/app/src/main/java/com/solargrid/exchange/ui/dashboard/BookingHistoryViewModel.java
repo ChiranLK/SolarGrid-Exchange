@@ -102,6 +102,16 @@ public final class BookingHistoryViewModel extends AndroidViewModel {
 
     public void refresh() { request(true); }
 
+    /** Re-reads the current page and filters without a loading flash, once data has been shown. */
+    public void refreshSilently() {
+        UiState<PagedBookingHistory> current = state.getValue();
+        if (current == null || current.getStatus() == UiState.Status.IDLE
+                || current.getStatus() == UiState.Status.LOADING) {
+            return;
+        }
+        request(false);
+    }
+
     private void request(boolean showLoading) {
         BookingHistoryQuery query = new BookingHistoryQuery(
                 getSearch(), getStatus(), getStationId(), getFromUtc(), getToUtc(), getPage());

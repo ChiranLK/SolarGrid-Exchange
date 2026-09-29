@@ -208,10 +208,22 @@ public sealed class StationService
         station.OperatingSchedule = schedule;
         station.UpdatedAtUtc = DateTime.UtcNow;
 
-        await _context.Stations.ReplaceOneAsync(
-            item => item.Id == stationId,
+        // Replace only the version that was read: a concurrent deactivation or reservation write
+        // (reservation_write_version) must not be overwritten by this stale full-document replace.
+        bool wasActive = station.IsActive;
+        long readReservationWriteVersion = station.ReservationWriteVersion;
+        ReplaceOneResult replaceResult = await _context.Stations.ReplaceOneAsync(
+            Builders<SolarStationInfo>.Filter.And(
+                Builders<SolarStationInfo>.Filter.Eq(item => item.Id, stationId),
+                Builders<SolarStationInfo>.Filter.Eq(item => item.IsActive, wasActive),
+                ReservationWriteVersionIs(readReservationWriteVersion)),
             station,
             cancellationToken: cancellationToken);
+
+        if (replaceResult.IsAcknowledged && replaceResult.MatchedCount == 0)
+        {
+            throw new ConflictException("The station changed while it was being saved. Reload it and try again.");
+        }
 
         return MapToResponse(station);
     }
@@ -259,6 +271,11 @@ public sealed class StationService
             return null;
         }
 
+        // Captured before the reservation check. Component 3 increments it in the same transaction
+        // that inserts a reservation for this station, so a reservation committed after this read
+        // makes the deactivation compare-and-swap below fail instead of racing past the check.
+        long readReservationWriteVersion = station.ReservationWriteVersion;
+
         if (await _reservationGuardService.HasActiveReservationsForStationAsync(
                 stationId,
                 cancellationToken))
@@ -277,7 +294,10 @@ public sealed class StationService
             .Set(item => item.UpdatedAtUtc, DateTime.UtcNow);
 
         SolarStationInfo? deactivatedStation = await _context.Stations.FindOneAndUpdateAsync(
-            item => item.Id == stationId && item.IsActive,
+            Builders<SolarStationInfo>.Filter.And(
+                Builders<SolarStationInfo>.Filter.Eq(item => item.Id, stationId),
+                Builders<SolarStationInfo>.Filter.Eq(item => item.IsActive, true),
+                ReservationWriteVersionIs(readReservationWriteVersion)),
             update,
             new FindOneAndUpdateOptions<SolarStationInfo>
             {
@@ -285,7 +305,33 @@ public sealed class StationService
             },
             cancellationToken);
 
-        return deactivatedStation is null ? null : MapToResponse(deactivatedStation);
+        if (deactivatedStation is not null)
+        {
+            return MapToResponse(deactivatedStation);
+        }
+
+        SolarStationInfo? current = await _context.Stations
+            .Find(item => item.Id == stationId)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (current is not null && current.IsActive)
+        {
+            throw new ConflictException(
+                "A reservation changed at this station while it was being deactivated. Try again.");
+        }
+
+        return current is null ? null : MapToResponse(current);
+    }
+
+    private static FilterDefinition<SolarStationInfo> ReservationWriteVersionIs(long version)
+    {
+        // Stations created before the counter existed have no field; treat that as version 0.
+        FilterDefinition<SolarStationInfo> equal =
+            Builders<SolarStationInfo>.Filter.Eq(item => item.ReservationWriteVersion, version);
+        return version == 0
+            ? Builders<SolarStationInfo>.Filter.Or(
+                equal,
+                Builders<SolarStationInfo>.Filter.Exists(item => item.ReservationWriteVersion, false))
+            : equal;
     }
 
     private static List<StationOperatingSchedule> ValidateAndMapSchedule(

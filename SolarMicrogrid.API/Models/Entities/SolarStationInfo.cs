@@ -38,6 +38,12 @@ public sealed class SolarStationInfo
     [BsonElement("is_active")]
     public bool IsActive { get; set; } = true;
 
+    // Incremented by Component 3 in the same transaction that adds a reservation hold at this
+    // station, and compared by deactivation/replace so a concurrent reservation cannot be missed.
+    // Absent on stations created before this field existed; readers treat absent as 0.
+    [BsonElement("reservation_write_version")]
+    public long ReservationWriteVersion { get; set; }
+
     [BsonElement("created_at")]
     [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
     public DateTime CreatedAtUtc { get; set; }

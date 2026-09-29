@@ -393,11 +393,7 @@ The request does not contain a prosumer NIC, station ID, status, time, or capaci
 
 ### Member 4 QR DTO boundary
 
-`ReservationQrResponseDto` contains `ReservationId`, `ReservationVersion`, opaque/signed `QrPayload`, `IssuedAtUtc`, and `ExpiresAtUtc`.
-
-`VerifyReservationQrRequestDto` contains only the scanned `QrPayload`. Actor/station identity comes from authentication, never from the QR request body.
-
-`VerifyReservationQrResponseDto` contains a one-time `VerificationId`, `ReservationId`, `ReservationVersion`, `VerifiedAtUtc`, `ExpiresAtUtc`, and an authorized `ReservationResponseDto` summary. The receipt is short-lived and bound to the verifying Grid Operator, reservation, version, and station.
+The implemented DTOs are Member 4's and are defined authoritatively in `docs/member-4/contracts.md` ("QR and verification DTOs"): `IssueQrTransactionResponseDto` (`ReservationId`, `ReservationVersion`, opaque `QrToken`, `IssuedAtUtc`, `ExpiresAtUtc`), `VerifyQrTransactionRequestDto` (only the scanned `Token`), `VerifyQrTransactionResponseDto` (one-time `VerificationId` bound to operator, station, reservation and version, plus a pseudonymous confirmation projection), `CompleteQrTransactionRequestDto` and `CompleteQrTransactionResponseDto`. Actor and station identity always come from authentication, never from the request body. Component 3 does not define parallel QR DTOs.
 
 ### ReservationListQueryDto
 
@@ -467,9 +463,9 @@ All routes require JWT authentication. Both web and Android use the Prosumer mut
 | `POST /api/reservations/{reservationId}/cancel` | Owning Prosumer, Backoffice, or Grid Operator assigned to the reservation station | 200 | 400; 401; 403; 404; 409 notice/status/version/idempotency |
 | `POST /api/reservations/{reservationId}/approve` | Backoffice or Grid Operator assigned to the reservation station | 200 | 400; 401; 403; 404; 409 reference/status/version/time/capacity/idempotency |
 | `POST /api/reservations/{reservationId}/reject` | Backoffice | 200 | 400; 401; 403; 404; 409 status/version/time/idempotency |
-| `GET /api/reservations/{reservationId}/qr` | Owning Prosumer, Member 4 implementation | 200 QR response | 401; 403; 404; 409 not eligible |
-| `POST /api/reservations/qr/verify` | Assigned Grid Operator, Member 4 implementation | 200 verification receipt/summary | 400; 401; 403; 404; 409 invalid/replayed/expired/stale QR |
-| `POST /api/reservations/{reservationId}/complete` | Assigned Grid Operator, Member 4 integration | 200 | 400; 401; 403; 404; 409 status/version/verification/idempotency |
+| `POST /api/transactions/reservations/{reservationId}/qr` | Owning active Prosumer (Member 4 `TransactionsController`) | 200 `IssueQrTransactionResponseDto` | 400; 401; 403; 404; 409 not eligible (not Approved, capacity not Held, ended, or station inactive) |
+| `POST /api/transactions/verify` | Active Grid Operator assigned to the station (Member 4) | 200 verification receipt | 400; 401; 403; 409 invalid/replayed/expired/stale QR |
+| `POST /api/transactions/reservations/{reservationId}/complete` | The same assigned Grid Operator that verified (Member 4) | 200 | 400; 401; 403; 404; 409 status/version/receipt |
 
 No delete route exists. Audit records are retained and lifecycle actions change status.
 

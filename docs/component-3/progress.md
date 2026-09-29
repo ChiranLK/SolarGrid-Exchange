@@ -166,6 +166,8 @@ Remote refs were refreshed before integration. `origin/feature/stations-slots-ma
 
 ## Missing implementation
 
+Superseded by "Cross-member integration update (2026-09-29)" at the end of this file: items 2-4 are implemented or reassigned there.
+
 1. Obtain and record the official Component 3 use cases, field definitions, status machine, role matrix, endpoints, UI requirements, and marking rubric.
 2. Implement the remaining QR verification/completion mutation endpoints with Member 4.
 3. Integrate `HasActiveReservationsForStationAsync` into Member 2's station-deactivation transaction/check.
@@ -247,3 +249,60 @@ Remote refs were refreshed before integration. `origin/feature/stations-slots-ma
 Commit message requested for this Android action update:
 
 `feat(android): add reservation update cancellation and action summaries`
+
+## Cross-member integration update (2026-09-29)
+
+Branch `feature/component3-integration` from `develop` at `dfe91a9`, which contains the merged Member 1, Member 2 and Member 4 work. The shared contract and the owner of every state change are in `docs/member-4/contracts.md` ("Component 3 integration").
+
+### What was verified against the real implementations
+
+| Member | Verified correct | Fixed on this branch |
+| --- | --- | --- |
+| Member 1 | Actor identity comes only from the JWT NIC and role, and is re-read from MongoDB on every reservation endpoint. Roles and staff permissions match the contract. A Grid Operator is limited to `AssignedStationId` (403 when missing). A staff-create target must be an active Prosumer. NIC upper-case normalisation is consistent. Android and web use the shared session and API clients. | `[RequireActiveAccount]` on `ReservationsController` and `eligible-prosumers`. Canonical "not active" message. Android reservation screens end the session on 401 or account-status 403 (`MainActivity.handleSessionFailure`). The web client ends the session on the three account-status 403s. |
+| Member 2 | Slot fields and units are kWh `Decimal128` throughout. The schedule rule is identical in both services. Hold, adjust and release use exact-claim CAS, release the stored claim amount, and cannot double-release. Completion keeps the claim (Consumed). Total capacity cannot drop below the reserved amount. | Station `reservation_write_version` closes the create-vs-deactivate race. A stale station edit can no longer re-activate or reset the counter. Slot delete and slot time changes are refused while capacity claims exist (atomic filters). Capacity CAS now also compares availability status, so a concurrent "Unavailable" is not overwritten. |
+| Member 4 | Dashboard and history reuse `ReservationReadPolicy` predicates. One `serverNowUtc` per request. Verify and complete re-check Approved, version, Held, end, station and owner. Every Component 3 change bumps the version or leaves Held, so stale QR tokens and receipts fail. Exactly one of complete/cancel/update wins. There is one QR implementation. The web refresh wiring works. | QR allowed actions and `QrEligible` match the issuance rule (not ended, Held). Android booking history refreshes on return. |
+
+### Android navigation owners
+
+| Screen | Owner | Reached by |
+| --- | --- | --- |
+| Reservation list (Pending, Approved future, Current, All) | Component 3 | Drawer, summaries |
+| Reservation detail, update, cancel, create, review, summaries | Component 3 | List, history, dashboard rows, station detail |
+| Dashboard counts (pending, approved future) | Member 4 (`ProsumerHomeFragment`) | Start screen, drawer |
+| Booking history and search | Member 4 (`BookingHistoryFragment`) | Drawer, dashboard, summaries |
+| QR display | Member 4 (`ReservationQrFragment`) | Reservation detail, only when `canGetQr` |
+| Operator scan, verify, complete | Member 4 | Drawer, operator home |
+
+Every `navigate()` target exists and the drawer role gating matches each screen's own guard. Staff approve/reject is web-only, as the contract requires.
+
+### Test evidence (this branch)
+
+| Suite | Result |
+| --- | --- |
+| `SolarMicrogrid.Tests` (unit) | 216 / 216 passed (baseline 213; new capacity-status and controller-filter tests) |
+| `SolarMicrogrid.API.Tests` on a MongoDB 8 replica set (`scripts/run-component3-tests.ps1`) | 92 / 92 passed (baseline 73). New: station counter bump, inactive-station create, deterministic open-transaction deactivation race (confirmed to fail without the fix), concurrent smoke race, legacy station without the field, slot delete/time guards, 10 QR-projection cases |
+| Web lint / tests / typecheck / build | 0 problems / 133 / 133 (baseline 129) / pass / pass |
+| Android `assembleDebug` / `testDebugUnitTest` / `lintDebug` | pass / 78 / 78 / only the 2 existing Member 4 lint errors |
+
+Not runtime verified: the changed Android and web screens were not exercised on a device or browser in this update.
+
+### Remaining cross-member work
+
+See "Open cross-member work" in `docs/member-4/contracts.md`. In short:
+
+- **Member 4:**
+  - their Android screens should end the session on account-status 403s;
+  - verify is not atomic;
+  - several QR tokens can be live per version;
+  - the standalone completion ordering can report a failure for a completion that succeeded;
+  - two lint errors.
+- **Member 2:**
+  - schedule edits are not checked against existing reservations;
+  - races inside `SlotService` between availability toggles and capacity changes;
+  - `DateTime.UtcNow` instead of `TimeProvider`;
+  - the "all slots" list cannot start a booking.
+- **Team decisions:**
+  - reservations on an Unavailable slot;
+  - kWh precision;
+  - Pending past its start;
+  - the check-in window.
