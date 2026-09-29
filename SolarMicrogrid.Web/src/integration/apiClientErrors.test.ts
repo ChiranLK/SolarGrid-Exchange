@@ -51,4 +51,34 @@ describe('central API error integration', () => {
       expect(error).toMatchObject({ status, message: `API response ${status}` })
     }
   })
+
+  it.each([
+    'This account is deactivated. Please contact Backoffice.',
+    'This account is awaiting activation.',
+    'This account is not active. Please contact Backoffice.',
+  ])('ends the session on a 403 that reports the account itself is inactive: %s', async (message) => {
+    sessionStorage.setItem('solargrid.auth.session', JSON.stringify({
+      token: 'test-token', nic: '', fullName: 'Test', role: 'Backoffice', status: 'Active',
+    }))
+    const onUnauthorized = vi.fn()
+    setUnauthorizedHandler(onUnauthorized)
+    request.mockRejectedValue({ response: { status: 403, data: { status: 403, message } } })
+
+    await expect(apiRequest('/reservations')).rejects.toMatchObject({ status: 403, message })
+    expect(sessionStorage.getItem('solargrid.auth.session')).toBeNull()
+    expect(onUnauthorized).toHaveBeenCalledOnce()
+  })
+
+  it('keeps the session on an ordinary permission 403', async () => {
+    sessionStorage.setItem('solargrid.auth.session', JSON.stringify({
+      token: 'test-token', nic: '', fullName: 'Test', role: 'GridOperator', status: 'Active',
+    }))
+    const onUnauthorized = vi.fn()
+    setUnauthorizedHandler(onUnauthorized)
+    request.mockRejectedValue({ response: { status: 403, data: { status: 403, message: 'Only Backoffice may reject reservations.' } } })
+
+    await expect(apiRequest('/reservations/x/reject')).rejects.toMatchObject({ status: 403 })
+    expect(sessionStorage.getItem('solargrid.auth.session')).not.toBeNull()
+    expect(onUnauthorized).not.toHaveBeenCalled()
+  })
 })

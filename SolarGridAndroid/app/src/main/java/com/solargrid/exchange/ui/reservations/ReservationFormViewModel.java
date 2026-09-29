@@ -15,6 +15,7 @@ import com.solargrid.exchange.features.reservations.ReservationMutationReconcile
 import com.solargrid.exchange.features.reservations.ReservationRepository;
 import com.solargrid.exchange.features.stations.StationRepository;
 import com.solargrid.exchange.network.ApiCallback;
+import com.solargrid.exchange.features.auth.AccountStatusPolicy;
 import com.solargrid.exchange.network.ApiError;
 import com.solargrid.exchange.ui.common.UiState;
 
@@ -309,12 +310,19 @@ public final class ReservationFormViewModel extends AndroidViewModel {
         if (error.isAuthenticationExpired()) {
             return error;
         }
+        if (AccountStatusPolicy.classify(error) != AccountStatusPolicy.AccountState.NONE) {
+            // Keep the API account-status message so the screen can end the session (Member 1).
+            return error;
+        }
         String detail = error.getMessage() == null ? "" : error.getMessage().trim();
         String lower = detail.toLowerCase(Locale.US);
         String message;
         switch (error.getKind()) {
             case CONFLICT:
-                if (lower.contains("hour") || lower.contains("notice")) {
+                if (BookingReviewViewModel.isBookingHorizonMessage(lower)) {
+                    message = "The new slot is more than seven days ahead. Choose a slot inside " +
+                            "the seven-day booking window; the original booking remains unchanged.";
+                } else if (lower.contains("hour") || lower.contains("notice")) {
                     message = "This reservation is inside the twelve-hour change cutoff. " +
                             "The original booking remains unchanged.";
                 } else if (lower.contains("capacity") || lower.contains("available")

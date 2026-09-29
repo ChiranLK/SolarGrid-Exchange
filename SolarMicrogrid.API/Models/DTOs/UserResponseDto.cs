@@ -1,3 +1,16 @@
+/*
+ * UserResponseDto.cs
+ * -----------------------------------------------------------------------------
+ * File        : UserResponseDto.cs
+ * Author      : H.A.S MADUWANTHA
+ * IT Number   : IT23472020
+ * Description : Safe public view of a user account returned by registration
+ *               and the Backoffice user-management endpoints. Never carries
+ *               the password hash.
+ * Date        : 2026-09-29
+ * -----------------------------------------------------------------------------
+ */
+
 namespace SolarMicrogrid.API.Models.DTOs
 {
     public class UserResponseDto
@@ -15,7 +28,11 @@ namespace SolarMicrogrid.API.Models.DTOs
 
         public string Status { get; set; } = string.Empty;
 
+        // Only set for Grid Operators; the Member 2 station they operate.
+        public string? AssignedStationId { get; set; }
+
+        public bool DeactivationRequested { get; set; }
+
         public DateTime CreatedAtUtc { get; set; }
     }
 }
-    

@@ -63,7 +63,9 @@ export async function apiRequest<T>(
       const problem = isApiProblem(error.response.data) ? error.response.data : undefined
       const status = error.response.status
 
-      if (status === 401 && !anonymous) {
+      // 401, or a 403 saying the account itself is no longer active (Member 1 account-status
+      // messages), ends the session: every further call would be refused the same way.
+      if (!anonymous && (status === 401 || (status === 403 && isAccountStatusProblem(problem)))) {
         clearSession()
         unauthorizedHandler?.()
       }
@@ -79,6 +81,18 @@ export async function apiRequest<T>(
 
 function normalizePath(path: string): string {
   return path.startsWith('/') ? path : `/${path}`
+}
+
+// Exact texts the API uses when the signed-in account is pending, deactivated or not active.
+export const accountStatusMessages = [
+  'This account is awaiting activation.',
+  'This account is deactivated. Please contact Backoffice.',
+  'This account is not active. Please contact Backoffice.',
+] as const
+
+function isAccountStatusProblem(problem: ApiProblem | undefined): boolean {
+  const message = problem?.message?.trim().toLowerCase()
+  return !!message && accountStatusMessages.some((text) => text.toLowerCase() === message)
 }
 
 function isApiProblem(value: unknown): value is ApiProblem {

@@ -2,7 +2,7 @@
  * Component3MongoFixture.cs
  * -----------------------------------------------------------------------------
  * Purpose : Creates a unique real MongoDB test database, production services,
- *           deterministic clock, indexes, and reusable Component 3 test data.
+ *           deterministic clock, indexes, and reusable reservation/QR test data.
  * Isolation: Documents are reset before each test and the unique database is
  *            dropped after the collection.
  * -----------------------------------------------------------------------------
@@ -55,7 +55,8 @@ public sealed class Component3MongoFixture : IAsyncLifetime
             StationsCollectionName = "SolarStationInfo",
             SlotsCollectionName = "EnergyBookingSlots",
             ReservationsCollectionName = "EnergyReservations",
-            ReservationSchedulingGuardsCollectionName = "ReservationSchedulingGuards"
+            ReservationSchedulingGuardsCollectionName = "ReservationSchedulingGuards",
+            QrTransactionsCollectionName = "QrTransactions"
         };
         Client = new MongoClient(_connectionString);
         Clock = new FixedTimeProvider(FixedNowUtc);
@@ -69,6 +70,8 @@ public sealed class Component3MongoFixture : IAsyncLifetime
     internal MongoDbContext Context { get; private set; } = null!;
 
     internal ReservationService Reservations { get; private set; } = null!;
+
+    internal TransactionService Transactions { get; private set; } = null!;
 
     internal string StationOneId { get; private set; } = string.Empty;
 
@@ -92,6 +95,7 @@ public sealed class Component3MongoFixture : IAsyncLifetime
     internal async Task ResetAsync()
     {
         // Clear documents while retaining indexes, then seed authoritative references for one test.
+        await Context.QrTransactions.DeleteManyAsync(Builders<QrTransaction>.Filter.Empty);
         await Context.ReservationSchedulingGuards.DeleteManyAsync(
             Builders<ReservationSchedulingGuard>.Filter.Empty);
         await Context.Reservations.DeleteManyAsync(Builders<EnergyReservation>.Filter.Empty);
@@ -220,6 +224,15 @@ public sealed class Component3MongoFixture : IAsyncLifetime
             {
                 MaxBookingDaysAhead = 7,
                 MinChangeNoticeHours = 12
+            }),
+            Clock);
+        Transactions = new TransactionService(
+            Context,
+            transactionRunner,
+            Options.Create(new TransactionSettings
+            {
+                QrTokenLifetimeMinutes = 5,
+                VerificationLifetimeMinutes = 5
             }),
             Clock);
     }

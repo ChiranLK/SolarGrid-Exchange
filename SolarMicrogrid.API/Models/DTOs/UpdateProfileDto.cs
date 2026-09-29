@@ -1,3 +1,16 @@
+/*
+ * UpdateProfileDto.cs
+ * -----------------------------------------------------------------------------
+ * File        : UpdateProfileDto.cs
+ * Author      : H.A.S MADUWANTHA
+ * IT Number   : IT23472020
+ * Description : Request body for PUT /api/prosumers/me. Contains only the fields a
+ *               Prosumer may change (name, email, phone, address); NIC, role, status
+ *               and password cannot be bound from the request.
+ * Date        : 2026-09-29
+ * -----------------------------------------------------------------------------
+ */
+
 using System.ComponentModel.DataAnnotations;
 
 namespace SolarMicrogrid.API.Models.DTOs

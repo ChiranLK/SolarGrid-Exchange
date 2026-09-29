@@ -8,12 +8,16 @@
 
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using SolarMicrogrid.API.Data;
+using SolarMicrogrid.API.Health;
 using SolarMicrogrid.API.Helpers;
 using SolarMicrogrid.API.Middleware;
+using SolarMicrogrid.API.OpenApi;
 using SolarMicrogrid.API.Settings;
 using SolarMicrogrid.API.Services;
 
@@ -36,6 +40,8 @@ builder.Services
         "MongoSettings:ReservationsCollectionName is required.")
     .Validate(settings => !string.IsNullOrWhiteSpace(settings.ReservationSchedulingGuardsCollectionName),
         "MongoSettings:ReservationSchedulingGuardsCollectionName is required.")
+    .Validate(settings => !string.IsNullOrWhiteSpace(settings.QrTransactionsCollectionName),
+        "MongoSettings:QrTransactionsCollectionName is required.")
     .ValidateOnStart();
 
 builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
@@ -48,6 +54,54 @@ builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
 builder.Services.AddSingleton<MongoDbContext>();
 builder.Services.AddHostedService<MongoDbIndexInitializer>();
 builder.Services.AddSingleton(TimeProvider.System);
+
+// Optional first-Backoffice bootstrap; disabled unless BootstrapBackoffice:Enabled=true.
+// Registered after the index initializer so the unique email index exists first.
+builder.Services
+    .AddOptions<BootstrapBackofficeSettings>()
+    .Bind(builder.Configuration.GetSection(BootstrapBackofficeSettings.SectionName));
+builder.Services.AddHostedService<BackofficeBootstrapInitializer>();
+
+builder.Services
+    .AddOptions<DeploymentSettings>()
+    .Bind(builder.Configuration.GetSection(DeploymentSettings.SectionName))
+    .Validate(settings => settings.MongoHealthTimeoutSeconds is >= 1 and <= 30,
+        "Deployment:MongoHealthTimeoutSeconds must be between 1 and 30.")
+    .ValidateOnStart();
+
+bool requireHttpsCorsOrigins = !builder.Environment.IsDevelopment();
+builder.Services
+    .AddOptions<CorsSettings>()
+    .Bind(builder.Configuration.GetSection(CorsSettings.SectionName))
+    .Validate(settings => settings.HasValidOrigins(requireHttpsCorsOrigins),
+        "Cors:AllowedOrigins must contain exact HTTP(S) origins without wildcards, paths, or credentials; production origins must use HTTPS.")
+    .ValidateOnStart();
+
+builder.Services
+    .AddOptions<OpenApiSettings>()
+    .Bind(builder.Configuration.GetSection(OpenApiSettings.SectionName));
+
+CorsSettings configuredCorsSettings = builder.Configuration
+    .GetSection(CorsSettings.SectionName)
+    .Get<CorsSettings>() ?? new CorsSettings();
+string[] allowedOrigins = configuredCorsSettings.GetNormalizedOrigins();
+builder.Services.AddCors(options =>
+{
+    // Bearer authentication does not require browser credentials; keep the policy origin-specific.
+    options.AddPolicy("WebClient", policy =>
+    {
+        if (allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins.Select(origin => origin.Trim().TrimEnd('/')).ToArray())
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        }
+    });
+});
+
+builder.Services.AddHealthChecks()
+    .AddCheck("api", () => HealthCheckResult.Healthy("API process is available."))
+    .AddCheck<MongoDbHealthCheck>("database");
 
 builder.Services
     .AddOptions<JwtSettings>()
@@ -69,6 +123,15 @@ builder.Services
         "BusinessRules:MaxBookingDaysAhead must be greater than 0.")
     .Validate(rules => rules.MinChangeNoticeHours > 0,
         "BusinessRules:MinChangeNoticeHours must be greater than 0.")
+    .ValidateOnStart();
+
+builder.Services
+    .AddOptions<TransactionSettings>()
+    .Bind(builder.Configuration.GetSection(TransactionSettings.SectionName))
+    .Validate(settings => settings.QrTokenLifetimeMinutes is >= 1 and <= 30,
+        "TransactionSettings:QrTokenLifetimeMinutes must be between 1 and 30.")
+    .Validate(settings => settings.VerificationLifetimeMinutes is >= 1 and <= 30,
+        "TransactionSettings:VerificationLifetimeMinutes must be between 1 and 30.")
     .ValidateOnStart();
 
 // Creates tokens at login (used by AuthService).
@@ -109,25 +172,50 @@ builder.Services.AddScoped<MongoTransactionRunner>();
 builder.Services.AddScoped<ReservationCapacityService>();
 builder.Services.AddScoped<ReservationSchedulingGuardService>();
 builder.Services.AddScoped<ReservationService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<ProsumerService>();
 
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+{
+    // Keep OpenAPI metadata centralized and generated from the real controller/DTO surface.
+    options.AddDocumentTransformer<BearerSecurityDocumentTransformer>();
+    options.AddOperationTransformer<Member4OperationTransformer>();
+});
 
 var app = builder.Build();
 
 
-if (app.Environment.IsDevelopment())
+OpenApiSettings openApiSettings = app.Services
+    .GetRequiredService<IOptions<OpenApiSettings>>()
+    .Value;
+if (openApiSettings.Enabled)
 {
     app.MapOpenApi();
 }
 
 app.UseHttpsRedirection();
 
+app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<ExceptionMiddleware>();
+
+app.UseCors("WebClient");
 
 // Authentication (who are you?) must come before authorization (what may you do?).
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResultStatusCodes =
+    {
+        [HealthStatus.Healthy] = StatusCodes.Status200OK,
+        [HealthStatus.Degraded] = StatusCodes.Status503ServiceUnavailable,
+        [HealthStatus.Unhealthy] = StatusCodes.Status503ServiceUnavailable
+    },
+    ResponseWriter = SafeHealthResponseWriter.WriteAsync
+});
 
 app.MapControllers();
 

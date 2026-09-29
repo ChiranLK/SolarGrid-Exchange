@@ -191,7 +191,36 @@ public final class ApiClient {
             default:
                 kind = statusCode >= 500 ? ApiError.Kind.SERVER : ApiError.Kind.UNKNOWN;
         }
-        return new ApiError(kind, statusCode, message.isEmpty() ? defaultMessage(kind) : message);
+        return new ApiError(
+                kind,
+                statusCode,
+                message.isEmpty() ? defaultMessage(kind) : message,
+                extractFieldErrors(responseBody));
+    }
+
+    /** First message per field from an ASP.NET validation problem ({"errors": {"Nic": [..]}}). */
+    static Map<String, String> extractFieldErrors(String responseBody) {
+        Map<String, String> fieldErrors = new java.util.LinkedHashMap<>();
+        if (responseBody == null || responseBody.trim().isEmpty()) {
+            return fieldErrors;
+        }
+        try {
+            JSONObject errors = new JSONObject(responseBody).optJSONObject("errors");
+            if (errors == null) {
+                return fieldErrors;
+            }
+            Iterator<String> keys = errors.keys();
+            while (keys.hasNext()) {
+                String key = keys.next();
+                JSONArray messages = errors.optJSONArray(key);
+                if (messages != null && messages.length() > 0) {
+                    fieldErrors.put(key, messages.optString(0, ""));
+                }
+            }
+        } catch (JSONException ignored) {
+            // Non-JSON error bodies carry no field detail; the status message is still shown.
+        }
+        return fieldErrors;
     }
 
     private static String extractMessage(String responseBody) {

@@ -4,8 +4,11 @@ plugins {
 
 def configuredApiBaseUrl = providers.gradleProperty('SOLARGRID_API_BASE_URL')
         .orElse(providers.environmentVariable('SOLARGRID_API_BASE_URL'))
-        .orElse('http://10.0.2.2:5076/api/')
+        .orElse('')
         .get()
+        .trim()
+def debugApiBaseUrl = configuredApiBaseUrl ?: 'http://10.0.2.2:5076/api/'
+def javaString = { value -> value.replace('\\', '\\\\').replace('"', '\\"') }
 def configuredMapsApiKey = providers.gradleProperty('SOLARGRID_MAPS_API_KEY')
         .orElse(providers.environmentVariable('SOLARGRID_MAPS_API_KEY'))
         .orElse('')
@@ -23,7 +26,6 @@ android {
         versionName '1.0.0'
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
-        buildConfigField 'String', 'API_BASE_URL', '"' + configuredApiBaseUrl + '"'
         buildConfigField 'boolean', 'MAPS_API_KEY_CONFIGURED', configuredMapsApiKey.trim().isEmpty() ? 'false' : 'true'
         manifestPlaceholders = [mapsApiKey: configuredMapsApiKey]
     }
@@ -32,10 +34,12 @@ android {
         debug {
             applicationIdSuffix '.debug'
             versionNameSuffix '-debug'
+            buildConfigField 'String', 'API_BASE_URL', '"' + javaString(debugApiBaseUrl) + '"'
         }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            buildConfigField 'String', 'API_BASE_URL', '"' + javaString(configuredApiBaseUrl) + '"'
         }
     }
 
@@ -50,6 +54,32 @@ android {
     }
 }
 
+def releaseRequested = gradle.startParameter.taskNames.any { taskName ->
+    taskName.toLowerCase().contains('release')
+}
+if (releaseRequested) {
+    if (!configuredApiBaseUrl) {
+        throw new GradleException(
+                'SOLARGRID_API_BASE_URL is required for Android release builds.')
+    }
+
+    def hostedUri
+    try {
+        hostedUri = new URI(configuredApiBaseUrl)
+    } catch (Exception ignored) {
+        throw new GradleException(
+                'SOLARGRID_API_BASE_URL must be a hosted HTTPS URL ending in /api/.')
+    }
+    def blockedHosts = ['localhost', '127.0.0.1', '::1', '10.0.2.2']
+    if (hostedUri.scheme != 'https' || !hostedUri.host ||
+            blockedHosts.contains(hostedUri.host.toLowerCase()) ||
+            hostedUri.userInfo || hostedUri.query || hostedUri.fragment ||
+            !hostedUri.path.endsWith('/api/')) {
+        throw new GradleException(
+                'SOLARGRID_API_BASE_URL must be a hosted HTTPS URL ending in /api/.')
+    }
+}
+
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'androidx.activity:activity:1.11.0'
@@ -60,6 +90,11 @@ dependencies {
     implementation 'androidx.navigation:navigation-ui:2.9.5'
     implementation 'androidx.drawerlayout:drawerlayout:1.2.0'
     implementation 'com.google.android.material:material:1.13.0'
+    implementation 'com.google.zxing:core:3.5.4'
+    implementation 'androidx.camera:camera-camera2:1.6.2'
+    implementation 'androidx.camera:camera-lifecycle:1.6.2'
+    implementation 'androidx.camera:camera-view:1.6.2'
+    implementation 'com.google.mlkit:barcode-scanning:17.3.0'
     implementation 'com.google.android.gms:play-services-maps:20.0.0'
     implementation 'com.google.android.gms:play-services-location:21.4.0'
 

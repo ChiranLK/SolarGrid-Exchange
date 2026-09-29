@@ -127,8 +127,8 @@ public final class ReservationListFragment extends Fragment {
                             getString(history ? R.string.no_history_message : R.string.no_reservations_message));
                     break;
                 case ERROR:
-                    if (state.getError() != null && state.getError().isAuthenticationExpired()) {
-                        ((MainActivity) requireActivity()).handleAuthenticationExpiry();
+                    if (state.getError() != null && ((MainActivity) requireActivity()).handleSessionFailure(state.getError())) {
+                        // Handled by MainActivity: 401, or a pending/deactivated account (Member 1 session end).
                     } else if (state.getError() != null) {
                         stateView.showError(state.getError(), ignored -> viewModel.refresh());
                     }
@@ -145,8 +145,8 @@ public final class ReservationListFragment extends Fragment {
         viewModel.getRefreshError().observe(getViewLifecycleOwner(), error -> {
             if (error == null) {
                 refreshNotice.setVisibility(View.GONE);
-            } else if (error.isAuthenticationExpired()) {
-                ((MainActivity) requireActivity()).handleAuthenticationExpiry();
+            } else if (((MainActivity) requireActivity()).handleSessionFailure(error)) {
+                // Handled by MainActivity: 401, or a pending/deactivated account (Member 1 session end).
             } else {
                 refreshNotice.setText(getString(R.string.reservation_refresh_failed, error.getMessage()));
                 refreshNotice.setVisibility(View.VISIBLE);

@@ -13,6 +13,7 @@ import com.solargrid.exchange.data.model.Reservation;
 import com.solargrid.exchange.features.reservations.ReservationCreationReconciler;
 import com.solargrid.exchange.features.reservations.ReservationRepository;
 import com.solargrid.exchange.network.ApiCallback;
+import com.solargrid.exchange.features.auth.AccountStatusPolicy;
 import com.solargrid.exchange.network.ApiError;
 import com.solargrid.exchange.ui.common.UiState;
 
@@ -175,6 +176,11 @@ public final class BookingReviewViewModel extends AndroidViewModel {
     }
 
     private static ApiError explainCreationError(ApiError error) {
+        if (error.isAuthenticationExpired() ||
+                AccountStatusPolicy.classify(error) != AccountStatusPolicy.AccountState.NONE) {
+            // Keep 401 and account-status 403 unchanged so the screen can end the session (Member 1).
+            return error;
+        }
         String detail = error.getMessage() == null ? "" : error.getMessage().trim();
         String lower = detail.toLowerCase(Locale.US);
         String message;
@@ -192,7 +198,10 @@ public final class BookingReviewViewModel extends AndroidViewModel {
                         "Return to the station and refresh its slots.";
                 break;
             case CONFLICT:
-                if (lower.contains("capacity") || lower.contains("fully") || lower.contains("available")) {
+                if (isBookingHorizonMessage(lower)) {
+                    message = "Bookings can be made only up to seven days ahead. " +
+                            "Choose a slot inside the seven-day booking window.";
+                } else if (lower.contains("capacity") || lower.contains("fully") || lower.contains("available")) {
                     message = "The slot no longer has enough available capacity. Refresh the slots " +
                             "and choose a smaller quantity or another time.";
                 } else if (lower.contains("duplicate") || lower.contains("same slot")) {
@@ -218,6 +227,12 @@ public final class BookingReviewViewModel extends AndroidViewModel {
             message += " API detail: " + detail;
         }
         return new ApiError(error.getKind(), error.getStatusCode(), message);
+    }
+
+    /** The API reports the seven-day horizon as a 409, e.g. "cannot be scheduled more than 7 days ahead". */
+    static boolean isBookingHorizonMessage(String lowerCaseDetail) {
+        return lowerCaseDetail.contains("7 days") || lowerCaseDetail.contains("seven days")
+                || lowerCaseDetail.contains("horizon") || lowerCaseDetail.contains("days ahead");
     }
 
     public void consumeResult() {

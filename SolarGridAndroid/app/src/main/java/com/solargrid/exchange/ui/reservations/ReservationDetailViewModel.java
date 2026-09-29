@@ -13,6 +13,7 @@ import com.solargrid.exchange.data.model.PagedReservations;
 import com.solargrid.exchange.features.reservations.ReservationMutationReconciler;
 import com.solargrid.exchange.features.reservations.ReservationRepository;
 import com.solargrid.exchange.network.ApiCallback;
+import com.solargrid.exchange.features.auth.AccountStatusPolicy;
 import com.solargrid.exchange.network.ApiError;
 import com.solargrid.exchange.ui.common.UiState;
 
@@ -246,6 +247,10 @@ public final class ReservationDetailViewModel extends AndroidViewModel {
 
     private static ApiError explainCancellationError(ApiError error) {
         if (error.isAuthenticationExpired()) {
+            return error;
+        }
+        if (AccountStatusPolicy.classify(error) != AccountStatusPolicy.AccountState.NONE) {
+            // Keep the API account-status message so the screen can end the session (Member 1).
             return error;
         }
         String detail = error.getMessage() == null ? "" : error.getMessage().trim();

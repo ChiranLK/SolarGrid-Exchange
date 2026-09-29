@@ -111,8 +111,8 @@ public final class BookingReviewFragment extends Fragment {
             confirm.setEnabled(!loading);
             confirm.setText(loading ? R.string.saving_reservation : R.string.confirm_booking);
             if (state.getStatus() == UiState.Status.ERROR && state.getError() != null) {
-                if (state.getError().isAuthenticationExpired()) {
-                    ((MainActivity) requireActivity()).handleAuthenticationExpiry();
+                if (((MainActivity) requireActivity()).handleSessionFailure(state.getError())) {
+                    // Handled by MainActivity: 401, or a pending/deactivated account (Member 1 session end).
                 } else {
                     Toast.makeText(requireContext(), state.getError().getMessage(), Toast.LENGTH_LONG).show();
                 }

@@ -66,7 +66,13 @@ namespace SolarMicrogrid.API.Middleware
             
             if (statusCode == HttpStatusCode.InternalServerError)
             {
-                _logger.LogError(ex, "Unhandled exception.");
+                // Do not attach the exception object: driver/request failures can carry sensitive values.
+                _logger.LogError(
+                    "Unhandled {ExceptionType} for {Method} {Path}. CorrelationId: {CorrelationId}",
+                    ex.GetType().Name,
+                    context.Request.Method,
+                    context.Request.Path.Value,
+                    context.TraceIdentifier);
             }
 
             context.Response.ContentType = "application/json";

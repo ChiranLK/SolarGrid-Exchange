@@ -16,13 +16,19 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.navigation.NavController;
 import androidx.navigation.NavGraph;
 import androidx.navigation.fragment.NavHostFragment;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.google.android.material.navigation.NavigationView;
 import com.solargrid.exchange.R;
 import com.solargrid.exchange.SolarGridApplication;
 import com.solargrid.exchange.data.model.SessionUser;
+import com.solargrid.exchange.features.auth.AccountRoutePolicy;
 import com.solargrid.exchange.features.auth.AuthRepository;
+import com.solargrid.exchange.features.operations.RoleRoutePolicy;
+import com.solargrid.exchange.network.ApiError;
+import com.solargrid.exchange.ui.auth.AccountNavigator;
 import com.solargrid.exchange.ui.auth.LoginActivity;
+import com.solargrid.exchange.ui.operations.OperatorTransactionViewModel;
 
 public final class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
@@ -37,6 +43,12 @@ public final class MainActivity extends AppCompatActivity
         SessionUser session = authRepository.getStoredSession();
         if (session == null) {
             routeToLogin();
+            return;
+        }
+        if (AccountRoutePolicy.afterAuthentication(session) == AccountRoutePolicy.Destination.BACKOFFICE_WEB_ONLY) {
+            // Backoffice administration is web-only; never open the mobile workspace for it.
+            authRepository.logout();
+            AccountNavigator.toBackofficeWebOnly(this);
             return;
         }
 
@@ -63,12 +75,16 @@ public final class MainActivity extends AppCompatActivity
         }
         navController = host.getNavController();
         NavGraph graph = navController.getNavInflater().inflate(R.navigation.main_nav_graph);
-        graph.setStartDestination(session.isProsumer()
-                ? R.id.nav_prosumer_home
-                : R.id.nav_operator_home);
+        graph.setStartDestination(startDestinationFor(session));
         navController.setGraph(graph);
-        navController.addOnDestinationChangedListener((controller, destination, arguments) ->
-                toolbar.setTitle(destination.getLabel()));
+        OperatorTransactionViewModel operatorFlow = new ViewModelProvider(this)
+                .get(OperatorTransactionViewModel.class);
+        navController.addOnDestinationChangedListener((controller, destination, arguments) -> {
+            toolbar.setTitle(destination.getLabel());
+            if (!isOperatorTransactionDestination(destination.getId())) {
+                operatorFlow.clearSensitiveState();
+            }
+        });
 
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
@@ -106,13 +122,65 @@ public final class MainActivity extends AppCompatActivity
         routeToLogin();
     }
 
+    /**
+     * Called by Member 1 screens when the API reports that this account is pending or has been
+     * deactivated while the token was still valid. The local session is cleared either way.
+     */
+    public void handleAccountNoLongerActive(ApiError error) {
+        authRepository.logout();
+        if (AccountRoutePolicy.afterSessionFailure(error) == AccountRoutePolicy.Destination.PENDING_ACTIVATION) {
+            AccountNavigator.toPendingActivation(this, null);
+        } else {
+            AccountNavigator.toSignIn(this, getString(R.string.account_no_longer_active, error.getMessage()));
+        }
+    }
+
+    /**
+     * Shared entry point for feature screens: ends the session for a 401 (expired/invalid token) or
+     * an account-status 403 (pending/deactivated/not active) and returns true; returns false for
+     * every other error so the screen shows it normally.
+     */
+    public boolean handleSessionFailure(ApiError error) {
+        if (error == null) {
+            return false;
+        }
+        switch (AccountRoutePolicy.afterSessionFailure(error)) {
+            case SIGN_IN:
+                handleAuthenticationExpiry();
+                return true;
+            case PENDING_ACTIVATION:
+            case SIGN_IN_WITH_ACCOUNT_NOTICE:
+                handleAccountNoLongerActive(error);
+                return true;
+            default:
+                return false;
+        }
+    }
+
     private void configureRoleNavigation(NavigationView navigationView, SessionUser session) {
         Menu menu = navigationView.getMenu();
         menu.findItem(R.id.nav_prosumer_home).setVisible(session.isProsumer());
         menu.findItem(R.id.nav_my_reservations).setVisible(session.isProsumer());
         menu.findItem(R.id.nav_booking_history).setVisible(session.isProsumer());
-        menu.findItem(R.id.nav_operator_home).setVisible(session.isStaff());
-        menu.findItem(R.id.nav_qr_operations).setVisible(session.isStaff());
+        menu.findItem(R.id.nav_operator_home).setVisible(session.isGridOperator());
+        menu.findItem(R.id.nav_qr_operations).setVisible(session.isGridOperator());
+    }
+
+    static int startDestinationFor(SessionUser session) {
+        switch (RoleRoutePolicy.resolve(session)) {
+            case PROSUMER:
+                return R.id.nav_prosumer_home;
+            case GRID_OPERATOR:
+                return R.id.nav_operator_home;
+            default:
+                return R.id.nav_profile;
+        }
+    }
+
+    private static boolean isOperatorTransactionDestination(int destinationId) {
+        return destinationId == R.id.nav_qr_operations
+                || destinationId == R.id.nav_transaction_verification
+                || destinationId == R.id.nav_transaction_completion;
     }
 
     private void routeToLogin() {

@@ -407,7 +407,7 @@ public sealed class ReservationService
                     session: null,
                     cancellationToken);
                 return new ReservationUpdateResult(
-                    MapToResponse(originalReservation, actor, serverNowUtc),
+                    await MapToDisplayResponseAsync(originalReservation, actor, serverNowUtc),
                     IdempotencyReplayed: true);
             }
 
@@ -434,7 +434,7 @@ public sealed class ReservationService
             if (!materialChange)
             {
                 return new ReservationUpdateResult(
-                    MapToResponse(originalReservation, actor, serverNowUtc),
+                    await MapToDisplayResponseAsync(originalReservation, actor, serverNowUtc),
                     IdempotencyReplayed: false);
             }
 
@@ -488,7 +488,7 @@ public sealed class ReservationService
                     cancellationToken);
 
             return new ReservationUpdateResult(
-                MapToResponse(execution.Value, actor, serverNowUtc),
+                await MapToDisplayResponseAsync(execution.Value, actor, serverNowUtc),
                 IdempotencyReplayed: false);
         }
         finally
@@ -567,7 +567,7 @@ public sealed class ReservationService
                     session: null,
                     cancellationToken);
                 return new ReservationCancellationResult(
-                    MapToResponse(originalReservation, actor, serverNowUtc),
+                    await MapToDisplayResponseAsync(originalReservation, actor, serverNowUtc),
                     IdempotencyReplayed: true);
             }
 
@@ -606,7 +606,7 @@ public sealed class ReservationService
                     cancellationToken);
 
             return new ReservationCancellationResult(
-                MapToResponse(execution.Value, actor, serverNowUtc),
+                await MapToDisplayResponseAsync(execution.Value, actor, serverNowUtc),
                 IdempotencyReplayed: false);
         }
         finally
@@ -676,7 +676,7 @@ public sealed class ReservationService
                     cancellationToken);
 
             return new ReservationApprovalResult(
-                MapToResponse(
+                await MapToDisplayResponseAsync(
                     execution.Value.Reservation,
                     execution.Value.Actor,
                     serverNowUtc),
@@ -758,7 +758,7 @@ public sealed class ReservationService
                     session: null,
                     cancellationToken);
                 return new ReservationRejectionResult(
-                    MapToResponse(originalReservation, actor, serverNowUtc),
+                    await MapToDisplayResponseAsync(originalReservation, actor, serverNowUtc),
                     IdempotencyReplayed: true);
             }
 
@@ -786,7 +786,7 @@ public sealed class ReservationService
                     cancellationToken);
 
             return new ReservationRejectionResult(
-                MapToResponse(execution.Value, actor, serverNowUtc),
+                await MapToDisplayResponseAsync(execution.Value, actor, serverNowUtc),
                 IdempotencyReplayed: false);
         }
         finally
@@ -1902,7 +1902,7 @@ public sealed class ReservationService
                 }
             }
 
-            ReservationResponseDto response = MapToResponse(
+            ReservationResponseDto response = await MapToDisplayResponseAsync(
                 execution.Value.Reservation,
                 initialActor,
                 serverNowUtc);
@@ -1954,6 +1954,11 @@ public sealed class ReservationService
             }
 
             await ValidateCreationReferencesAsync(existing, actor, serverNowUtc, session, cancellationToken);
+            if (existing.CapacityState != ReservationCapacityState.Held)
+            {
+                await ClaimActiveStationAsync(existing.StationId, session, cancellationToken);
+            }
+
             await ResumeCreationHoldAsync(existing, session, cancellationToken);
             return new ReservationCreationEntityResult(existing, IdempotencyReplayed: true);
         }
@@ -2010,6 +2015,11 @@ public sealed class ReservationService
 
         try
         {
+            // After the insert and before the hold. Inside a transaction the order is irrelevant; in
+            // the standalone fallback this order guarantees a concurrent deactivation either sees the
+            // Pending reservation, fails its version CAS, or makes this claim fail (then the unheld
+            // provisional reservation is removed by the cleanup below).
+            await ClaimActiveStationAsync(station.Id, session, cancellationToken);
             await ResumeCreationHoldAsync(reservation, session, cancellationToken);
             return new ReservationCreationEntityResult(reservation, IdempotencyReplayed: false);
         }
@@ -2017,6 +2027,30 @@ public sealed class ReservationService
         {
             await CleanupFailedCreationAsync(reservation, CancellationToken.None);
             throw;
+        }
+    }
+
+    private async Task ClaimActiveStationAsync(
+        string stationId,
+        IClientSessionHandle? session,
+        CancellationToken cancellationToken)
+    {
+        // Turn the station read into a conditional write. Inside a transaction this conflicts with a
+        // concurrent Member 2 deactivation (which compares reservation_write_version), so either the
+        // reservation or the deactivation fails instead of leaving a hold at an inactive station.
+        FilterDefinition<SolarStationInfo> filter = Builders<SolarStationInfo>.Filter.And(
+            Builders<SolarStationInfo>.Filter.Eq(item => item.Id, stationId),
+            Builders<SolarStationInfo>.Filter.Eq(item => item.IsActive, true));
+        UpdateDefinition<SolarStationInfo> update =
+            Builders<SolarStationInfo>.Update.Inc(item => item.ReservationWriteVersion, 1L);
+
+        UpdateResult result = session is null
+            ? await _context.Stations.UpdateOneAsync(filter, update, cancellationToken: cancellationToken)
+            : await _context.Stations.UpdateOneAsync(session, filter, update, cancellationToken: cancellationToken);
+
+        if (result.IsAcknowledged && result.MatchedCount == 0)
+        {
+            throw new ConflictException("The selected station is not active.");
         }
     }
 
@@ -2123,7 +2157,8 @@ public sealed class ReservationService
 
         if (actor.Status != UserStatus.Active)
         {
-            throw new ForbiddenException("Only active users may use reservation operations.");
+            // Same text as Member 1's ProsumerService so clients recognise one "account not active" message.
+            throw new ForbiddenException("This account is not active. Please contact Backoffice.");
         }
 
         if (!allowedRoles.Contains(actor.Role))
@@ -2494,11 +2529,27 @@ public sealed class ReservationService
             RequestedEnergyKwh = reservation.RequestedEnergyKwh,
             Status = reservation.Status.ToString(),
             Version = reservation.Version,
-            QrEligible = reservation.Status == ReservationStatus.Approved,
+            QrEligible = ReservationReadPolicy.IsQrUsable(reservation, serverNowUtc),
             AllowedActions = BuildAllowedActions(reservation, actor, serverNowUtc),
             CreatedAtUtc = reservation.CreatedAtUtc,
             UpdatedAtUtc = reservation.UpdatedAtUtc
         };
+    }
+
+    private async Task<ReservationResponseDto> MapToDisplayResponseAsync(
+        EnergyReservation reservation,
+        User actor,
+        DateTime serverNowUtc)
+    {
+        // Mutation results carry the same display names as reads. The change is already stored,
+        // so caller cancellation must not turn this read-only lookup into a reported failure.
+        ReservationDisplayReferences references = await LoadDisplayReferencesAsync(
+            [reservation],
+            CancellationToken.None);
+        references.Stations.TryGetValue(reservation.StationId, out SolarStationInfo? station);
+        references.Slots.TryGetValue(reservation.SlotId, out EnergyBookingSlot? slot);
+        references.Prosumers.TryGetValue(reservation.ProsumerNic, out User? prosumer);
+        return MapToResponse(reservation, actor, serverNowUtc, station, slot, prosumer);
     }
 
     private ReservationResponseDto MapToResponse(
@@ -2525,7 +2576,7 @@ public sealed class ReservationService
             RequestedEnergyKwh = reservation.RequestedEnergyKwh,
             Status = reservation.Status.ToString(),
             Version = reservation.Version,
-            QrEligible = reservation.Status == ReservationStatus.Approved,
+            QrEligible = ReservationReadPolicy.IsQrUsable(reservation, serverNowUtc),
             AllowedActions = BuildAllowedActions(reservation, actor, serverNowUtc),
             CreatedAtUtc = reservation.CreatedAtUtc,
             CreatedByActorNic = reservation.CreatedByActorNic,
@@ -3349,6 +3400,7 @@ public sealed class ReservationService
             requireBookableSlot: false,
             session,
             cancellationToken);
+        await ClaimActiveStationAsync(proposedReservation.StationId, session, cancellationToken);
         await ValidateNoDuplicateOrOverlapAsync(
             proposedReservation.ProsumerNic,
             proposedReservation.SlotId,

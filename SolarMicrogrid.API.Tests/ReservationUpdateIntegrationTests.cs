@@ -61,6 +61,11 @@ public sealed class ReservationUpdateIntegrationTests : IAsyncLifetime
 
         Assert.Equal(destinationSlot.Id, updated.Reservation.SlotId);
         Assert.Equal(7m, updated.Reservation.RequestedEnergyKwh);
+        // Mutation results carry the same display names as reads (Android and web summaries).
+        Assert.False(string.IsNullOrWhiteSpace(created.Reservation.StationName));
+        Assert.Equal(created.Reservation.StationName, updated.Reservation.StationName);
+        Assert.False(string.IsNullOrWhiteSpace(updated.Reservation.ProsumerFullName));
+        Assert.Equal(destinationSlot.AvailabilityStatus.ToString(), updated.Reservation.SlotAvailabilityStatus);
         Assert.Empty(storedOriginal.CapacityAllocations);
         Assert.Equal(originalSlot.TotalCapacityKwh, storedOriginal.AvailableCapacityKwh);
         Assert.Single(storedDestination.CapacityAllocations);
