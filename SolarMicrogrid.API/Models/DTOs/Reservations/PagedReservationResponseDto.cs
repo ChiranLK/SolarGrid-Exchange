@@ -1,6 +1,8 @@
 /*
  * PagedReservationResponseDto.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Wraps reservation list items with the same paging metadata used by
  *           the station and slot APIs.
  * -----------------------------------------------------------------------------

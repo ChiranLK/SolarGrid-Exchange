@@ -1,6 +1,8 @@
 /*
  * ReservationReadPolicy.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Centralizes reservation read scope, dashboard view definitions,
  *           paging math, and actor-scoped action availability for API clients.
  * Security: Scope predicates are translated into MongoDB filters before paging.

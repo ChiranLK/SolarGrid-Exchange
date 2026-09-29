@@ -1,6 +1,8 @@
 /*
  * EligibleProsumerSearchIntegrationTests.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Verifies the staff reservation picker uses a bounded MongoDB query
  *           that returns only matching active Prosumers with stable paging.
  * -----------------------------------------------------------------------------

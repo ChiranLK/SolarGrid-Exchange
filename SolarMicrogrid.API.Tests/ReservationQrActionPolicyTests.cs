@@ -1,6 +1,8 @@
 /*
  * ReservationQrActionPolicyTests.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Keeps the Component 3 QR allowed-action projection aligned with the
  *           authoritative Component 4 rule in TransactionService (Approved,
  *           capacity Held, not yet ended), so clients never offer a QR action

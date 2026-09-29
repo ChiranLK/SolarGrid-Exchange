@@ -1,6 +1,8 @@
 /*
  * UpdateReservationRequestDto.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Accepts a reschedule/quantity change and the optimistic concurrency
  *           version; lifecycle and capacity outcomes remain server-owned.
  * -----------------------------------------------------------------------------

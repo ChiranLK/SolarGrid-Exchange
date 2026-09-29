@@ -1,6 +1,8 @@
 /*
  * ReservationUpdateIntegrationTests.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Verifies update boundaries, optimistic concurrency, conflicts, safe
  *           rescheduling, and Approved-to-Pending behavior with real MongoDB.
  * -----------------------------------------------------------------------------

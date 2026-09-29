@@ -1,6 +1,8 @@
 /*
  * ReservationCapacityService.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Provides the shared, retry-safe slot capacity primitives used by the
  *           reservation workflow for holds, adjustments, releases, and recovery.
  * Safety  : Every mutation is one conditional MongoDB document update. Embedded

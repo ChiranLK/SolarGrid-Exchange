@@ -1,6 +1,8 @@
 /*
  * EligibleProsumerResponseDto.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Returns only the identity fields staff need to select an eligible
  *           active Prosumer for reservation creation.
  * -----------------------------------------------------------------------------

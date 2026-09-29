@@ -1,6 +1,8 @@
 /*
  * ReservationSchedulingGuard.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Defines the Component 3 MongoDB lease that serializes active booking
  *           checks for one prosumer across different stations and slots.
  * Safety  : The document stores no user data beyond the repository NIC identity;

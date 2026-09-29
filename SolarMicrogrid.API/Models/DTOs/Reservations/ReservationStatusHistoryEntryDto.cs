@@ -1,6 +1,8 @@
 /*
  * ReservationStatusHistoryEntryDto.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Exposes authorized, sanitized lifecycle audit entries without leaking
  *           persistence-only or idempotency data.
  * -----------------------------------------------------------------------------

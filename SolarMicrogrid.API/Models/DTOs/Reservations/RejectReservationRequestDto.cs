@@ -1,6 +1,8 @@
 /*
  * RejectReservationRequestDto.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Supplies the optimistic concurrency version and required audit reason
  *           for an authorized staff rejection.
  * -----------------------------------------------------------------------------

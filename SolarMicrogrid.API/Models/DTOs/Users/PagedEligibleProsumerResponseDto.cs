@@ -1,6 +1,8 @@
 /*
  * PagedEligibleProsumerResponseDto.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Carries one bounded page of eligible Prosumer search results and
  *           authoritative paging metadata to staff clients.
  * -----------------------------------------------------------------------------

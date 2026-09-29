@@ -1,6 +1,8 @@
 /*
  * ReservationSchedulingGuardService.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Serializes reservation overlap checks for one prosumer with a
  *           MongoDB-backed lease shared by every API instance.
  * Safety  : Acquisition and release are conditional database writes; no

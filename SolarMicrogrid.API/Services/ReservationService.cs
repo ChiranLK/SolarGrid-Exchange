@@ -1,6 +1,8 @@
 /*
  * ReservationService.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Provides the Component 3 reservation domain foundation: reference
  *           loading, active-status rules, duplicate/overlap validation, lifecycle
  *           transitions, optimistic versions, capacity orchestration, and repair.

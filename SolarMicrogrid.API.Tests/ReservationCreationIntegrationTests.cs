@@ -1,6 +1,8 @@
 /*
  * ReservationCreationIntegrationTests.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Verifies reservation creation rules, idempotency, overlap checks,
  *           and last-allocation concurrency against an isolated real MongoDB.
  * -----------------------------------------------------------------------------

@@ -1,6 +1,8 @@
 /*
  * ReservationLifecycleSecurityConcurrencyTests.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Verifies final transitions, exact-once capacity release, object-level
  *           authorization, target validation, and competing lifecycle mutations.
  * -----------------------------------------------------------------------------

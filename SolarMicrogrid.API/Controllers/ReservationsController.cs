@@ -1,6 +1,8 @@
 /*
  * ReservationsController.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Exposes authenticated Component 3 reservation REST operations while
  *           delegating identity, permission, validation, and capacity rules to
  *           ReservationService.

@@ -1,6 +1,8 @@
 /*
  * CancelReservationRequestDto.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Accepts the expected reservation version and an optional audit reason
  *           for an owner-requested cancellation.
  * -----------------------------------------------------------------------------

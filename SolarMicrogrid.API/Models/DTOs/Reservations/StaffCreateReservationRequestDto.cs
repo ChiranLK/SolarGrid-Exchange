@@ -1,6 +1,8 @@
 /*
  * StaffCreateReservationRequestDto.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Accepts a proposed target Prosumer, slot, and kWh quantity for an
  *           authorized staff-created reservation; the API resolves ownership.
  * Note    : Service/controller authorization for this contract extension is not

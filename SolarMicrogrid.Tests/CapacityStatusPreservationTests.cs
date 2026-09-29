@@ -1,6 +1,8 @@
 /*
  * CapacityStatusPreservationTests.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Component 3 capacity release/adjust must not overwrite a concurrent
  *           Member 2 availability change (e.g. Unavailable). The compare-and-swap
  *           filters therefore include the availability status that the new status

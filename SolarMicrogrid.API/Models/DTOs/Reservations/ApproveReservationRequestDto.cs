@@ -1,6 +1,8 @@
 /*
  * ApproveReservationRequestDto.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Supplies the optimistic concurrency version for an authorized staff
  *           approval while keeping status and approval identity server-owned.
  * -----------------------------------------------------------------------------

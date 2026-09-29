@@ -1,6 +1,8 @@
 /*
  * ReservationAllowedActionsDto.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Returns actor-scoped actions calculated by the central API so web and
  *           Android clients do not reproduce reservation authorization rules.
  * -----------------------------------------------------------------------------

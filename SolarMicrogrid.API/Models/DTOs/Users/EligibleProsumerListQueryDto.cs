@@ -1,6 +1,8 @@
 /*
  * EligibleProsumerListQueryDto.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Bounds staff-only Prosumer lookup so reservation creation searches
  *           the user collection on the server instead of downloading all users.
  * -----------------------------------------------------------------------------

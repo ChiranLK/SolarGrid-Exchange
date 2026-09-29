@@ -1,6 +1,8 @@
 /*
  * CreateReservationRequestDto.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Accepts the slot and kWh quantity for a Prosumer creating their own
  *           reservation; identity, status, capacity, and audit data are server-owned.
  * -----------------------------------------------------------------------------

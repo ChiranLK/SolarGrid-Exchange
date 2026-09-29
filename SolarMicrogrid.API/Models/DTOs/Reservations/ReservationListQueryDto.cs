@@ -1,6 +1,8 @@
 /*
  * ReservationListQueryDto.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Defines role-scoped reservation filters and the repository's standard
  *           paged query inputs; services enforce which filters each role may use.
  * -----------------------------------------------------------------------------

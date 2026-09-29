@@ -1,6 +1,8 @@
 /*
  * ReservationListItemResponseDto.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Returns the compact reservation fields required by role-scoped lists,
  *           history views, search results, and client summary navigation.
  * -----------------------------------------------------------------------------

@@ -1,6 +1,8 @@
 /*
  * EnergyReservation.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Defines the MongoDB reservation document, lifecycle statuses, audit
  *           data, UTC schedule snapshot, energy quantity, and concurrency data.
  * Ownership: Component 3 stores references to users, stations, and slots rather

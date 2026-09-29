@@ -1,6 +1,8 @@
 /*
  * ReservationResponseDto.cs
  * -----------------------------------------------------------------------------
+ * Author    : Alahakoon PB
+ * IT Number : IT23405240
  * Purpose : Returns reservation detail and authorized audit metadata for web,
  *           Android summary pages, and staff workflows.
  * Security: Never returns idempotency hashes, capacity counters, or raw QR data.
