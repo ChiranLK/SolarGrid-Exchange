@@ -41,8 +41,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/space_xs"
-            android:textAppearance="@style/TextAppearance.SolarGrid.Body"
-            android:textIsSelectable="true" />
+            android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
 
         <TextView
             android:id="@+id/reservation_item_time"

@@ -407,7 +407,7 @@ public sealed class ReservationService
                     session: null,
                     cancellationToken);
                 return new ReservationUpdateResult(
-                    MapToResponse(originalReservation, actor, serverNowUtc),
+                    await MapToDisplayResponseAsync(originalReservation, actor, serverNowUtc),
                     IdempotencyReplayed: true);
             }
 
@@ -434,7 +434,7 @@ public sealed class ReservationService
             if (!materialChange)
             {
                 return new ReservationUpdateResult(
-                    MapToResponse(originalReservation, actor, serverNowUtc),
+                    await MapToDisplayResponseAsync(originalReservation, actor, serverNowUtc),
                     IdempotencyReplayed: false);
             }
 
@@ -488,7 +488,7 @@ public sealed class ReservationService
                     cancellationToken);
 
             return new ReservationUpdateResult(
-                MapToResponse(execution.Value, actor, serverNowUtc),
+                await MapToDisplayResponseAsync(execution.Value, actor, serverNowUtc),
                 IdempotencyReplayed: false);
         }
         finally
@@ -567,7 +567,7 @@ public sealed class ReservationService
                     session: null,
                     cancellationToken);
                 return new ReservationCancellationResult(
-                    MapToResponse(originalReservation, actor, serverNowUtc),
+                    await MapToDisplayResponseAsync(originalReservation, actor, serverNowUtc),
                     IdempotencyReplayed: true);
             }
 
@@ -606,7 +606,7 @@ public sealed class ReservationService
                     cancellationToken);
 
             return new ReservationCancellationResult(
-                MapToResponse(execution.Value, actor, serverNowUtc),
+                await MapToDisplayResponseAsync(execution.Value, actor, serverNowUtc),
                 IdempotencyReplayed: false);
         }
         finally
@@ -676,7 +676,7 @@ public sealed class ReservationService
                     cancellationToken);
 
             return new ReservationApprovalResult(
-                MapToResponse(
+                await MapToDisplayResponseAsync(
                     execution.Value.Reservation,
                     execution.Value.Actor,
                     serverNowUtc),
@@ -758,7 +758,7 @@ public sealed class ReservationService
                     session: null,
                     cancellationToken);
                 return new ReservationRejectionResult(
-                    MapToResponse(originalReservation, actor, serverNowUtc),
+                    await MapToDisplayResponseAsync(originalReservation, actor, serverNowUtc),
                     IdempotencyReplayed: true);
             }
 
@@ -786,7 +786,7 @@ public sealed class ReservationService
                     cancellationToken);
 
             return new ReservationRejectionResult(
-                MapToResponse(execution.Value, actor, serverNowUtc),
+                await MapToDisplayResponseAsync(execution.Value, actor, serverNowUtc),
                 IdempotencyReplayed: false);
         }
         finally
@@ -1902,7 +1902,7 @@ public sealed class ReservationService
                 }
             }
 
-            ReservationResponseDto response = MapToResponse(
+            ReservationResponseDto response = await MapToDisplayResponseAsync(
                 execution.Value.Reservation,
                 initialActor,
                 serverNowUtc);
@@ -2534,6 +2534,22 @@ public sealed class ReservationService
             CreatedAtUtc = reservation.CreatedAtUtc,
             UpdatedAtUtc = reservation.UpdatedAtUtc
         };
+    }
+
+    private async Task<ReservationResponseDto> MapToDisplayResponseAsync(
+        EnergyReservation reservation,
+        User actor,
+        DateTime serverNowUtc)
+    {
+        // Mutation results carry the same display names as reads. The change is already stored,
+        // so caller cancellation must not turn this read-only lookup into a reported failure.
+        ReservationDisplayReferences references = await LoadDisplayReferencesAsync(
+            [reservation],
+            CancellationToken.None);
+        references.Stations.TryGetValue(reservation.StationId, out SolarStationInfo? station);
+        references.Slots.TryGetValue(reservation.SlotId, out EnergyBookingSlot? slot);
+        references.Prosumers.TryGetValue(reservation.ProsumerNic, out User? prosumer);
+        return MapToResponse(reservation, actor, serverNowUtc, station, slot, prosumer);
     }
 
     private ReservationResponseDto MapToResponse(
