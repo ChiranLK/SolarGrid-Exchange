@@ -306,3 +306,7 @@ See "Open cross-member work" in `docs/member-4/contracts.md`. In short:
   - kWh precision;
   - Pending past its start;
   - the check-in window.
+
+## Integrated verification (2026-09-29)
+
+The ten end-to-end workflows were run against the real API, web and Android clients in a local development environment. All 10 passed locally after four Component 3 fixes, committed as `c7558f3` on `feature/component3-integration`: station and reservation row taps, the seven-day error message on Android, and display names in mutation responses. Hosted IIS verification is Not Verified; no hosted deployment success is claimed. Actual outcomes, the IIS configuration review and the remaining blockers are in `docs/component-3/test-results.md`.
