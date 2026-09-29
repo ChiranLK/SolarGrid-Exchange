@@ -319,7 +319,10 @@ public final class ReservationFormViewModel extends AndroidViewModel {
         String message;
         switch (error.getKind()) {
             case CONFLICT:
-                if (lower.contains("hour") || lower.contains("notice")) {
+                if (BookingReviewViewModel.isBookingHorizonMessage(lower)) {
+                    message = "The new slot is more than seven days ahead. Choose a slot inside " +
+                            "the seven-day booking window; the original booking remains unchanged.";
+                } else if (lower.contains("hour") || lower.contains("notice")) {
                     message = "This reservation is inside the twelve-hour change cutoff. " +
                             "The original booking remains unchanged.";
                 } else if (lower.contains("capacity") || lower.contains("available")
