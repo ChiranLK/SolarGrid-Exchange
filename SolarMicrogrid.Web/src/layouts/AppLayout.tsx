@@ -132,10 +132,6 @@ export function AppLayout() {
               )
             })}
           </nav>
-          <div className="sidebar-footer p-3">
-            <div className="small text-uppercase text-body-secondary">Signed in as</div>
-            <div className="fw-semibold text-truncate">{session?.nic}</div>
-          </div>
         </aside>
 
         <main ref={mainRef} id="main-content" className="app-content" tabIndex={-1} key={location.pathname}>
