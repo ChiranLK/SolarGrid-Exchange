@@ -1,10 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Navigate, useLocation } from 'react-router-dom'
+import { Link, Navigate, useLocation } from 'react-router-dom'
 import { ApiError } from '../api/apiClient'
 import { resolvePostLoginDestination } from '../auth/roleRouting'
 import { useAuth } from '../auth/useAuth'
 import { LoadingState } from '../components/LoadingState'
-import { ArrowRightIcon, SolarGridLogoIcon } from '../components/icons'
+import { ArrowLeftIcon, ArrowRightIcon, SolarGridLogoIcon } from '../components/icons'
 import { ThemeToggle } from '../components/ThemeToggle'
 
 interface LoginLocationState {
@@ -59,31 +59,35 @@ export function LoginPage() {
     <main className="login-page">
       <section className="login-brand-panel" aria-label="SolarGrid Exchange introduction">
         <div className="login-brand-content">
-          <span className="brand-mark brand-mark-large" aria-hidden="true"><SolarGridLogoIcon /></span>
-          <p className="page-eyebrow text-white-50 mt-4">Smart microgrid operations</p>
+          <Link to="/" className="login-brand-link" aria-label="SolarGrid Exchange home">
+            <span className="brand-mark brand-mark-large" aria-hidden="true"><SolarGridLogoIcon /></span>
+            <span>SolarGrid Exchange</span>
+          </Link>
+          <p className="page-eyebrow text-white-50 mt-5">Local energy. Shared possibility.</p>
           <h1 className="display-5 fw-semibold">Share clean energy with confidence.</h1>
           <p className="lead text-white-50 mb-0">
-            One secure workspace for Prosumers, Grid Operators, and Backoffice teams.
+            Book solar energy from stations near you, run each site safely and look after the whole network, all from one place.
           </p>
           <div className="login-facts" aria-hidden="true">
-            <div><strong>24/7</strong><span>Live operations</span></div>
-            <div><strong>Secure</strong><span>Role-based access</span></div>
-            <div><strong>Precise</strong><span>Energy allocation</span></div>
+            <div><strong>7 days</strong><span>Book ahead</span></div>
+            <div><strong>QR pass</strong><span>Checked on site</span></div>
+            <div><strong>25 km</strong><span>Stations near you</span></div>
           </div>
         </div>
       </section>
 
       <section className="login-form-panel" aria-labelledby="login-heading">
+        <Link to="/" className="login-back"><ArrowLeftIcon width={16} height={16} /> Back to home</Link>
         <ThemeToggle className="login-theme" />
         <div className="login-card">
-          <div className="d-lg-none d-flex align-items-center gap-2 mb-4">
+          <Link to="/" className="d-lg-none d-flex align-items-center gap-2 mb-4 login-mobile-brand">
             <span className="brand-mark" aria-hidden="true"><SolarGridLogoIcon /></span>
             <span className="fw-semibold">SolarGrid Exchange</span>
-          </div>
+          </Link>
           <p className="page-eyebrow">Welcome back</p>
           <h2 id="login-heading" className="h2 mb-2">Sign in to your account</h2>
           <p className="text-body-secondary mb-4">
-            Use the credentials managed by the central SolarGrid API.
+            Enter the email and password for your SolarGrid account.
           </p>
 
           {error && (
@@ -129,7 +133,7 @@ export function LoginPage() {
             </button>
           </form>
           <p className="small text-body-secondary mt-4 mb-0">
-            Prosumers register and manage their account in the SolarGrid Android app.
+            New here? Prosumers register in the SolarGrid Android app. <Link to="/contact">Contact us</Link> for help.
           </p>
         </div>
       </section>

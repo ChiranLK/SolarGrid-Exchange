@@ -13,17 +13,17 @@ export function HomePage() {
       <PageHeader
         eyebrow="SolarGrid Exchange"
         title={`Welcome, ${session?.fullName ?? 'team member'}`}
-        description="Use the shared navigation to access the features available to your current API role."
+        description="Use the menu to open the tools available to your account."
       />
 
       <div className="row g-4">
         <div className="col-12 col-xl-8">
           <section className="card border-0 shadow-sm h-100 home-foundation-card">
             <div className="card-body p-4 p-lg-5">
-              <p className="page-eyebrow">Shared web foundation</p>
-              <h2 className="h4">Centralized, API-backed access</h2>
+              <p className="page-eyebrow">Your workspace</p>
+              <h2 className="h4">Everything for your role, in one place</h2>
               <p className="text-body-secondary">
-                Authentication, session restoration, protected routes, and role-aware navigation all use the existing ASP.NET Core API contract.
+                Stations, bookings and member accounts are a click away. Only the tools that match your role are shown.
               </p>
               {session && <Link to={getHomePathForRole(session.role)} className="btn btn-success">Open your workspace <ArrowRightIcon width={18} height={18} /></Link>}
             </div>

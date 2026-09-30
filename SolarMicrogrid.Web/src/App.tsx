@@ -5,6 +5,10 @@ import { ForbiddenPageWithNavigation } from './pages/ForbiddenPage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { NotFoundPage } from './pages/NotFoundPage'
+import { AboutPage } from './pages/public/AboutPage'
+import { ContactPage } from './pages/public/ContactPage'
+import { PublicLayout } from './pages/public/PublicLayout'
+import { HomeGate } from './routes/HomeGate'
 import { ProtectedRoute } from './routes/ProtectedRoute'
 import { RoleRoute } from './routes/RoleRoute'
 import { ReservationCreatePage } from './features/reservations/ReservationCreatePage'
@@ -30,9 +34,17 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
 
+      <Route element={<PublicLayout />}>
+        <Route path="about" element={<AboutPage />} />
+        <Route path="contact" element={<ContactPage />} />
+      </Route>
+
+      <Route element={<HomeGate />}>
+        <Route index element={<HomePage />} />
+      </Route>
+
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
-          <Route index element={<HomePage />} />
           <Route path="stations" element={<StationListPage />} />
           <Route path="stations/:stationId" element={<StationDetailPage />} />
           <Route path="reservations" element={<ReservationListPage />} />

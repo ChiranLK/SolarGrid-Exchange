@@ -46,21 +46,28 @@ export const LogOutIcon = (p: IconProps) => <Icon {...p}><path d="M9 21H5a2 2 0 
 export const CompassIcon = (p: IconProps) => <Icon {...p}><circle cx="12" cy="12" r="9" /><path d="m15.5 8.5-2 5-5 2 2-5z" /></Icon>
 export const ClockIcon = (p: IconProps) => <Icon {...p}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></Icon>
 export const BatteryIcon = (p: IconProps) => <Icon {...p}><rect x="2" y="7" width="18" height="10" rx="2" /><path d="M22 11v2M6 11v2M10 11v2" /></Icon>
+export const QrIcon = (p: IconProps) => <Icon {...p}><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><path d="M14 14h3v3M21 14v.01M14 21h.01M17.5 21H21v-3.5" /></Icon>
+export const MailIcon = (p: IconProps) => <Icon {...p}><rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="m4 7 8 6 8-6" /></Icon>
+export const LeafIcon = (p: IconProps) => <Icon {...p}><path d="M5 19c0-8 5-14 15-14 0 10-6 15-14 15" /><path d="M5 19c3-4 6-6.5 10-8.5" /></Icon>
+export const MessageIcon = (p: IconProps) => <Icon {...p}><path d="M21 12a8.5 8.5 0 0 1-12.4 7.6L3 21l1.5-5.2A8.5 8.5 0 1 1 21 12z" /></Icon>
+export const CloseIcon = (p: IconProps) => <Icon {...p}><path d="M6 6l12 12M18 6 6 18" /></Icon>
+export const ChevronDownIcon = (p: IconProps) => <Icon {...p}><path d="m6 9 6 6 6-6" /></Icon>
+export const ScaleIcon = (p: IconProps) => <Icon {...p}><path d="M12 3v18M7 21h10M5 7h14" /><path d="m5 7-3 6a3 3 0 0 0 6 0zM19 7l-3 6a3 3 0 0 0 6 0z" /></Icon>
+export const EyeIcon = (p: IconProps) => <Icon {...p}><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></Icon>
+export const StationIcon = (p: IconProps) => <Icon {...p}><path d="M4 14h16l-2-8H6z" /><path d="M8 6l-.8 8M16 6l.8 8M5 10h14M12 14v7M8 21h8" /></Icon>
 
-/** The native Android application's SolarGrid mark, adapted from sg_logo_mark.xml. */
+/** The SolarGrid app icon, matching the Android launcher icon (ic_launcher.xml). */
 export const SolarGridLogoIcon = (p: IconProps) => (
   <svg
     width={32}
     height={32}
-    viewBox="0 0 48 48"
+    viewBox="0 0 108 108"
     aria-hidden="true"
     focusable="false"
     {...p}
   >
-    <circle cx="24" cy="14" r="7" fill="#F4C65A" />
-    <path
-      d="M12 26h24a2.5 2.5 0 0 1 0 5H12a2.5 2.5 0 0 1 0-5Zm0 8h17a2.5 2.5 0 0 1 0 5H12a2.5 2.5 0 0 1 0-5Z"
-      fill="#FFFFFF"
-    />
+    <rect width="108" height="108" rx="24" fill="#0B3D2E" />
+    <circle cx="54" cy="35" r="17" fill="#F4B942" />
+    <path d="M28 62h52v9H28zM35 76h38v9H35z" fill="#FFFFFF" />
   </svg>
 )
