@@ -1,23 +1,20 @@
 import { useTheme } from '../theme/themeContext'
-import type { ThemeMode } from '../theme/themeContext'
-import { MonitorIcon, MoonIcon, SunIcon } from './icons'
+import { MoonIcon, SunIcon } from './icons'
 
-const nextMode: Record<ThemeMode, ThemeMode> = { light: 'dark', dark: 'system', system: 'light' }
-const modeLabel: Record<ThemeMode, string> = { light: 'Light', dark: 'Dark', system: 'System' }
-
-/** Cycles Light → Dark → System. The current mode is announced in the accessible name. */
+/** Toggles between light and dark. Shows the moon in light mode and the sun in dark mode. */
 export function ThemeToggle({ className = '' }: { className?: string }) {
-  const { mode, setMode } = useTheme()
-  const upcoming = nextMode[mode]
-  const Icon = mode === 'light' ? SunIcon : mode === 'dark' ? MoonIcon : MonitorIcon
+  const { resolvedTheme, setMode } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+  const label = isDark ? 'Switch to light mode' : 'Switch to dark mode'
+  const Icon = isDark ? SunIcon : MoonIcon
 
   return (
     <button
       type="button"
       className={`sg-theme-toggle ${className}`.trim()}
-      aria-label={`Theme: ${modeLabel[mode]}. Switch to ${modeLabel[upcoming]}`}
-      title={`Theme: ${modeLabel[mode]}`}
-      onClick={() => setMode(upcoming)}
+      aria-label={label}
+      title={label}
+      onClick={() => setMode(isDark ? 'light' : 'dark')}
     >
       <Icon />
     </button>
