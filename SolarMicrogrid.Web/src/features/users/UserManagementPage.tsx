@@ -54,9 +54,10 @@ export function UserListState({
   }
 
   return (
-    <div className="card border-0 shadow-sm">
+    <>
+    <div className="card border-0 shadow-sm d-none d-lg-block">
       <div className="table-responsive">
-        <table className="table table-hover align-middle mb-0 reservation-table">
+        <table className="table table-hover align-middle mb-0 reservation-table user-admin-table">
           <caption className="visually-hidden">SolarGrid user accounts</caption>
           <thead>
             <tr>
@@ -118,6 +119,54 @@ export function UserListState({
         Showing {visible.length} of {users.length} accounts
       </p>
     </div>
+    <div className="sg-mobile-list d-grid gap-3 d-lg-none">
+      {visible.map((user) => {
+        const actions = getAccountActions(user, currentNic)
+        const base = { nic: user.nic, fullName: user.fullName }
+        return (
+          <article className="sg-mobile-card" key={user.nic}>
+            <div className="d-flex justify-content-between align-items-start gap-3 mb-3">
+              <div className="min-w-0">
+                <h2 className="h6 mb-1 text-break">{user.fullName}</h2>
+                <div className="small text-body-secondary font-monospace text-break">{user.nic}</div>
+              </div>
+              <StatusBadge status={user.status} />
+            </div>
+            <dl className="sg-mobile-facts mb-3">
+              <div><dt>Role</dt><dd>{formatRole(user.role)}</dd></div>
+              <div><dt>Station</dt><dd>{user.role === 'GridOperator' ? stationLabel(user.assignedStationId, stations) : '\u2014'}</dd></div>
+              <div><dt>Email</dt><dd className="text-break">{user.email}</dd></div>
+              <div><dt>Phone</dt><dd>{user.phone}</dd></div>
+            </dl>
+            {user.deactivationRequested && <p className="small mb-3"><span className="badge text-bg-warning">Requested</span></p>}
+            <div className="sg-mobile-actions d-flex flex-wrap gap-2">
+              {actions.canActivate && (
+                <button type="button" className="btn btn-sm btn-success" aria-label={`Activate ${user.fullName}`}
+                  onClick={() => onAction({ ...base, kind: 'activate' })}>Activate</button>
+              )}
+              {actions.canReactivate && (
+                <button type="button" className="btn btn-sm btn-outline-success" aria-label={`Reactivate ${user.fullName}`}
+                  onClick={() => onAction({ ...base, kind: 'reactivate' })}>Reactivate</button>
+              )}
+              {actions.canAssignStation && (
+                <button type="button" className="btn btn-sm btn-outline-primary" aria-label={`Assign station for ${user.fullName}`}
+                  onClick={() => onAction({ ...base, kind: 'assignStation', stationId: user.assignedStationId ?? undefined })}>
+                  {user.assignedStationId ? 'Change station' : 'Assign station'}
+                </button>
+              )}
+              {actions.canDeactivate && (
+                <button type="button" className="btn btn-sm btn-outline-danger" aria-label={`Deactivate ${user.fullName}`}
+                  onClick={() => onAction({ ...base, kind: 'deactivate' })}>Deactivate</button>
+              )}
+            </div>
+          </article>
+        )
+      })}
+      <p className="small text-body-secondary mb-0" aria-live="polite">
+        Showing {visible.length} of {users.length} accounts
+      </p>
+    </div>
+    </>
   )
 }
 

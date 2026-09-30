@@ -28,7 +28,8 @@ export function PendingActivationsState({ loading, error, users, onRetry, onActi
   }
 
   return (
-    <div className="card border-0 shadow-sm">
+    <>
+    <div className="card border-0 shadow-sm d-none d-lg-block">
       <div className="table-responsive">
         <table className="table table-hover align-middle mb-0 reservation-table">
           <caption className="visually-hidden">Accounts awaiting activation</caption>
@@ -65,6 +66,30 @@ export function PendingActivationsState({ loading, error, users, onRetry, onActi
         </table>
       </div>
     </div>
+    <div className="sg-mobile-list d-grid gap-3 d-lg-none">
+      {users.map((user) => (
+        <article className="sg-mobile-card" key={user.nic}>
+          <div className="d-flex justify-content-between align-items-start gap-3 mb-3">
+            <div className="min-w-0">
+              <h2 className="h6 mb-1 text-break">{user.fullName}</h2>
+              <div className="small text-body-secondary font-monospace text-break">{user.nic}</div>
+            </div>
+            <span className="badge text-bg-warning">Pending activation</span>
+          </div>
+          <dl className="sg-mobile-facts mb-3">
+            <div><dt>Role</dt><dd>{formatRole(user.role)}</dd></div>
+            <div><dt>Registered</dt><dd>{formatUtcDateTime(user.createdAtUtc)}</dd></div>
+            <div><dt>Email</dt><dd className="text-break">{user.email}</dd></div>
+            <div><dt>Phone</dt><dd>{user.phone}</dd></div>
+          </dl>
+          <button type="button" className="btn btn-sm btn-success w-100" aria-label={`Activate ${user.fullName}`}
+            onClick={() => onActivate({ kind: 'activate', nic: user.nic, fullName: user.fullName })}>
+            Activate
+          </button>
+        </article>
+      ))}
+    </div>
+    </>
   )
 }
 

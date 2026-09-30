@@ -1,3 +1,4 @@
+import { BoltIcon, CheckIcon, ClockIcon, HistoryIcon } from '../../components/icons'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiErrorState } from '../../components/ApiErrorState'
@@ -174,10 +175,10 @@ function DashboardContent({ dashboard }: { dashboard: DashboardResponse }) {
 
 function DashboardMetrics({ dashboard }: { dashboard: DashboardResponse }) {
   const metrics = [
-    { label: 'Pending', value: dashboard.statusSummary.pendingCount, tone: 'warning' },
-    { label: 'Approved future', value: dashboard.statusSummary.approvedFutureCount, tone: 'success' },
-    { label: 'Active now', value: dashboard.statusSummary.currentCount, tone: 'primary' },
-    { label: 'Completed', value: dashboard.statusSummary.completedTotal, tone: 'secondary' },
+    { label: 'Pending', value: dashboard.statusSummary.pendingCount, tone: 'warning', Icon: ClockIcon },
+    { label: 'Approved future', value: dashboard.statusSummary.approvedFutureCount, tone: 'success', Icon: CheckIcon },
+    { label: 'Active now', value: dashboard.statusSummary.currentCount, tone: 'primary', Icon: BoltIcon },
+    { label: 'Completed', value: dashboard.statusSummary.completedTotal, tone: 'secondary', Icon: HistoryIcon },
   ]
   const statuses = [
     ['Pending', dashboard.statusSummary.pendingTotal],
@@ -193,6 +194,7 @@ function DashboardMetrics({ dashboard }: { dashboard: DashboardResponse }) {
         {metrics.map((metric) => (
           <div key={metric.label} className="col-6 col-xl-3">
             <article className={`operator-metric-card operator-metric-${metric.tone}`}>
+              <span className="operator-metric-icon" aria-hidden="true"><metric.Icon /></span>
               <div className="operator-metric-label">{metric.label}</div>
               <div className="operator-metric-value">{metric.value}</div>
             </article>

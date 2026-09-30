@@ -2,26 +2,28 @@ interface StatusBadgeProps {
   status: string
 }
 
-const statusClasses: Record<string, string> = {
-  Active: 'text-bg-success',
-  Available: 'text-bg-success',
-  Approved: 'text-bg-success',
-  Completed: 'text-bg-primary',
-  Pending: 'text-bg-warning',
-  PendingActivation: 'text-bg-warning',
-  Cancelled: 'text-bg-secondary',
-  Deactivated: 'text-bg-secondary',
-  FullyBooked: 'text-bg-dark',
-  Rejected: 'text-bg-danger',
-  Unavailable: 'text-bg-danger',
+type Tone = 'success' | 'info' | 'warning' | 'neutral' | 'dark' | 'danger'
+
+const statusTones: Record<string, Tone> = {
+  Active: 'success',
+  Available: 'success',
+  Approved: 'success',
+  Completed: 'info',
+  Pending: 'warning',
+  PendingActivation: 'warning',
+  Cancelled: 'neutral',
+  Deactivated: 'neutral',
+  FullyBooked: 'dark',
+  Rejected: 'danger',
+  Unavailable: 'danger',
 }
 
 export function StatusBadge({ status }: StatusBadgeProps) {
-  const badgeClass = statusClasses[status] ?? 'text-bg-secondary'
+  const tone = statusTones[status] ?? 'neutral'
   const label = status.replace(/([a-z])([A-Z])/g, '$1 $2')
 
   return (
-    <span className={`badge rounded-pill ${badgeClass}`} aria-label={`Status: ${label}`}>
+    <span className={`badge rounded-pill sg-status sg-status-${tone}`} aria-label={`Status: ${label}`}>
       {label}
     </span>
   )

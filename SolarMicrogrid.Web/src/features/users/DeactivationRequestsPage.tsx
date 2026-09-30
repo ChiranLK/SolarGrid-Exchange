@@ -29,7 +29,8 @@ export function DeactivationRequestsState({ loading, error, requests, onRetry, o
   }
 
   return (
-    <div className="card border-0 shadow-sm">
+    <>
+    <div className="card border-0 shadow-sm d-none d-lg-block">
       <div className="table-responsive">
         <table className="table table-hover align-middle mb-0 reservation-table">
           <caption className="visually-hidden">Prosumer deactivation requests, oldest first</caption>
@@ -73,6 +74,32 @@ export function DeactivationRequestsState({ loading, error, requests, onRetry, o
         The API does not currently support rejecting a request; the account stays active until a request is approved.
       </p>
     </div>
+    <div className="sg-mobile-list d-grid gap-3 d-lg-none">
+      {requests.map((request) => (
+        <article className="sg-mobile-card" key={request.nic}>
+          <div className="d-flex justify-content-between align-items-start gap-3 mb-3">
+            <div className="min-w-0">
+              <h2 className="h6 mb-1 text-break">{request.fullName}</h2>
+              <div className="small text-body-secondary font-monospace text-break">{request.nic}</div>
+            </div>
+            <StatusBadge status={request.status} />
+          </div>
+          <dl className="sg-mobile-facts mb-3">
+            <div><dt>Requested</dt><dd>{request.deactivationRequestedAtUtc ? formatUtcDateTime(request.deactivationRequestedAtUtc) : 'Not recorded'}</dd></div>
+            <div><dt>Phone</dt><dd>{request.phone}</dd></div>
+            <div className="sg-mobile-fact-wide"><dt>Email</dt><dd className="text-break">{request.email}</dd></div>
+          </dl>
+          <button type="button" className="btn btn-sm btn-outline-danger w-100" aria-label={`Approve deactivation for ${request.fullName}`}
+            onClick={() => onApprove({ kind: 'approveDeactivation', nic: request.nic, fullName: request.fullName })}>
+            Approve deactivation
+          </button>
+        </article>
+      ))}
+      <p className="small text-body-secondary mb-0">
+        The API does not currently support rejecting a request; the account stays active until a request is approved.
+      </p>
+    </div>
+    </>
   )
 }
 
