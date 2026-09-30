@@ -66,6 +66,46 @@ public final class ReservationFormatters {
         return null;
     }
 
+    /** Display only: "Thu, 1 Oct" in the device locale and time zone. Server values are untouched. */
+    public static String displayShortDate(String utcValue) {
+        Date value = parseUtc(utcValue);
+        return value == null
+                ? (utcValue == null ? "" : utcValue)
+                : new SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(value);
+    }
+
+    /** Display only: short local start and end times, for example "9:00 AM – 10:00 AM". */
+    public static String displayTimeRange(String startUtc, String endUtc) {
+        Date start = parseUtc(startUtc);
+        Date end = parseUtc(endUtc);
+        if (start == null || end == null) {
+            return localDateTime(startUtc) + " – " + localDateTime(endUtc);
+        }
+        DateFormat formatter = DateFormat.getTimeInstance(DateFormat.SHORT, Locale.getDefault());
+        return formatter.format(start) + " – " + formatter.format(end);
+    }
+
+    /** Display only: "Thu, 1 Oct · 9:00 AM – 10:00 AM". */
+    public static String displaySlot(String startUtc, String endUtc) {
+        if (parseUtc(startUtc) == null) {
+            return displayTimeRange(startUtc, endUtc);
+        }
+        return displayShortDate(startUtc) + " · " + displayTimeRange(startUtc, endUtc);
+    }
+
+    /**
+     * Display only: the same short form the API uses for references (RES- plus the last eight
+     * characters, upper case). Requests always keep using the full reservation ID.
+     */
+    public static String displayReference(String reservationId) {
+        if (reservationId == null || reservationId.trim().isEmpty()) {
+            return "";
+        }
+        String id = reservationId.trim();
+        String tail = id.length() > 8 ? id.substring(id.length() - 8) : id;
+        return "RES-" + tail.toUpperCase(Locale.ROOT);
+    }
+
     public static String energy(double value) {
         return String.format(Locale.getDefault(), "%.2f kWh", value);
     }

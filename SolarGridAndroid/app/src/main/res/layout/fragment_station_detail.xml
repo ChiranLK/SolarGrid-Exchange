@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/solar_surface">
+    android:background="?android:attr/colorBackground">
 
     <com.solargrid.exchange.ui.common.UiStateView
         android:id="@+id/station_detail_state"
@@ -10,68 +11,143 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center" />
 
+    <!-- The slot ListView stays a bounded region below a compact header (no ListView in ScrollView). -->
     <LinearLayout
         android:id="@+id/station_detail_content"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:padding="@dimen/space_lg"
+        android:paddingStart="@dimen/sg_gutter"
+        android:paddingTop="@dimen/sg_space_8"
+        android:paddingEnd="@dimen/sg_gutter"
         android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                style="@style/Widget.SolarGrid.IconTile"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:padding="11dp"
+                android:contentDescription="@null"
+                android:src="@drawable/sg_ic_sun" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/sg_space_12"
+                android:text="@string/sg_station_eyebrow"
+                android:textAppearance="@style/TextAppearance.SolarGrid.Eyebrow" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/station_detail_name"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/sg_space_12"
+            android:accessibilityHeading="true"
             android:textAppearance="@style/TextAppearance.SolarGrid.Headline" />
 
         <TextView
             android:id="@+id/station_detail_address"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_sm"
-            android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
+            android:layout_marginTop="@dimen/sg_space_4"
+            android:drawablePadding="6dp"
+            android:textAppearance="@style/TextAppearance.SolarGrid.BodySmall" />
 
         <TextView
             android:id="@+id/station_detail_description"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_lg" />
+            android:layout_marginTop="@dimen/sg_space_12"
+            android:textAppearance="@style/TextAppearance.SolarGrid.BodySmall" />
 
-        <TextView
-            android:id="@+id/station_detail_capacity"
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_md"
-            android:textStyle="bold" />
+            android:layout_marginTop="@dimen/sg_space_16">
 
-        <TextView
-            android:id="@+id/station_slot_label"
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="@dimen/sg_space_16">
+
+                <ImageView
+                    style="@style/Widget.SolarGrid.IconTile"
+                    android:contentDescription="@null"
+                    android:src="@drawable/sg_ic_bolt" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/sg_space_16"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/sg_station_capacity"
+                        android:textAppearance="@style/TextAppearance.SolarGrid.Eyebrow" />
+
+                    <TextView
+                        android:id="@+id/station_detail_capacity"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/sg_space_4"
+                        android:textAppearance="@style/TextAppearance.SolarGrid.BodyStrong" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_lg"
-            android:textAppearance="@style/TextAppearance.SolarGrid.Title" />
+            android:layout_marginTop="@dimen/sg_space_20"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/station_view_all_slots"
-            style="@style/Widget.SolarGrid.Button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_sm"
-            android:text="@string/view_available_slots" />
+            <TextView
+                android:id="@+id/station_slot_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:accessibilityHeading="true"
+                android:textAppearance="@style/TextAppearance.SolarGrid.Section" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/station_view_all_slots"
+                style="@style/Widget.SolarGrid.Button.Text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/view_available_slots" />
+        </LinearLayout>
 
         <TextView
+            style="@style/Widget.SolarGrid.Banner.Info"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_sm"
+            android:layout_marginTop="@dimen/sg_space_8"
             android:text="@string/availability_not_cached"
-            android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
+            android:textSize="14sp" />
 
         <ListView
             android:id="@+id/station_slot_list"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_marginTop="@dimen/space_md"
+            android:layout_marginTop="@dimen/sg_space_12"
             android:layout_weight="1"
-            android:dividerHeight="8dp" />
+            android:clipToPadding="false"
+            android:divider="@android:color/transparent"
+            android:dividerHeight="12dp"
+            android:listSelector="@android:color/transparent"
+            android:paddingBottom="@dimen/sg_space_24" />
     </LinearLayout>
 </FrameLayout>

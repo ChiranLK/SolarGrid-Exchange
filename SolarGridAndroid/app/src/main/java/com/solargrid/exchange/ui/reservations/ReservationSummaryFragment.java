@@ -14,6 +14,7 @@ import androidx.navigation.NavOptions;
 import androidx.navigation.Navigation;
 
 import com.solargrid.exchange.R;
+import com.solargrid.exchange.ui.common.StatusStyles;
 import com.solargrid.exchange.data.model.Reservation;
 
 public final class ReservationSummaryFragment extends Fragment {
@@ -65,7 +66,10 @@ public final class ReservationSummaryFragment extends Fragment {
                 ? R.string.approved_update_result_notice
                 : R.string.server_confirmation_notice);
         setText(view, R.id.summary_status, arguments.getString("status", ""));
-        setText(view, R.id.summary_reference, arguments.getString("reservationId", ""));
+        StatusStyles.apply(view.findViewById(R.id.summary_status), arguments.getString("status", ""));
+        // Display only: short reference; the full reservationId argument is unchanged.
+        setText(view, R.id.summary_reference,
+                ReservationFormatters.displayReference(arguments.getString("reservationId", "")));
         setText(view, R.id.summary_station, arguments.getString("station", ""));
         setText(view, R.id.summary_slot, arguments.getString("slotId", ""));
         setText(view, R.id.summary_time,

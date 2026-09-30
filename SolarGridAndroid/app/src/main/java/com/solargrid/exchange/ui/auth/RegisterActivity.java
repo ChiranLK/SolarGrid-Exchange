@@ -56,6 +56,7 @@ public final class RegisterActivity extends AppCompatActivity {
             return false;
         });
         findViewById(R.id.register_back_to_login).setOnClickListener(ignored -> finish());
+        findViewById(R.id.register_toolbar_back).setOnClickListener(ignored -> finish());
     }
 
     private void submitForm() {

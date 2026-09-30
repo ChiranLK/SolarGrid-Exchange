@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Decorative booking progress (step 1 of 3). Contains no bound IDs. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:importantForAccessibility="noHideDescendants"
+    android:orientation="horizontal">
+    <TextView android:layout_width="28dp" android:layout_height="28dp" android:background="@drawable/sg_bg_step_active" android:gravity="center" android:text="@string/sg_step_one" android:textColor="@color/sg_on_primary" android:textSize="13sp" android:textStyle="bold" />
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:text="@string/sg_step_slot" android:textColor="?attr/colorPrimary" android:textSize="14sp" android:textStyle="bold" />
+    <View android:layout_width="0dp" android:layout_height="1dp" android:layout_marginStart="8dp" android:layout_marginEnd="8dp" android:layout_weight="1" android:background="@color/sg_outline_variant" />
+    <TextView android:layout_width="28dp" android:layout_height="28dp" android:background="@drawable/sg_bg_step_inactive" android:gravity="center" android:text="@string/sg_step_two" android:textColor="@color/sg_on_surface_variant" android:textSize="13sp" android:textStyle="bold" />
+    <View android:layout_width="0dp" android:layout_height="1dp" android:layout_marginStart="8dp" android:layout_marginEnd="8dp" android:layout_weight="1" android:background="@color/sg_outline_variant" />
+    <TextView android:layout_width="28dp" android:layout_height="28dp" android:background="@drawable/sg_bg_step_inactive" android:gravity="center" android:text="@string/sg_step_three" android:textColor="@color/sg_on_surface_variant" android:textSize="13sp" android:textStyle="bold" />
+</LinearLayout>

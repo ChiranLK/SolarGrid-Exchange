@@ -138,10 +138,11 @@ public final class ReservationQrFragment extends Fragment {
         QrTransactionToken token = data.getToken();
         ((TextView) view.findViewById(R.id.reservation_qr_summary)).setText(getString(
                 R.string.qr_reservation_summary,
-                reservation.getId(),
+                ReservationFormatters.displayReference(reservation.getId()),
                 ReservationFormatters.station(
                         reservation.getStationName(), reservation.getStationId()),
-                ReservationFormatters.localDateTime(reservation.getScheduledStartTimeUtc()),
+                com.solargrid.exchange.ui.common.DisplayFormats.slotLabel(
+                        reservation.getScheduledStartTimeUtc(), reservation.getScheduledEndTimeUtc()),
                 ReservationFormatters.energy(reservation.getRequestedEnergyKwh())));
         try {
             Bitmap bitmap = QrBitmapEncoder.encode(token.getQrToken(), 640);

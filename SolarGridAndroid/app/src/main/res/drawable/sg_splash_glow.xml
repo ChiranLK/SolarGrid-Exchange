@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Soft gold glow that pulses behind the logo tile. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <gradient
+        android:centerColor="#33F4C65A"
+        android:endColor="#00F4C65A"
+        android:gradientRadius="50%p"
+        android:startColor="#66F4C65A"
+        android:type="radial" />
+</shape>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@id/nav_operator_home"
+        android:icon="@drawable/sg_ic_home"
+        android:title="@string/sg_tab_home" />
+    <item
+        android:id="@id/nav_qr_operations"
+        android:icon="@drawable/sg_ic_qr"
+        android:title="@string/sg_tab_scan" />
+    <item
+        android:id="@id/nav_nearby_stations"
+        android:icon="@drawable/sg_ic_pin"
+        android:title="@string/sg_tab_stations" />
+    <item
+        android:id="@id/nav_profile"
+        android:icon="@drawable/sg_ic_user"
+        android:title="@string/sg_tab_profile" />
+</menu>

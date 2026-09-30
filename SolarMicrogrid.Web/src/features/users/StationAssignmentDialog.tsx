@@ -25,18 +25,45 @@ export function StationAssignmentDialog({
   onCancel,
 }: StationAssignmentDialogProps) {
   const selectRef = useRef<HTMLSelectElement>(null)
+  const dialogRef = useRef<HTMLElement>(null)
+  const isBusyRef = useRef(isBusy)
+  const onCancelRef = useRef(onCancel)
   const [selected, setSelected] = useState(currentStationId ?? '')
   const [touched, setTouched] = useState(false)
 
   useEffect(() => {
+    isBusyRef.current = isBusy
+    onCancelRef.current = onCancel
+  }, [isBusy, onCancel])
+
+  useEffect(() => {
     if (!isOpen) return
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
     selectRef.current?.focus()
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !isBusy) onCancel()
+      if (event.key === 'Escape' && !isBusyRef.current) onCancelRef.current()
+      if (event.key === 'Tab') {
+        const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        )
+        if (!focusable?.length) return
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault()
+          last.focus()
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault()
+          first.focus()
+        }
+      }
     }
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isBusy, isOpen, onCancel])
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      if (previousFocus?.isConnected) previousFocus.focus()
+    }
+  }, [isOpen])
 
   if (!isOpen) return null
 
@@ -51,6 +78,7 @@ export function StationAssignmentDialog({
   return (
     <div className="dialog-backdrop" role="presentation" onMouseDown={isBusy ? undefined : onCancel}>
       <section
+        ref={dialogRef}
         className="card border-0 shadow-lg dialog-card"
         role="dialog"
         aria-modal="true"

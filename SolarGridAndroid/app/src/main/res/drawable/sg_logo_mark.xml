@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Brand mark without the square tile, for use on hero surfaces. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp" android:height="48dp"
+    android:viewportWidth="48" android:viewportHeight="48">
+    <path android:fillColor="#F4C65A" android:pathData="M24,14m-7,0a7,7 0,1 1,14 0a7,7 0,1 1,-14 0" />
+    <path android:fillColor="#FFFFFF" android:pathData="M12,26h24a2.5,2.5 0,0 1,0 5h-24a2.5,2.5 0,0 1,0 -5zM12,34h17a2.5,2.5 0,0 1,0 5h-17a2.5,2.5 0,0 1,0 -5z" />
+</vector>

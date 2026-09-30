@@ -1,14 +1,30 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#14532d" />
+    <meta name="theme-color" content="#06120E" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" type="image/svg+xml" href="/solargrid-logo.svg" />
     <meta
       name="description"
-      content="SolarGrid Exchange operations and energy reservation portal"
+      content="Book clean solar energy from community stations near you across Sri Lanka."
     />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" />
     <title>SolarGrid Exchange</title>
+    <!-- Apply the stored theme before first paint to avoid a wrong-theme flash. -->
+    <script>
+      (function () {
+        var stored = 'dark'
+        try { stored = localStorage.getItem('solargrid-theme') || 'dark' } catch (e) { /* storage blocked */ }
+        var dark = stored !== 'light'
+        document.documentElement.setAttribute('data-bs-theme', dark ? 'dark' : 'light')
+        var meta = document.querySelector('meta[name="theme-color"]')
+        if (meta) meta.setAttribute('content', dark ? '#06120E' : '#EDF5EF')
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

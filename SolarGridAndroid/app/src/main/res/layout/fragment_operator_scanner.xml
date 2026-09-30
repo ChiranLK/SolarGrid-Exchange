@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/solar_surface">
+    android:background="?android:attr/colorBackground">
 
+    <!-- Full-bleed live preview. The bracket frame is its foreground and never intercepts touches. -->
     <androidx.camera.view.PreviewView
         android:id="@+id/operator_camera_preview"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="#FF0A1510"
         android:contentDescription="@string/camera_preview_description"
+        android:foreground="@drawable/sg_scan_frame_foreground"
         android:importantForAccessibility="no"
         android:visibility="gone" />
 
@@ -17,33 +21,62 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:background="#CC0B3D2E"
+        android:background="@drawable/sg_bg_scan_scrim"
+        android:drawablePadding="12dp"
         android:gravity="center"
-        android:padding="@dimen/space_lg"
+        android:paddingStart="@dimen/sg_space_32"
+        android:paddingTop="@dimen/sg_space_48"
+        android:paddingEnd="@dimen/sg_space_32"
+        android:paddingBottom="@dimen/sg_space_32"
         android:text="@string/scan_instruction"
         android:textColor="@color/white"
-        android:visibility="gone" />
+        android:textSize="16sp"
+        android:visibility="gone"
+        app:drawableTopCompat="@drawable/sg_ic_qr_hero" />
 
     <LinearLayout
         android:id="@+id/operator_camera_permission_panel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
+        android:layout_margin="@dimen/sg_gutter"
+        android:background="@drawable/sg_bg_card"
+        android:gravity="center_horizontal"
         android:orientation="vertical"
-        android:padding="@dimen/space_xl">
+        android:padding="@dimen/sg_space_24">
+
+        <FrameLayout
+            android:layout_width="104dp"
+            android:layout_height="104dp"
+            android:background="@drawable/sg_bg_state_ring"
+            android:importantForAccessibility="noHideDescendants"
+            android:padding="8dp">
+
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/sg_bg_state_tile"
+                android:contentDescription="@null"
+                android:padding="26dp"
+                android:src="@drawable/sg_ic_camera"
+                app:tint="?attr/colorPrimary" />
+        </FrameLayout>
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/sg_space_20"
+            android:accessibilityHeading="true"
             android:gravity="center"
             android:text="@string/camera_permission_title"
-            android:textAppearance="@style/TextAppearance.SolarGrid.Title" />
+            android:textAppearance="@style/TextAppearance.SolarGrid.Headline" />
 
         <TextView
             android:id="@+id/operator_camera_permission_message"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_sm"
+            android:layout_marginTop="@dimen/sg_space_12"
+            android:accessibilityLiveRegion="polite"
             android:gravity="center"
             android:text="@string/camera_permission_explanation"
             android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
@@ -53,15 +86,16 @@
             style="@style/Widget.SolarGrid.Button"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_lg"
-            android:text="@string/allow_camera" />
+            android:layout_marginTop="@dimen/sg_space_24"
+            android:text="@string/allow_camera"
+            app:icon="@drawable/sg_ic_camera" />
 
         <Button
             android:id="@+id/operator_camera_settings"
-            style="@style/Widget.SolarGrid.Button"
+            style="@style/Widget.SolarGrid.Button.Secondary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_sm"
+            android:layout_marginTop="@dimen/sg_space_12"
             android:text="@string/open_app_settings"
             android:visibility="gone" />
     </LinearLayout>
@@ -71,5 +105,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:background="@color/solar_surface" />
+        android:layout_margin="@dimen/sg_gutter"
+        android:background="@drawable/sg_bg_card" />
 </FrameLayout>

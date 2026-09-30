@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/solar_surface">
+    android:background="?android:attr/colorBackground">
 
     <com.solargrid.exchange.ui.common.UiStateView
         android:id="@+id/reservation_form_state"
@@ -21,70 +22,115 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="@dimen/space_lg">
+            android:paddingStart="@dimen/sg_gutter"
+            android:paddingTop="@dimen/sg_space_8"
+            android:paddingEnd="@dimen/sg_gutter"
+            android:paddingBottom="@dimen/sg_space_32">
+
+            <!-- Shown only while creating a booking (ReservationFormFragment toggles it). -->
+            <FrameLayout
+                android:id="@+id/reservation_form_stepper"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/sg_space_24">
+
+                <include layout="@layout/sg_stepper_1" />
+            </FrameLayout>
 
             <TextView
                 android:id="@+id/reservation_form_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textAppearance="@style/TextAppearance.SolarGrid.Headline" />
+                android:accessibilityHeading="true"
+                android:textAppearance="@style/TextAppearance.SolarGrid.Display" />
 
             <TextView
                 android:id="@+id/reservation_form_station"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_sm"
+                android:layout_marginTop="@dimen/sg_space_8"
                 android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
 
-            <TextView
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_lg"
-                android:text="@string/select_energy_slot"
-                android:textStyle="bold" />
+                android:layout_marginTop="@dimen/sg_space_24">
 
-            <Spinner
-                android:id="@+id/reservation_slot_spinner"
-                android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:contentDescription="@string/select_energy_slot" />
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_md"
-                android:hint="@string/requested_energy_kwh">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/reservation_energy_input"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:maxLines="1" />
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:orientation="vertical"
+                    android:padding="@dimen/sg_space_20">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:labelFor="@id/reservation_slot_spinner"
+                        android:text="@string/select_energy_slot"
+                        android:textAppearance="@style/TextAppearance.SolarGrid.Label" />
+
+                    <Spinner
+                        android:id="@+id/reservation_slot_spinner"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/sg_space_8"
+                        android:contentDescription="@string/select_energy_slot"
+                        android:minHeight="64dp" />
+
+                    <View
+                        style="@style/Widget.SolarGrid.Divider"
+                        android:layout_marginTop="@dimen/sg_space_20" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/sg_space_20"
+                        android:labelFor="@id/reservation_energy_input"
+                        android:text="@string/requested_energy"
+                        android:textAppearance="@style/TextAppearance.SolarGrid.Label" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/sg_space_8"
+                        app:hintEnabled="false"
+                        app:startIconDrawable="@drawable/sg_ic_bolt"
+                        app:suffixText="@string/sg_energy_unit">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/reservation_energy_input"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="@string/requested_energy_kwh"
+                            android:importantForAutofill="no"
+                            android:maxLines="1" />
+                    </com.google.android.material.textfield.TextInputLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
             <TextView
                 android:id="@+id/reservation_authority_notice"
+                style="@style/Widget.SolarGrid.Banner.Info"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_md"
-                android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
+                android:layout_marginTop="@dimen/sg_space_16" />
 
             <TextView
                 android:id="@+id/reservation_update_status_notice"
+                style="@style/Widget.SolarGrid.Banner.Warning"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_sm"
+                android:layout_marginTop="@dimen/sg_space_12"
                 android:text="@string/approved_update_pending_notice"
-                android:textAppearance="@style/TextAppearance.SolarGrid.Body"
-                android:textStyle="bold"
                 android:visibility="gone" />
 
             <TextView
                 android:id="@+id/reservation_mutation_progress"
+                style="@style/Widget.SolarGrid.Banner.Info"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_sm"
-                android:textAppearance="@style/TextAppearance.SolarGrid.Body"
+                android:layout_marginTop="@dimen/sg_space_12"
+                android:accessibilityLiveRegion="polite"
                 android:visibility="gone" />
 
             <Button
@@ -92,8 +138,9 @@
                 style="@style/Widget.SolarGrid.Button"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_lg"
-                android:text="@string/review_booking" />
+                android:layout_marginTop="@dimen/sg_space_24"
+                android:text="@string/review_booking"
+                app:icon="@drawable/sg_ic_arrow" />
         </LinearLayout>
     </ScrollView>
 </FrameLayout>

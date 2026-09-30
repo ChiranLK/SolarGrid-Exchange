@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/solar_surface">
+    android:background="?android:attr/colorBackground">
 
     <ScrollView
         android:id="@+id/reservation_qr_content"
@@ -14,56 +15,118 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_horizontal"
             android:orientation="vertical"
-            android:padding="@dimen/space_lg">
+            android:paddingStart="@dimen/sg_gutter"
+            android:paddingTop="@dimen/sg_space_8"
+            android:paddingEnd="@dimen/sg_gutter"
+            android:paddingBottom="@dimen/sg_space_32">
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/reservation_qr_title"
-                android:textAppearance="@style/TextAppearance.SolarGrid.Headline" />
+                android:accessibilityHeading="true"
+                android:text="@string/sg_qr_hero"
+                android:textAppearance="@style/TextAppearance.SolarGrid.Display" />
 
             <TextView
-                android:id="@+id/reservation_qr_summary"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_sm"
+                android:layout_marginTop="@dimen/sg_space_8"
+                android:text="@string/sg_qr_subtitle"
                 android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
 
-            <ImageView
-                android:id="@+id/reservation_qr_image"
-                android:layout_width="280dp"
-                android:layout_height="280dp"
-                android:layout_marginTop="@dimen/space_lg"
-                android:adjustViewBounds="true"
-                android:contentDescription="@string/reservation_qr_image_description"
-                android:importantForAccessibility="yes" />
-
-            <TextView
-                android:id="@+id/reservation_qr_countdown"
+            <!-- Ticket -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_md"
-                android:accessibilityLiveRegion="polite"
-                android:gravity="center"
-                android:textAppearance="@style/TextAppearance.SolarGrid.Title" />
+                android:layout_marginTop="@dimen/sg_space_24">
 
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_sm"
-                android:gravity="center"
-                android:text="@string/qr_security_notice"
-                android:textColor="@color/solar_muted" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/sg_space_24"
+                        android:text="@string/reservation_qr_title"
+                        android:textAppearance="@style/TextAppearance.SolarGrid.Eyebrow" />
+
+                    <TextView
+                        android:id="@+id/reservation_qr_summary"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/sg_space_12"
+                        android:gravity="center"
+                        android:lineSpacingExtra="4sp"
+                        android:paddingStart="@dimen/sg_space_20"
+                        android:paddingEnd="@dimen/sg_space_20"
+                        android:textAppearance="@style/TextAppearance.SolarGrid.BodyStrong" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="2dp"
+                        android:layout_marginTop="@dimen/sg_space_24"
+                        android:background="@drawable/sg_divider_dashed"
+                        android:importantForAccessibility="no"
+                        android:layerType="software" />
+
+                    <!-- Real QR bitmap on a fixed white quiet zone in both themes; never tinted. -->
+                    <ImageView
+                        android:id="@+id/reservation_qr_image"
+                        android:layout_width="@dimen/sg_qr_size"
+                        android:layout_height="@dimen/sg_qr_size"
+                        android:layout_marginTop="@dimen/sg_space_24"
+                        android:background="@drawable/sg_bg_qr"
+                        android:contentDescription="@string/reservation_qr_image_description"
+                        android:padding="@dimen/sg_qr_padding"
+                        android:scaleType="fitCenter" />
+
+                    <TextView
+                        android:id="@+id/reservation_qr_countdown"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/sg_space_20"
+                        android:accessibilityLiveRegion="polite"
+                        android:gravity="center"
+                        android:paddingStart="@dimen/sg_space_20"
+                        android:paddingEnd="@dimen/sg_space_20"
+                        android:textAppearance="@style/TextAppearance.SolarGrid.Headline"
+                        android:fontFamily="sans-serif" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="2dp"
+                        android:layout_marginTop="@dimen/sg_space_24"
+                        android:background="@drawable/sg_divider_dashed"
+                        android:importantForAccessibility="no"
+                        android:layerType="software" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:drawablePadding="10dp"
+                        android:gravity="center_vertical"
+                        android:paddingStart="@dimen/sg_space_20"
+                        android:paddingTop="@dimen/sg_space_16"
+                        android:paddingEnd="@dimen/sg_space_20"
+                        android:paddingBottom="@dimen/sg_space_20"
+                        android:text="@string/qr_security_notice"
+                        android:textAppearance="@style/TextAppearance.SolarGrid.BodySmall"
+                        app:drawableStartCompat="@drawable/sg_ic_shield_small" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
             <Button
                 android:id="@+id/reservation_qr_reissue"
-                style="@style/Widget.SolarGrid.Button"
+                style="@style/Widget.SolarGrid.Button.Secondary"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_lg"
-                android:text="@string/reissue_qr" />
+                android:layout_marginTop="@dimen/sg_space_20"
+                android:text="@string/reissue_qr"
+                app:icon="@drawable/sg_ic_refresh" />
         </LinearLayout>
     </ScrollView>
 

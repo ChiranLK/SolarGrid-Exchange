@@ -190,8 +190,8 @@ public final class BookingHistoryFragment extends Fragment {
                 getString(R.string.all_statuses), "Pending", "Approved", "Rejected", "Cancelled", "Completed"
         };
         ArrayAdapter<String> values = new ArrayAdapter<>(
-                requireContext(), android.R.layout.simple_spinner_item, labels);
-        values.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                requireContext(), R.layout.sg_spinner_item, labels);
+        values.setDropDownViewResource(R.layout.sg_spinner_dropdown_item);
         spinner.setAdapter(values);
     }
 
@@ -209,8 +209,8 @@ public final class BookingHistoryFragment extends Fragment {
             }
         }
         ArrayAdapter<String> values = new ArrayAdapter<>(
-                requireContext(), android.R.layout.simple_spinner_item, labels);
-        values.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                requireContext(), R.layout.sg_spinner_item, labels);
+        values.setDropDownViewResource(R.layout.sg_spinner_dropdown_item);
         spinner.setAdapter(values);
         spinner.setSelection(selected, false);
     }

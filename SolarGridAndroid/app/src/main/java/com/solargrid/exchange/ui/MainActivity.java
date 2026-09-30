@@ -4,20 +4,27 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.ActionBarDrawerToggle;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.navigation.NavController;
+import androidx.navigation.NavDestination;
 import androidx.navigation.NavGraph;
+import androidx.navigation.NavOptions;
 import androidx.navigation.fragment.NavHostFragment;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.navigation.NavigationView;
 import com.solargrid.exchange.R;
 import com.solargrid.exchange.SolarGridApplication;
@@ -28,6 +35,8 @@ import com.solargrid.exchange.features.operations.RoleRoutePolicy;
 import com.solargrid.exchange.network.ApiError;
 import com.solargrid.exchange.ui.auth.AccountNavigator;
 import com.solargrid.exchange.ui.auth.LoginActivity;
+import com.solargrid.exchange.ui.common.DisplayFormats;
+import com.solargrid.exchange.ui.common.UiPreferences;
 import com.solargrid.exchange.ui.operations.OperatorTransactionViewModel;
 
 public final class MainActivity extends AppCompatActivity
@@ -35,6 +44,10 @@ public final class MainActivity extends AppCompatActivity
     private DrawerLayout drawerLayout;
     private NavController navController;
     private AuthRepository authRepository;
+    private BottomNavigationView bottomNav;
+    private ActionBarDrawerToggle toggle;
+    private String initials = "";
+    private boolean topLevelShown = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,7 +72,7 @@ public final class MainActivity extends AppCompatActivity
         drawerLayout = findViewById(R.id.main_drawer);
         NavigationView navigationView = findViewById(R.id.main_navigation);
         navigationView.setNavigationItemSelectedListener(this);
-        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
+        toggle = new ActionBarDrawerToggle(
                 this,
                 drawerLayout,
                 toolbar,
@@ -67,6 +80,8 @@ public final class MainActivity extends AppCompatActivity
                 R.string.navigation_close);
         drawerLayout.addDrawerListener(toggle);
         toggle.syncState();
+        toggle.setHomeAsUpIndicator(R.drawable.sg_ic_back);
+        toggle.setToolbarNavigationClickListener(ignored -> getOnBackPressedDispatcher().onBackPressed());
 
         NavHostFragment host = (NavHostFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.main_nav_host);
@@ -77,10 +92,29 @@ public final class MainActivity extends AppCompatActivity
         NavGraph graph = navController.getNavInflater().inflate(R.navigation.main_nav_graph);
         graph.setStartDestination(startDestinationFor(session));
         navController.setGraph(graph);
+
+        // Role-based bottom navigation (same destination IDs as the drawer).
+        bottomNav = findViewById(R.id.main_bottom_nav);
+        bottomNav.inflateMenu(session.isGridOperator()
+                ? R.menu.bottom_nav_operator
+                : R.menu.bottom_nav_prosumer);
+        bottomNav.setOnItemSelectedListener(item -> {
+            navigateTopLevel(item.getItemId());
+            return true;
+        });
+        bottomNav.setOnItemReselectedListener(item -> navigateTopLevel(item.getItemId()));
+
         OperatorTransactionViewModel operatorFlow = new ViewModelProvider(this)
                 .get(OperatorTransactionViewModel.class);
         navController.addOnDestinationChangedListener((controller, destination, arguments) -> {
-            toolbar.setTitle(destination.getLabel());
+            boolean topLevel = isTopLevel(destination.getId());
+            toolbar.setTitle(topLevel ? getString(R.string.app_name) : destination.getLabel());
+            // Presentation only: highlight the drawer entry for the visible destination.
+            MenuItem current = navigationView.getMenu().findItem(destination.getId());
+            if (current != null) {
+                current.setChecked(true);
+            }
+            applyChrome(destination, topLevel);
             if (!isOperatorTransactionDestination(destination.getId())) {
                 operatorFlow.clearSensitiveState();
             }
@@ -101,20 +135,114 @@ public final class MainActivity extends AppCompatActivity
         TextView headerName = navigationView.getHeaderView(0).findViewById(R.id.nav_header_name);
         TextView headerRole = navigationView.getHeaderView(0).findViewById(R.id.nav_header_role);
         headerName.setText(session.getFullName());
-        headerRole.setText(session.getRole());
+        headerRole.setText(DisplayFormats.roleLabel(this, session.getRole()));
+        initials = initialsFor(session.getFullName());
+        TextView headerInitials = navigationView.getHeaderView(0).findViewById(R.id.nav_header_initials);
+        headerInitials.setText(initials);
+    }
 
+    /** Toolbar and tab chrome for the visible destination. Navigation targets are unchanged. */
+    private void applyChrome(NavDestination destination, boolean topLevel) {
+        topLevelShown = topLevel;
+        bottomNav.setVisibility(topLevel ? View.VISIBLE : View.GONE);
+        MenuItem tab = bottomNav.getMenu().findItem(destination.getId());
+        if (tab != null) {
+            tab.setChecked(true);
+        }
+        toggle.setDrawerIndicatorEnabled(topLevel);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(!topLevel);
+            if (!topLevel) {
+                getSupportActionBar().setHomeActionContentDescription(R.string.sg_navigate_back);
+            }
+        }
+        drawerLayout.setDrawerLockMode(topLevel
+                ? DrawerLayout.LOCK_MODE_UNLOCKED
+                : DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
+        invalidateOptionsMenu();
+    }
+
+    private boolean isTopLevel(int destinationId) {
+        return bottomNav != null && bottomNav.getMenu().findItem(destinationId) != null;
+    }
+
+    /** Switches tabs without stacking duplicate top-level screens. */
+    private void navigateTopLevel(int destinationId) {
+        NavDestination current = navController.getCurrentDestination();
+        if (current != null && current.getId() == destinationId) {
+            return;
+        }
+        int start = navController.getGraph().getStartDestinationId();
+        if (destinationId == start) {
+            navController.popBackStack(start, false);
+            return;
+        }
+        NavOptions options = new NavOptions.Builder()
+                .setLaunchSingleTop(true)
+                .setPopUpTo(start, false)
+                .build();
+        navController.navigate(destinationId, null, options);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.main_toolbar_menu, menu);
+        MenuItem avatarItem = menu.findItem(R.id.action_profile_avatar);
+        View actionView = avatarItem.getActionView();
+        if (actionView != null) {
+            TextView avatar = actionView.findViewById(R.id.toolbar_avatar);
+            avatar.setText(initials);
+            avatar.setOnClickListener(ignored -> navigateTopLevel(R.id.nav_profile));
+        }
+        return true;
+    }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        menu.findItem(R.id.action_appearance).setVisible(topLevelShown);
+        menu.findItem(R.id.action_profile_avatar).setVisible(topLevelShown);
+        return super.onPrepareOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (item.getItemId() == R.id.action_appearance) {
+            UiPreferences.showAppearancePicker(this);
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == R.id.nav_sign_out) {
-            authRepository.logout();
-            routeToLogin();
-            return true;
+            drawerLayout.closeDrawer(GravityCompat.START);
+            confirmSignOut();
+            return false;
         }
-        navController.navigate(item.getItemId());
+        if (isTopLevel(item.getItemId())) {
+            navigateTopLevel(item.getItemId());
+        } else {
+            navController.navigate(item.getItemId());
+        }
         drawerLayout.closeDrawer(GravityCompat.START);
         return true;
+    }
+
+    /** Asks before ending the session; signing out itself is unchanged. */
+    private void confirmSignOut() {
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setIcon(R.drawable.sg_ic_logout)
+                .setTitle(R.string.sg_sign_out_title)
+                .setMessage(R.string.sg_sign_out_message)
+                .setNegativeButton(R.string.sg_sign_out_stay, null)
+                .setPositiveButton(R.string.sg_sign_out_confirm, (ignored, which) -> {
+                    authRepository.logout();
+                    routeToLogin();
+                })
+                .show();
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setTextColor(ContextCompat.getColor(this, R.color.sg_error));
     }
 
     public void handleAuthenticationExpiry() {
@@ -164,6 +292,11 @@ public final class MainActivity extends AppCompatActivity
         menu.findItem(R.id.nav_booking_history).setVisible(session.isProsumer());
         menu.findItem(R.id.nav_operator_home).setVisible(session.isGridOperator());
         menu.findItem(R.id.nav_qr_operations).setVisible(session.isGridOperator());
+    }
+
+    /** Display-only avatar initials; the session name itself is never modified. */
+    static String initialsFor(String fullName) {
+        return DisplayFormats.initials(fullName);
     }
 
     static int startDestinationFor(SessionUser session) {

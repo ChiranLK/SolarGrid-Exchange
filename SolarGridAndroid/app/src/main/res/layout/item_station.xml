@@ -3,34 +3,81 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:foreground="?attr/selectableItemBackground"
-    app:cardCornerRadius="@dimen/card_radius"
-    app:cardElevation="1dp">
+    android:foreground="?attr/selectableItemBackground">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="@dimen/space_md">
+        android:padding="@dimen/sg_space_20">
 
-        <TextView
-            android:id="@+id/station_item_name"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/TextAppearance.SolarGrid.Title" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-        <TextView
-            android:id="@+id/station_item_address"
+            <ImageView
+                style="@style/Widget.SolarGrid.IconTile"
+                android:contentDescription="@null"
+                android:src="@drawable/sg_ic_sun" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/sg_space_16"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/station_item_name"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="@style/TextAppearance.SolarGrid.Section" />
+
+                <TextView
+                    android:id="@+id/station_item_address"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/sg_space_4"
+                    android:textAppearance="@style/TextAppearance.SolarGrid.BodySmall" />
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginStart="@dimen/sg_space_8"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
+                android:src="@drawable/sg_ic_chevron"
+                app:tint="?attr/colorOnSurface" />
+        </LinearLayout>
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_xs"
-            android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
+            android:layout_marginTop="@dimen/sg_space_16"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-        <TextView
-            android:id="@+id/station_item_distance"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_xs"
-            android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
+            <TextView
+                android:id="@+id/station_item_distance"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textAppearance="@style/TextAppearance.SolarGrid.BodySmall"
+                android:textColor="?attr/colorPrimary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:drawablePadding="8dp"
+                android:gravity="center_vertical"
+                android:importantForAccessibility="no"
+                android:text="@string/sg_view_station"
+                android:textAppearance="@style/TextAppearance.SolarGrid.BodySmall"
+                android:textColor="?attr/colorPrimary"
+                app:drawableEndCompat="@drawable/sg_ic_arrow_primary" />
+        </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

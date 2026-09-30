@@ -24,21 +24,48 @@ export function ConfirmationDialog({
   onCancel,
 }: ConfirmationDialogProps) {
   const cancelButtonRef = useRef<HTMLButtonElement>(null)
+  const dialogRef = useRef<HTMLElement>(null)
+  const isBusyRef = useRef(isBusy)
+  const onCancelRef = useRef(onCancel)
+
+  useEffect(() => {
+    isBusyRef.current = isBusy
+    onCancelRef.current = onCancel
+  }, [isBusy, onCancel])
 
   useEffect(() => {
     if (!isOpen) {
       return
     }
 
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
     cancelButtonRef.current?.focus()
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !isBusy) {
-        onCancel()
+      if (event.key === 'Escape' && !isBusyRef.current) {
+        onCancelRef.current()
+      }
+      if (event.key === 'Tab') {
+        const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        )
+        if (!focusable?.length) return
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault()
+          last.focus()
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault()
+          first.focus()
+        }
       }
     }
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isBusy, isOpen, onCancel])
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      if (previousFocus?.isConnected) previousFocus.focus()
+    }
+  }, [isOpen])
 
   if (!isOpen) {
     return null
@@ -47,6 +74,7 @@ export function ConfirmationDialog({
   return (
     <div className="dialog-backdrop" role="presentation" onMouseDown={onCancel}>
       <section
+        ref={dialogRef}
         className="card border-0 shadow-lg dialog-card"
         role="dialog"
         aria-modal="true"

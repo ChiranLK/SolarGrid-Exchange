@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="sg_space_4">4dp</dimen>
+    <dimen name="sg_space_8">8dp</dimen>
+    <dimen name="sg_space_12">12dp</dimen>
+    <dimen name="sg_space_16">16dp</dimen>
+    <dimen name="sg_space_20">20dp</dimen>
+    <dimen name="sg_space_24">24dp</dimen>
+    <dimen name="sg_space_32">32dp</dimen>
+    <dimen name="sg_space_40">40dp</dimen>
+    <dimen name="sg_space_48">48dp</dimen>
+    <dimen name="sg_radius_field">16dp</dimen>
+    <dimen name="sg_radius_card">24dp</dimen>
+    <dimen name="sg_radius_hero">28dp</dimen>
+    <dimen name="sg_touch_min">48dp</dimen>
+    <dimen name="sg_button_min_height">56dp</dimen>
+    <dimen name="sg_gutter">24dp</dimen>
+    <dimen name="sg_icon">24dp</dimen>
+    <dimen name="sg_qr_size">260dp</dimen>
+    <dimen name="sg_qr_padding">20dp</dimen>
+</resources>

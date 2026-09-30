@@ -1,70 +1,93 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Shared by the pending-activation and Backoffice web-only screens. -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    tools:ignore="Overdraw,UnusedAttribute"
     android:layout_height="match_parent"
-    android:background="@color/solar_surface"
+    android:background="?android:attr/colorBackground"
     android:fillViewport="true"
-    android:fitsSystemWindows="true">
+    android:fitsSystemWindows="true"
+    tools:ignore="Overdraw,UnusedAttribute">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_horizontal"
         android:orientation="vertical"
-        android:padding="@dimen/space_lg">
+        android:paddingStart="@dimen/sg_gutter"
+        android:paddingTop="@dimen/sg_space_48"
+        android:paddingEnd="@dimen/sg_gutter"
+        android:paddingBottom="@dimen/sg_space_32">
 
-        <ImageView
-            android:id="@+id/account_notice_icon"
-            android:layout_width="88dp"
-            android:layout_height="88dp"
-            android:layout_marginTop="48dp"
-            android:contentDescription="@null"
-            android:src="@drawable/ic_launcher" />
+        <FrameLayout
+            android:layout_width="128dp"
+            android:layout_height="128dp"
+            android:background="@drawable/sg_bg_state_ring"
+            android:padding="10dp">
+
+            <ImageView
+                android:id="@+id/account_notice_icon"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/sg_bg_notice_tile_pending"
+                android:contentDescription="@null"
+                android:padding="32dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/sg_ic_clock"
+                app:tint="@color/sg_on_pending_container" />
+        </FrameLayout>
 
         <TextView
             android:id="@+id/account_notice_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_lg"
+            android:layout_marginTop="@dimen/sg_space_32"
             android:accessibilityHeading="true"
             android:gravity="center"
-            android:textAppearance="@style/TextAppearance.SolarGrid.Headline" />
+            android:textAppearance="@style/TextAppearance.SolarGrid.Display" />
 
         <TextView
             android:id="@+id/account_notice_message"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_md"
+            android:layout_marginTop="@dimen/sg_space_16"
             android:gravity="center"
             android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
 
-        <TextView
-            android:id="@+id/account_notice_detail"
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_md"
-            android:gravity="center"
-            android:textAppearance="@style/TextAppearance.SolarGrid.Body"
-            android:textStyle="bold"
-            android:visibility="gone" />
+            android:layout_marginTop="@dimen/sg_space_32">
 
-        <TextView
-            android:id="@+id/account_notice_next_steps"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_md"
-            android:gravity="center"
-            android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="@dimen/sg_space_20">
+
+                <TextView
+                    android:id="@+id/account_notice_detail"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="@style/TextAppearance.SolarGrid.BodyStrong"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/account_notice_next_steps"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/sg_space_12"
+                    android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/account_notice_sign_in"
-            style="@style/Widget.SolarGrid.Button"
+            style="@style/Widget.SolarGrid.Button.Secondary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_xl"
+            android:layout_marginTop="@dimen/sg_space_24"
             android:text="@string/back_to_sign_in" />
     </LinearLayout>
 </ScrollView>

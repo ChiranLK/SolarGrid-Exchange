@@ -17,6 +17,8 @@ import androidx.lifecycle.ViewModelProvider;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputLayout;
 import com.solargrid.exchange.R;
+import com.solargrid.exchange.ui.common.DisplayFormats;
+import com.solargrid.exchange.ui.common.StatusStyles;
 import com.solargrid.exchange.SolarGridApplication;
 import com.solargrid.exchange.data.model.ProsumerProfile;
 import com.solargrid.exchange.data.model.SessionUser;
@@ -142,8 +144,11 @@ public final class ProfileFragment extends Fragment {
 
     private void bindProfile(View view, ProsumerProfile profile) {
         setText(view, R.id.profile_prosumer_name, profile.getFullName());
-        setText(view, R.id.profile_prosumer_nic, profile.getNic());
+        // Display only: avatar initials and a masked NIC; the canonical NIC is untouched.
+        setText(view, R.id.profile_prosumer_initials, DisplayFormats.initials(profile.getFullName()));
+        setText(view, R.id.profile_prosumer_nic, DisplayFormats.maskNic(profile.getNic()));
         setText(view, R.id.profile_prosumer_status, profile.getStatus());
+        StatusStyles.apply(view.findViewById(R.id.profile_prosumer_status), profile.getStatus());
         String deactivationState;
         if (!profile.isDeactivationRequested()) {
             deactivationState = getString(R.string.deactivation_state_none);
@@ -191,7 +196,10 @@ public final class ProfileFragment extends Fragment {
             return;
         }
         message.setText(text);
-        message.setTextColor(ContextCompat.getColor(requireContext(), isError ? R.color.solar_error : R.color.solar_text));
+        // Presentation only: semantic banner for the same error/success decision made above.
+        message.setTextColor(ContextCompat.getColor(requireContext(),
+                isError ? R.color.sg_on_error_container : R.color.sg_on_approved_container));
+        message.setBackgroundResource(isError ? R.drawable.sg_bg_banner_error : R.drawable.sg_bg_banner_success);
         message.setVisibility(View.VISIBLE);
         message.setOnClickListener(ignored -> viewModel.dismissMessages());
     }
@@ -216,11 +224,16 @@ public final class ProfileFragment extends Fragment {
     private void bindStaffSummary(View view, SessionUser session) {
         view.findViewById(R.id.profile_staff_section).setVisibility(View.VISIBLE);
         setText(view, R.id.profile_name, session.getFullName());
-        setText(view, R.id.profile_nic, session.getNic());
+        // Display only: header, masked NIC and readable role label.
+        setText(view, R.id.profile_staff_initials, DisplayFormats.initials(session.getFullName()));
+        setText(view, R.id.profile_staff_role_subtitle, DisplayFormats.roleLabel(requireContext(), session.getRole()));
+        setText(view, R.id.profile_staff_name_row, session.getFullName());
+        setText(view, R.id.profile_nic, DisplayFormats.maskNic(session.getNic()));
         setText(view, R.id.profile_email,
                 session.getEmail().isEmpty() ? getString(R.string.not_loaded) : session.getEmail());
-        setText(view, R.id.profile_role, session.getRole());
+        setText(view, R.id.profile_role, DisplayFormats.roleLabel(requireContext(), session.getRole()));
         setText(view, R.id.profile_status, session.getStatus());
+        StatusStyles.apply(view.findViewById(R.id.profile_status), session.getStatus());
     }
 
     @Nullable

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Decorative sun rings for hero cards. Hidden from accessibility where used. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="160dp" android:height="160dp"
+    android:viewportWidth="160" android:viewportHeight="160">
+    <path android:strokeColor="#2A6A4B" android:strokeWidth="1.2" android:pathData="M80,80m-76,0a76,76 0,1 1,152 0a76,76 0,1 1,-152 0" />
+    <path android:strokeColor="#2F7452" android:strokeWidth="1.2" android:pathData="M80,80m-58,0a58,58 0,1 1,116 0a58,58 0,1 1,-116 0" />
+    <path android:fillColor="#4A6B45" android:pathData="M80,80m-42,0a42,42 0,1 1,84 0a42,42 0,1 1,-84 0" />
+</vector>
