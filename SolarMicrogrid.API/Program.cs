@@ -195,7 +195,11 @@ if (openApiSettings.Enabled)
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+// Development clients (Android emulator on http://10.0.2.2:5076) cannot follow the HTTPS redirect.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<ExceptionMiddleware>();
