@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Decorative solar-panel landscape (login and station hero). Static colours so it reads in both themes. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="360dp" android:height="132dp"
+    android:viewportWidth="360" android:viewportHeight="132">
+    <path android:fillColor="#DCE8CC" android:pathData="M0,0h360v132h-360z" />
+    <path android:fillColor="#ECC862" android:pathData="M268,30m-24,0a24,24 0,1 1,48 0a24,24 0,1 1,-48 0" />
+    <path android:fillColor="#B8CFA6" android:pathData="M0,78C58,46 118,48 170,70C226,94 288,100 360,62V132H0Z" />
+    <path android:fillColor="#8FAF88" android:pathData="M0,102C60,84 120,86 184,104C250,122 310,118 360,96V132H0Z" />
+    <path android:fillColor="#2E5A46" android:pathData="M62,56h158l24,48h-206z" />
+    <path android:strokeColor="#DCE8CC" android:strokeWidth="1.4" android:pathData="M50,72h182M44,88h194M102,56l-14,48M142,56v48M182,56l14,48" />
+    <path android:fillColor="#2E5A46" android:pathData="M70,104h6v14h-6zM206,104h6v14h-6z" />
+</vector>

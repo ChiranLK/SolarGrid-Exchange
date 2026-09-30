@@ -62,7 +62,13 @@ public final class LoginActivity extends AppCompatActivity {
                     startActivity(PendingActivationActivity.intent(this, emailInput.getText().toString().trim()));
                     return;
                 }
-                errorMessage.setText(error.getMessage());
+                // Presentation only: titled banner around the same server message.
+                android.text.SpannableStringBuilder banner =
+                        new android.text.SpannableStringBuilder(getString(R.string.sg_login_error_title));
+                banner.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD),
+                        0, banner.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                banner.append("\n").append(error.getMessage());
+                errorMessage.setText(banner);
                 errorMessage.setVisibility(View.VISIBLE);
             } else {
                 errorMessage.setVisibility(View.GONE);

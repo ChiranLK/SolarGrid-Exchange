@@ -1,17 +1,75 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.SolarGrid" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/solar_green_700</item>
-        <item name="colorOnPrimary">@color/white</item>
-        <item name="colorSecondary">@color/solar_gold_500</item>
-        <item name="colorSurface">@color/solar_surface</item>
-        <item name="android:fontFamily">sans</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:statusBarColor">@color/solar_green_900</item>
-        <item name="android:navigationBarColor">@color/solar_green_900</item>
+    <!-- Names and parent are unchanged; roles come from sg_design_colors (values and values-night). -->
+    <!-- API-level layer: values-v27 adds navigation-bar icon contrast (API 27+). -->
+    <style name="Platform.Theme.SolarGrid" parent="Theme.Material3.DayNight.NoActionBar" />
+
+    <style name="Base.Theme.SolarGrid" parent="Platform.Theme.SolarGrid">
+        <item name="colorPrimary">@color/sg_primary</item>
+        <item name="colorOnPrimary">@color/sg_on_primary</item>
+        <item name="colorPrimaryContainer">@color/sg_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/sg_on_primary_container</item>
+        <item name="colorSecondary">@color/sg_secondary</item>
+        <item name="colorOnSecondary">@color/sg_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/sg_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/sg_on_secondary_container</item>
+        <item name="colorTertiary">@color/sg_tertiary</item>
+        <item name="colorOnTertiary">@color/sg_on_tertiary</item>
+        <item name="colorTertiaryContainer">@color/sg_tertiary_container</item>
+        <item name="colorOnTertiaryContainer">@color/sg_on_tertiary_container</item>
+        <item name="colorError">@color/sg_error</item>
+        <item name="colorOnError">@color/sg_on_error</item>
+        <item name="colorErrorContainer">@color/sg_error_container</item>
+        <item name="colorOnErrorContainer">@color/sg_on_error_container</item>
+        <item name="android:colorBackground">@color/sg_background</item>
+        <item name="colorOnBackground">@color/sg_on_background</item>
+        <item name="colorSurface">@color/sg_surface</item>
+        <item name="colorOnSurface">@color/sg_on_surface</item>
+        <item name="colorSurfaceVariant">@color/sg_surface_variant</item>
+        <item name="colorOnSurfaceVariant">@color/sg_on_surface_variant</item>
+        <item name="colorSurfaceContainerLowest">@color/sg_surface_container_lowest</item>
+        <item name="colorSurfaceContainerLow">@color/sg_surface_container_low</item>
+        <item name="colorSurfaceContainer">@color/sg_surface_container</item>
+        <item name="colorSurfaceContainerHigh">@color/sg_surface_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/sg_surface_container_highest</item>
+        <item name="colorSurfaceDim">@color/sg_surface_dim</item>
+        <item name="colorSurfaceBright">@color/sg_surface_bright</item>
+        <item name="colorOutline">@color/sg_outline</item>
+        <item name="colorOutlineVariant">@color/sg_outline_variant</item>
+        <item name="colorSurfaceInverse">@color/sg_inverse_surface</item>
+        <item name="colorOnSurfaceInverse">@color/sg_inverse_on_surface</item>
+        <item name="colorPrimaryInverse">@color/sg_inverse_primary</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:windowBackground">@color/sg_background</item>
+        <item name="android:textColorPrimary">@color/sg_on_surface</item>
+        <item name="android:textColorSecondary">@color/sg_on_surface_variant</item>
+        <item name="android:textColorHint">@color/sg_on_surface_variant</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="materialButtonStyle">@style/Widget.SolarGrid.Button</item>
+        <item name="materialButtonOutlinedStyle">@style/Widget.SolarGrid.Button.Secondary</item>
+        <item name="borderlessButtonStyle">@style/Widget.SolarGrid.Button.Text</item>
+        <item name="materialCardViewStyle">@style/Widget.SolarGrid.Card</item>
+        <item name="textInputStyle">@style/Widget.SolarGrid.TextField</item>
+        <item name="toolbarStyle">@style/Widget.SolarGrid.Toolbar</item>
+        <item name="navigationViewStyle">@style/Widget.SolarGrid.NavigationView</item>
+        <item name="spinnerStyle">@style/Widget.SolarGrid.Spinner</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.SolarGrid.Dialog</item>
+        <item name="alertDialogTheme">@style/ThemeOverlay.SolarGrid.AppCompatDialog</item>
+        <item name="circularProgressIndicatorStyle">@style/Widget.Material3.CircularProgressIndicator</item>
+        <item name="android:colorControlActivated">@color/sg_primary</item>
     </style>
 
+    <style name="Theme.SolarGrid" parent="Base.Theme.SolarGrid" />
+
     <style name="Theme.SolarGrid.Splash" parent="Theme.SolarGrid">
-        <item name="android:windowBackground">@color/solar_green_900</item>
+        <item name="android:windowBackground">@color/sg_hero</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <style name="Theme.SolarGrid.Onboarding" parent="Theme.SolarGrid">
+        <item name="android:windowBackground">@color/sg_hero</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>

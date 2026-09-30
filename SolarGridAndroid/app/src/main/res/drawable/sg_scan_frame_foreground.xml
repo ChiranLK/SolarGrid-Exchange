@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Centred scan brackets drawn as the PreviewView foreground, so they hide with the preview. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:width="248dp"
+        android:height="248dp"
+        android:drawable="@drawable/sg_scan_frame"
+        android:gravity="center" />
+</layer-list>

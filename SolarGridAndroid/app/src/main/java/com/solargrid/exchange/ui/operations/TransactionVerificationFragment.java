@@ -17,6 +17,7 @@ import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 
 import com.solargrid.exchange.R;
+import com.solargrid.exchange.ui.common.StatusStyles;
 import com.solargrid.exchange.SolarGridApplication;
 import com.solargrid.exchange.data.model.SessionUser;
 import com.solargrid.exchange.data.model.VerifiedTransaction;
@@ -125,6 +126,7 @@ public final class TransactionVerificationFragment extends Fragment {
 
     private void bindVerification(View view, VerifiedTransaction value) {
         ((TextView) view.findViewById(R.id.verification_status)).setText(value.getStatus());
+        StatusStyles.apply(view.findViewById(R.id.verification_status), value.getStatus());
         ((TextView) view.findViewById(R.id.verification_summary)).setText(getString(
                 R.string.verification_summary,
                 value.getReservationReference(),

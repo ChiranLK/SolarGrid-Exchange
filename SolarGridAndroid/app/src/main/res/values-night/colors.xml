@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark variants of the legacy names so any remaining direct reference stays readable. -->
+    <color name="solar_green_900">#0D3D2C</color>
+    <color name="solar_green_700">#A9D7AF</color>
+    <color name="solar_green_500">#A9D7AF</color>
+    <color name="solar_green_100">#304C35</color>
+    <color name="solar_gold_500">#F4C65A</color>
+    <color name="solar_surface">#111C16</color>
+    <color name="solar_text">#ECF3E8</color>
+    <color name="solar_muted">#AFBFAE</color>
+    <color name="solar_error">#FFB4A8</color>
+    <color name="white">#FFFFFF</color>
+</resources>

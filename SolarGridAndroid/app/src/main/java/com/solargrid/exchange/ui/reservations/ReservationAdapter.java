@@ -11,6 +11,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.solargrid.exchange.R;
+import com.solargrid.exchange.ui.common.DisplayFormats;
+import com.solargrid.exchange.ui.common.StatusStyles;
 import com.solargrid.exchange.data.model.Reservation;
 
 import java.util.ArrayList;
@@ -38,16 +40,19 @@ final class ReservationAdapter extends ArrayAdapter<Reservation> {
         Reservation reservation = getItem(position);
         if (reservation != null) {
             ((TextView) view.findViewById(R.id.reservation_item_reference)).setText(
-                    getContext().getString(R.string.reservation_reference_value, reservation.getId()));
+                    ReservationFormatters.displayReference(reservation.getId()));
             ((TextView) view.findViewById(R.id.reservation_item_station)).setText(
                     ReservationFormatters.station(
                             reservation.getStationName(), reservation.getStationId()));
             ((TextView) view.findViewById(R.id.reservation_item_time)).setText(
-                    ReservationFormatters.localDateTime(reservation.getScheduledStartTimeUtc()));
-            ((TextView) view.findViewById(R.id.reservation_item_status)).setText(
-                    reservation.getStatus());
+                    DisplayFormats.compactSlot(getContext(),
+                            reservation.getScheduledStartTimeUtc(),
+                            reservation.getScheduledEndTimeUtc()));
+            TextView status = view.findViewById(R.id.reservation_item_status);
+            status.setText(reservation.getStatus());
+            StatusStyles.apply(status, reservation.getStatus());
             ((TextView) view.findViewById(R.id.reservation_item_energy)).setText(
-                    ReservationFormatters.energy(reservation.getRequestedEnergyKwh()));
+                    DisplayFormats.energy(reservation.getRequestedEnergyKwh()));
         }
         return view;
     }

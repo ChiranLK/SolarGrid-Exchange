@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/onboarding_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/sg_hero"
+    android:clipChildren="false">
+
+    <!-- Floating decorative accents (animated by OnboardingActivity). -->
+    <View
+        android:id="@+id/onboarding_orb_one"
+        android:layout_width="260dp"
+        android:layout_height="260dp"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="-70dp"
+        android:layout_marginEnd="-90dp"
+        android:background="@drawable/sg_onboarding_orb"
+        android:importantForAccessibility="no" />
+
+    <View
+        android:id="@+id/onboarding_orb_two"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="-80dp"
+        android:layout_marginBottom="120dp"
+        android:alpha="0.7"
+        android:background="@drawable/sg_onboarding_orb"
+        android:importantForAccessibility="no" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fitsSystemWindows="true"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="@dimen/sg_gutter"
+            android:paddingTop="@dimen/sg_space_16"
+            android:paddingEnd="@dimen/sg_space_8">
+
+            <ImageView
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
+                android:src="@drawable/sg_logo_mark" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/sg_space_8"
+                android:layout_weight="1"
+                android:text="@string/sg_brand_name"
+                android:textColor="@color/sg_on_hero"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/onboarding_skip"
+                style="@style/Widget.SolarGrid.Button.Text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/sg_onboarding_skip"
+                android:textColor="@color/sg_on_hero" />
+        </LinearLayout>
+
+        <androidx.viewpager2.widget.ViewPager2
+            android:id="@+id/onboarding_pager"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="@dimen/sg_gutter"
+            android:paddingTop="@dimen/sg_space_16"
+            android:paddingEnd="@dimen/sg_gutter"
+            android:paddingBottom="@dimen/sg_space_24">
+
+            <LinearLayout
+                android:id="@+id/onboarding_indicator"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center_vertical|start"
+                android:orientation="horizontal" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/onboarding_next"
+                style="@style/Widget.SolarGrid.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="150dp"
+                android:text="@string/sg_onboarding_next"
+                android:textColor="@color/sg_hero"
+                app:backgroundTint="@color/sg_solar_gold"
+                app:icon="@drawable/sg_ic_arrow"
+                app:iconGravity="end"
+                app:iconTint="@color/sg_hero"
+                xmlns:app="http://schemas.android.com/apk/res-auto" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

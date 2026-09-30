@@ -93,8 +93,8 @@ public final class ReservationListFragment extends Fragment {
                     getString(R.string.filter_all)
             };
             ArrayAdapter<String> filterAdapter = new ArrayAdapter<>(
-                    requireContext(), android.R.layout.simple_spinner_item, labels);
-            filterAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                    requireContext(), R.layout.sg_spinner_item, labels);
+            filterAdapter.setDropDownViewResource(R.layout.sg_spinner_dropdown_item);
             filter.setAdapter(filterAdapter);
             String initialView = viewModel.getSelectedView() == null
                     ? defaultView

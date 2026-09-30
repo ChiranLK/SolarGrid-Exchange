@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Popup row for existing ArrayAdapters; multi-line so long slot labels stay readable. -->
+<CheckedTextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/text1"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/selectableItemBackground"
+    android:gravity="center_vertical|start"
+    android:minHeight="56dp"
+    android:paddingStart="20dp"
+    android:paddingTop="14dp"
+    android:paddingEnd="20dp"
+    android:paddingBottom="14dp"
+    android:textAlignment="viewStart"
+    android:textAppearance="@style/TextAppearance.SolarGrid.BodyStrong" />

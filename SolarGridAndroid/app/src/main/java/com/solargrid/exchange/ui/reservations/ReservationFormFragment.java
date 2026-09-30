@@ -240,6 +240,9 @@ public final class ReservationFormFragment extends Fragment {
                 && data.getReservation() != null
                 && "Approved".equals(data.getReservation().getStatus());
         statusNotice.setVisibility(approvedEdit ? View.VISIBLE : View.GONE);
+        // Presentation only: the create-booking progress indicator does not apply to edits.
+        view.findViewById(R.id.reservation_form_stepper)
+                .setVisibility(data.isEditing() ? View.GONE : View.VISIBLE);
         submit.setText(data.isEditing() ? R.string.update_reservation : R.string.review_booking);
         displayedSlots = data.getSlots();
         List<String> labels = new ArrayList<>();
@@ -250,16 +253,16 @@ public final class ReservationFormFragment extends Fragment {
                     ? getString(R.string.current_slot_revalidation)
                     : ReservationFormatters.energy(slot.getAvailableCapacityKwh()) + " · "
                             + slot.getAvailabilityStatus();
-            labels.add(ReservationFormatters.localDateTime(slot.getStartTimeUtc()) + " - "
-                    + ReservationFormatters.localDateTime(slot.getEndTimeUtc()) + "\n"
-                    + slotDetail);
+            // Display only: readable local slot label; the index-to-slot mapping is unchanged.
+            labels.add(com.solargrid.exchange.ui.common.DisplayFormats.slotLabel(slot.getStartTimeUtc(), slot.getEndTimeUtc())
+                    + "\n" + slotDetail);
             if (slot.getId().equals(viewModel.getDraftSelectedSlotId())) {
                 selected = index;
             }
         }
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
-                requireContext(), android.R.layout.simple_spinner_item, labels);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                requireContext(), R.layout.sg_spinner_item, labels);
+        adapter.setDropDownViewResource(R.layout.sg_spinner_dropdown_item);
         spinner.setAdapter(adapter);
         spinner.setSelection(selected);
         if (energy.getText().length() == 0 && !viewModel.getDraftEnergyText().isEmpty()) {

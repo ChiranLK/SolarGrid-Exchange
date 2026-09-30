@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Decorative orbit rings around the onboarding tile. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="240dp" android:height="240dp" android:viewportWidth="240" android:viewportHeight="240">
+    <path android:strokeColor="#33FFFFFF" android:strokeWidth="1.2" android:pathData="M120,120m-118,0a118,118 0,1 1,236 0a118,118 0,1 1,-236 0" />
+    <path android:strokeColor="#4DFFFFFF" android:strokeWidth="1.2" android:pathData="M120,120m-92,0a92,92 0,1 1,184 0a92,92 0,1 1,-184 0" />
+    <path android:fillColor="#F4C65A" android:pathData="M120,2m-6,0a6,6 0,1 1,12 0a6,6 0,1 1,-12 0" />
+    <path android:fillColor="#CCFFFFFF" android:pathData="M28,120m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0" />
+</vector>

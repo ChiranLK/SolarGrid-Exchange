@@ -14,6 +14,7 @@ import androidx.navigation.NavOptions;
 import androidx.navigation.Navigation;
 
 import com.solargrid.exchange.R;
+import com.solargrid.exchange.ui.common.StatusStyles;
 import com.solargrid.exchange.data.model.Reservation;
 
 public final class CreateReservationSummaryFragment extends Fragment {
@@ -39,7 +40,8 @@ public final class CreateReservationSummaryFragment extends Fragment {
         String reservationId = arguments.getString("reservationId", "");
 
         setText(view, R.id.create_summary_action, getString(R.string.reservation_created));
-        setText(view, R.id.create_summary_reference, reservationId);
+        // Display only: short reference; navigation below still uses the full reservationId.
+        setText(view, R.id.create_summary_reference, ReservationFormatters.displayReference(reservationId));
         setText(view, R.id.create_summary_station, arguments.getString("station", ""));
         setText(view, R.id.create_summary_date,
                 ReservationFormatters.localDate(arguments.getString("startUtc", "")));
@@ -50,6 +52,7 @@ public final class CreateReservationSummaryFragment extends Fragment {
         setText(view, R.id.create_summary_quantity,
                 ReservationFormatters.energy(arguments.getDouble("energy", 0)));
         setText(view, R.id.create_summary_status, arguments.getString("status", ""));
+        StatusStyles.apply(view.findViewById(R.id.create_summary_status), arguments.getString("status", ""));
         setText(view, R.id.create_summary_created,
                 ReservationFormatters.localDateTime(arguments.getString("createdAtUtc", "")));
 

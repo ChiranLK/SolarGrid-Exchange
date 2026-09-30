@@ -1,38 +1,68 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:gravity="center"
     android:orientation="vertical"
-    android:padding="@dimen/space_xl">
+    android:paddingStart="@dimen/sg_gutter"
+    android:paddingTop="@dimen/sg_space_40"
+    android:paddingEnd="@dimen/sg_gutter"
+    android:paddingBottom="@dimen/sg_space_40">
+
+    <!-- Decorative state tile; UiStateView chooses the icon and hides it while loading. -->
+    <FrameLayout
+        android:id="@+id/state_icon_frame"
+        android:layout_width="112dp"
+        android:layout_height="112dp"
+        android:background="@drawable/sg_bg_state_ring"
+        android:importantForAccessibility="noHideDescendants"
+        android:padding="8dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/state_icon"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/sg_bg_state_tile"
+            android:contentDescription="@null"
+            android:padding="30dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/sg_ic_sun"
+            app:tint="@color/sg_primary" />
+    </FrameLayout>
 
     <ProgressBar
         android:id="@+id/state_progress"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content" />
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:indeterminateTint="@color/sg_primary" />
 
     <TextView
         android:id="@+id/state_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/space_md"
+        android:layout_marginTop="@dimen/sg_space_24"
+        android:accessibilityHeading="true"
         android:gravity="center"
-        android:textAppearance="@style/TextAppearance.SolarGrid.Title" />
+        android:textAppearance="@style/TextAppearance.SolarGrid.Headline" />
 
     <TextView
         android:id="@+id/state_message"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/space_sm"
+        android:layout_marginTop="@dimen/sg_space_12"
+        android:accessibilityLiveRegion="polite"
         android:gravity="center"
         android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/state_retry"
         style="@style/Widget.SolarGrid.Button"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/space_md"
+        android:layout_marginTop="@dimen/sg_space_32"
         android:text="@string/retry"
-        android:visibility="gone" />
+        android:visibility="gone"
+        app:icon="@drawable/sg_ic_refresh" />
 </LinearLayout>

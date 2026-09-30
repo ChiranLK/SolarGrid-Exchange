@@ -21,6 +21,7 @@ import com.solargrid.exchange.SolarGridApplication;
 import com.solargrid.exchange.data.model.Reservation;
 import com.solargrid.exchange.data.model.SessionUser;
 import com.solargrid.exchange.ui.MainActivity;
+import com.solargrid.exchange.ui.common.StatusStyles;
 import com.solargrid.exchange.ui.common.UiState;
 
 public final class BookingReviewFragment extends Fragment {
@@ -35,6 +36,8 @@ public final class BookingReviewFragment extends Fragment {
         Button edit = view.findViewById(R.id.booking_review_edit_button);
         Button confirm = view.findViewById(R.id.booking_review_confirm_button);
         TextView progress = view.findViewById(R.id.booking_review_progress);
+        TextView errorBanner = view.findViewById(R.id.booking_review_error);
+        StatusStyles.apply(view.findViewById(R.id.booking_review_status), "Pending");
         OnBackPressedCallback processingBackGuard = new OnBackPressedCallback(false) {
             @Override
             public void handleOnBackPressed() {
@@ -110,11 +113,21 @@ public final class BookingReviewFragment extends Fragment {
             edit.setEnabled(!loading);
             confirm.setEnabled(!loading);
             confirm.setText(loading ? R.string.saving_reservation : R.string.confirm_booking);
+            if (loading) {
+                errorBanner.setVisibility(View.GONE);
+            }
             if (state.getStatus() == UiState.Status.ERROR && state.getError() != null) {
                 if (((MainActivity) requireActivity()).handleSessionFailure(state.getError())) {
                     // Handled by MainActivity: 401, or a pending/deactivated account (Member 1 session end).
                 } else {
-                    Toast.makeText(requireContext(), state.getError().getMessage(), Toast.LENGTH_LONG).show();
+                    // Presentation only: keep the server message on screen instead of a transient Toast.
+                    errorBanner.setText(state.getError().getMessage());
+                    errorBanner.setVisibility(View.VISIBLE);
+                    errorBanner.announceForAccessibility(state.getError().getMessage());
+                    if (view instanceof android.widget.ScrollView) {
+                        view.post(() -> ((android.widget.ScrollView) view)
+                                .smoothScrollTo(0, Math.max(0, errorBanner.getTop() - 32)));
+                    }
                 }
                 viewModel.consumeResult();
             } else if (state.getStatus() == UiState.Status.SUCCESS && state.getData() != null) {

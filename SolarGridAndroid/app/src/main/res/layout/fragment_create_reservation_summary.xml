@@ -1,86 +1,160 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/solar_surface"
+    android:background="?android:attr/colorBackground"
     android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="@dimen/space_lg">
+        android:paddingStart="@dimen/sg_gutter"
+        android:paddingTop="@dimen/sg_space_8"
+        android:paddingEnd="@dimen/sg_gutter"
+        android:paddingBottom="@dimen/sg_space_32">
+
+        <include layout="@layout/sg_stepper_3" />
+
+        <FrameLayout
+            android:layout_width="96dp"
+            android:layout_height="96dp"
+            android:layout_marginTop="@dimen/sg_space_32"
+            android:background="@drawable/sg_bg_state_ring"
+            android:importantForAccessibility="noHideDescendants"
+            android:padding="8dp">
+
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/sg_bg_state_tile"
+                android:contentDescription="@null"
+                android:padding="24dp"
+                android:src="@drawable/sg_ic_check"
+                app:tint="?attr/colorPrimary" />
+        </FrameLayout>
 
         <TextView
             android:id="@+id/create_summary_action"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/TextAppearance.SolarGrid.Headline" />
+            android:layout_marginTop="@dimen/sg_space_24"
+            android:accessibilityHeading="true"
+            android:accessibilityLiveRegion="polite"
+            android:textAppearance="@style/TextAppearance.SolarGrid.Display" />
+
+        <TextView
+            style="@style/Widget.SolarGrid.Banner.Warning"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/sg_space_16"
+            android:text="@string/create_summary_authority_notice" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/sg_space_20">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingStart="@dimen/sg_space_20"
+                android:paddingTop="@dimen/sg_space_8"
+                android:paddingEnd="@dimen/sg_space_20"
+                android:paddingBottom="@dimen/sg_space_8">
+
+                <LinearLayout style="@style/Widget.SolarGrid.ReceiptRow">
+                    <TextView style="@style/Widget.SolarGrid.ReceiptLabel" android:text="@string/server_status" />
+                    <FrameLayout android:layout_width="wrap_content" android:layout_height="wrap_content">
+                        <TextView
+                            android:id="@+id/create_summary_status"
+                            style="@style/Widget.SolarGrid.StatusPill"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" />
+                    </FrameLayout>
+                </LinearLayout>
+
+                <View style="@style/Widget.SolarGrid.Divider" />
+
+                <LinearLayout style="@style/Widget.SolarGrid.ReceiptRow">
+                    <TextView style="@style/Widget.SolarGrid.ReceiptLabel" android:text="@string/reservation_reference" />
+                    <TextView
+                        android:id="@+id/create_summary_reference"
+                        style="@style/Widget.SolarGrid.ReceiptValue"
+                        android:fontFamily="monospace"
+                        android:textIsSelectable="true" />
+                </LinearLayout>
+
+                <View style="@style/Widget.SolarGrid.Divider" />
+
+                <LinearLayout style="@style/Widget.SolarGrid.ReceiptRow">
+                    <TextView style="@style/Widget.SolarGrid.ReceiptLabel" android:text="@string/station_label" />
+                    <TextView android:id="@+id/create_summary_station" style="@style/Widget.SolarGrid.ReceiptValue" />
+                </LinearLayout>
+
+                <View style="@style/Widget.SolarGrid.Divider" />
+
+                <LinearLayout style="@style/Widget.SolarGrid.ReceiptRow">
+                    <TextView style="@style/Widget.SolarGrid.ReceiptLabel" android:text="@string/booking_date" />
+                    <TextView android:id="@+id/create_summary_date" style="@style/Widget.SolarGrid.ReceiptValue" />
+                </LinearLayout>
+
+                <View style="@style/Widget.SolarGrid.Divider" />
+
+                <LinearLayout style="@style/Widget.SolarGrid.ReceiptRow">
+                    <TextView style="@style/Widget.SolarGrid.ReceiptLabel" android:text="@string/booking_time" />
+                    <TextView android:id="@+id/create_summary_time" style="@style/Widget.SolarGrid.ReceiptValue" />
+                </LinearLayout>
+
+                <View style="@style/Widget.SolarGrid.Divider" />
+
+                <LinearLayout style="@style/Widget.SolarGrid.ReceiptRow">
+                    <TextView style="@style/Widget.SolarGrid.ReceiptLabel" android:text="@string/requested_energy" />
+                    <TextView android:id="@+id/create_summary_quantity" style="@style/Widget.SolarGrid.ReceiptValue" />
+                </LinearLayout>
+
+                <View style="@style/Widget.SolarGrid.Divider" />
+
+                <LinearLayout style="@style/Widget.SolarGrid.ReceiptRow">
+                    <TextView style="@style/Widget.SolarGrid.ReceiptLabel" android:text="@string/created_at" />
+                    <TextView android:id="@+id/create_summary_created" style="@style/Widget.SolarGrid.ReceiptValue" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_sm"
-            android:text="@string/create_summary_authority_notice"
-            android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
-
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_lg" android:text="@string/reservation_reference" android:textStyle="bold" />
-        <TextView android:id="@+id/create_summary_reference" android:layout_width="match_parent" android:layout_height="wrap_content" android:textIsSelectable="true" />
-
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_md" android:text="@string/station_label" android:textStyle="bold" />
-        <TextView android:id="@+id/create_summary_station" android:layout_width="match_parent" android:layout_height="wrap_content" />
-
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_md" android:text="@string/booking_date" android:textStyle="bold" />
-        <TextView android:id="@+id/create_summary_date" android:layout_width="match_parent" android:layout_height="wrap_content" />
-
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_md" android:text="@string/booking_time" android:textStyle="bold" />
-        <TextView android:id="@+id/create_summary_time" android:layout_width="match_parent" android:layout_height="wrap_content" />
-
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_md" android:text="@string/requested_energy" android:textStyle="bold" />
-        <TextView android:id="@+id/create_summary_quantity" android:layout_width="match_parent" android:layout_height="wrap_content" />
-
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_md" android:text="@string/server_status" android:textStyle="bold" />
-        <TextView
-            android:id="@+id/create_summary_status"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@color/solar_green_100"
-            android:padding="@dimen/space_sm"
-            android:textColor="@color/solar_green_900"
-            android:textStyle="bold" />
-
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_md" android:text="@string/created_at" android:textStyle="bold" />
-        <TextView android:id="@+id/create_summary_created" android:layout_width="match_parent" android:layout_height="wrap_content" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_lg"
+            android:layout_marginTop="@dimen/sg_space_32"
+            android:accessibilityHeading="true"
             android:text="@string/next_actions"
-            android:textAppearance="@style/TextAppearance.SolarGrid.Title" />
+            android:textAppearance="@style/TextAppearance.SolarGrid.Section" />
 
         <Button
             android:id="@+id/create_summary_view_detail"
             style="@style/Widget.SolarGrid.Button"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_md"
-            android:text="@string/view_reservation_detail" />
+            android:layout_marginTop="@dimen/sg_space_12"
+            android:text="@string/view_reservation_detail"
+            app:icon="@drawable/sg_ic_arrow" />
 
         <Button
             android:id="@+id/create_summary_view_pending"
-            style="@style/Widget.SolarGrid.Button"
+            style="@style/Widget.SolarGrid.Button.Secondary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_sm"
+            android:layout_marginTop="@dimen/sg_space_12"
             android:text="@string/view_current_pending" />
 
         <Button
             android:id="@+id/create_summary_find_station"
-            style="@style/Widget.SolarGrid.Button"
+            style="@style/Widget.SolarGrid.Button.Text"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_sm"
+            android:layout_marginTop="@dimen/sg_space_8"
             android:text="@string/find_another_station" />
     </LinearLayout>
 </ScrollView>

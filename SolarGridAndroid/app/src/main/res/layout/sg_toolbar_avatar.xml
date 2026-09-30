@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Toolbar initials avatar; MainActivity binds the text and opens Profile on tap. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="match_parent"
+    android:paddingStart="4dp"
+    android:paddingEnd="16dp">
+
+    <TextView
+        android:id="@+id/toolbar_avatar"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="center_vertical"
+        android:background="@drawable/sg_bg_toolbar_avatar"
+        android:contentDescription="@string/sg_open_profile"
+        android:foreground="?attr/selectableItemBackgroundBorderless"
+        android:gravity="center"
+        android:textColor="@color/sg_on_primary_container"
+        android:textSize="17sp"
+        android:textStyle="bold" />
+</FrameLayout>

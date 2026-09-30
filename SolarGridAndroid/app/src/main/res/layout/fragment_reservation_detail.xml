@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/solar_surface">
+    android:background="?android:attr/colorBackground">
 
     <com.solargrid.exchange.ui.common.UiStateView
         android:id="@+id/reservation_detail_state"
@@ -21,211 +22,297 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="@dimen/space_lg">
+            android:paddingStart="@dimen/sg_gutter"
+            android:paddingTop="@dimen/sg_space_8"
+            android:paddingEnd="@dimen/sg_gutter"
+            android:paddingBottom="@dimen/sg_space_32">
 
             <TextView
                 android:id="@+id/reservation_detail_refresh_notice"
+                style="@style/Widget.SolarGrid.Banner.Error"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="@dimen/space_md"
-                android:textColor="@android:color/holo_red_dark"
+                android:layout_marginBottom="@dimen/sg_space_16"
+                android:accessibilityLiveRegion="polite"
                 android:visibility="gone" />
 
-            <TextView
-                android:id="@+id/reservation_detail_status"
-                android:layout_width="wrap_content"
+            <!-- Status + short reference -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@color/solar_green_100"
-                android:padding="@dimen/space_sm"
-                android:textColor="@color/solar_green_900"
-                android:textStyle="bold" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <FrameLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1">
+
+                    <TextView
+                        android:id="@+id/reservation_detail_status"
+                        style="@style/Widget.SolarGrid.StatusPill"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </FrameLayout>
+
+                <TextView
+                    android:id="@+id/reservation_detail_reference"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/sg_space_12"
+                    android:contentDescription="@string/reservation_reference"
+                    android:fontFamily="monospace"
+                    android:textAppearance="@style/TextAppearance.SolarGrid.BodySmall"
+                    android:textIsSelectable="true" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/reservation_detail_station"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_md"
-                android:textAppearance="@style/TextAppearance.SolarGrid.Headline" />
+                android:layout_marginTop="@dimen/sg_space_16"
+                android:accessibilityHeading="true"
+                android:textAppearance="@style/TextAppearance.SolarGrid.Display" />
 
             <TextView
                 android:id="@+id/reservation_detail_address"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_xs"
-                android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
+                android:layout_marginTop="@dimen/sg_space_8"
+                android:textAppearance="@style/TextAppearance.SolarGrid.BodySmall" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_lg"
-                android:text="@string/scheduled_time"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/reservation_detail_time"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_md"
-                android:text="@string/requested_energy"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/reservation_detail_energy"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_md"
-                android:text="@string/reservation_reference"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/reservation_detail_reference"
+            <!-- Energy and schedule -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textIsSelectable="true" />
+                android:layout_marginTop="@dimen/sg_space_24">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_md"
-                android:text="@string/prosumer_label"
-                android:textStyle="bold" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/sg_space_24">
 
-            <TextView
-                android:id="@+id/reservation_detail_prosumer"
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/requested_energy"
+                        android:textAppearance="@style/TextAppearance.SolarGrid.Eyebrow" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/sg_space_8"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/reservation_detail_energy"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textAppearance="@style/TextAppearance.SolarGrid.Metric" />
+
+                        <ImageView
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:contentDescription="@null"
+                            android:importantForAccessibility="no"
+                            android:src="@drawable/sg_ic_bolt"
+                            app:tint="?attr/colorPrimary" />
+                    </LinearLayout>
+
+                    <View
+                        style="@style/Widget.SolarGrid.Divider"
+                        android:layout_marginTop="@dimen/sg_space_20" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/sg_space_20"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:contentDescription="@null"
+                            android:importantForAccessibility="no"
+                            android:src="@drawable/sg_ic_calendar"
+                            app:tint="?attr/colorOnSurface" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/sg_space_16"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/reservation_detail_time"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:contentDescription="@string/scheduled_time"
+                                android:lineSpacingExtra="4sp"
+                                android:textAppearance="@style/TextAppearance.SolarGrid.BodyStrong" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Actions: primary QR, then modify (secondary) and cancel (destructive). -->
+            <Button
+                android:id="@+id/reservation_qr_button"
+                style="@style/Widget.SolarGrid.Button"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
-
-            <TextView
-                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_md"
-                android:text="@string/slot_reference"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/reservation_detail_slot"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textIsSelectable="true" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_md"
-                android:text="@string/created_at"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/reservation_detail_created"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_md"
-                android:text="@string/updated_at"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/reservation_detail_updated"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
+                android:layout_marginTop="@dimen/sg_space_20"
+                android:text="@string/open_reservation_qr"
+                android:visibility="gone"
+                app:icon="@drawable/sg_ic_qr" />
 
             <LinearLayout
-                android:id="@+id/reservation_cancellation_reason_group"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_md"
-                android:orientation="vertical"
-                android:visibility="gone">
+                android:layout_marginTop="@dimen/sg_space_12"
+                android:orientation="horizontal">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                <Button
+                    android:id="@+id/reservation_update_button"
+                    style="@style/Widget.SolarGrid.Button.Secondary"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="@string/cancellation_reason"
-                    android:textStyle="bold" />
+                    android:layout_weight="1"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:text="@string/modify_reservation"
+                    app:icon="@drawable/sg_ic_edit" />
 
-                <TextView
-                    android:id="@+id/reservation_detail_cancellation_reason"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
+                <Button
+                    android:id="@+id/reservation_cancel_button"
+                    style="@style/Widget.SolarGrid.Button.Destructive"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/sg_space_12"
+                    android:layout_weight="1"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:text="@string/cancel_reservation" />
             </LinearLayout>
+
+            <TextView
+                android:id="@+id/reservation_cancellation_progress"
+                style="@style/Widget.SolarGrid.Banner.Info"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/sg_space_12"
+                android:accessibilityLiveRegion="polite"
+                android:visibility="gone" />
 
             <LinearLayout
                 android:id="@+id/reservation_rejection_reason_group"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_md"
+                android:layout_marginTop="@dimen/sg_space_16"
+                android:background="@drawable/sg_bg_banner_error"
                 android:orientation="vertical"
+                android:padding="@dimen/sg_space_20"
                 android:visibility="gone">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/rejection_reason"
-                    android:textStyle="bold" />
+                    android:textAppearance="@style/TextAppearance.SolarGrid.Eyebrow"
+                    android:textColor="@color/sg_on_error_container" />
 
                 <TextView
                     android:id="@+id/reservation_detail_rejection_reason"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/sg_space_8"
+                    android:textAppearance="@style/TextAppearance.SolarGrid.BodyStrong"
+                    android:textColor="@color/sg_on_error_container" />
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/reservation_cancellation_reason_group"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_lg"
-                android:orientation="horizontal">
+                android:layout_marginTop="@dimen/sg_space_16"
+                android:background="@drawable/sg_bg_tonal_card"
+                android:orientation="vertical"
+                android:padding="@dimen/sg_space_20"
+                android:visibility="gone">
 
-                <Button
-                    android:id="@+id/reservation_update_button"
-                    style="@style/Widget.SolarGrid.Button"
-                    android:layout_width="0dp"
+                <TextView
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/modify_reservation" />
+                    android:text="@string/cancellation_reason"
+                    android:textAppearance="@style/TextAppearance.SolarGrid.Eyebrow" />
 
-                <Button
-                    android:id="@+id/reservation_cancel_button"
-                    style="@style/Widget.SolarGrid.Button"
-                    android:layout_width="0dp"
+                <TextView
+                    android:id="@+id/reservation_detail_cancellation_reason"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="@dimen/space_sm"
-                    android:layout_weight="1"
-                    android:text="@string/cancel_reservation" />
+                    android:layout_marginTop="@dimen/sg_space_8"
+                    android:textAppearance="@style/TextAppearance.SolarGrid.BodyStrong" />
             </LinearLayout>
 
-            <TextView
-                android:id="@+id/reservation_cancellation_progress"
+            <!-- Booking facts -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_sm"
-                android:textAppearance="@style/TextAppearance.SolarGrid.Body"
-                android:visibility="gone" />
+                android:layout_marginTop="@dimen/sg_space_20">
 
-            <Button
-                android:id="@+id/reservation_qr_button"
-                style="@style/Widget.SolarGrid.Button"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_md"
-                android:contentDescription="@string/open_reservation_qr"
-                android:text="@string/open_reservation_qr"
-                android:visibility="gone" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingStart="@dimen/sg_space_20"
+                    android:paddingTop="@dimen/sg_space_8"
+                    android:paddingEnd="@dimen/sg_space_20"
+                    android:paddingBottom="@dimen/sg_space_8">
 
+                    <LinearLayout style="@style/Widget.SolarGrid.ReceiptRow">
+                        <TextView style="@style/Widget.SolarGrid.ReceiptLabel" android:text="@string/prosumer_label" />
+                        <TextView android:id="@+id/reservation_detail_prosumer" style="@style/Widget.SolarGrid.ReceiptValue" />
+                    </LinearLayout>
+
+                    <View style="@style/Widget.SolarGrid.Divider" />
+
+                    <LinearLayout style="@style/Widget.SolarGrid.ReceiptRow">
+                        <TextView style="@style/Widget.SolarGrid.ReceiptLabel" android:text="@string/slot_reference" />
+                        <TextView
+                            android:id="@+id/reservation_detail_slot"
+                            style="@style/Widget.SolarGrid.ReceiptValue"
+                            android:fontFamily="monospace"
+                            android:textIsSelectable="true"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+
+                    <View style="@style/Widget.SolarGrid.Divider" />
+
+                    <LinearLayout style="@style/Widget.SolarGrid.ReceiptRow">
+                        <TextView style="@style/Widget.SolarGrid.ReceiptLabel" android:text="@string/created_at" />
+                        <TextView android:id="@+id/reservation_detail_created" style="@style/Widget.SolarGrid.ReceiptValue" />
+                    </LinearLayout>
+
+                    <View style="@style/Widget.SolarGrid.Divider" />
+
+                    <LinearLayout style="@style/Widget.SolarGrid.ReceiptRow">
+                        <TextView style="@style/Widget.SolarGrid.ReceiptLabel" android:text="@string/updated_at" />
+                        <TextView android:id="@+id/reservation_detail_updated" style="@style/Widget.SolarGrid.ReceiptValue" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Server-provided action availability and reasons -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_lg"
+                android:layout_marginTop="@dimen/sg_space_32"
+                android:accessibilityHeading="true"
                 android:text="@string/allowed_actions"
                 android:textAppearance="@style/TextAppearance.SolarGrid.Title" />
 
@@ -233,13 +320,18 @@
                 android:id="@+id/reservation_detail_allowed_actions"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_sm"
+                android:layout_marginTop="@dimen/sg_space_12"
+                android:background="@drawable/sg_bg_tonal_card"
+                android:lineSpacingExtra="4sp"
+                android:padding="@dimen/sg_space_20"
                 android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
 
+            <!-- Status history -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_lg"
+                android:layout_marginTop="@dimen/sg_space_32"
+                android:accessibilityHeading="true"
                 android:text="@string/status_history"
                 android:textAppearance="@style/TextAppearance.SolarGrid.Title" />
 
@@ -247,9 +339,11 @@
                 android:id="@+id/reservation_detail_history"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_sm"
-                android:layout_marginBottom="@dimen/space_lg"
-                android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
+                android:layout_marginTop="@dimen/sg_space_12"
+                android:background="@drawable/sg_bg_card"
+                android:lineSpacingExtra="4sp"
+                android:padding="@dimen/sg_space_20"
+                android:textAppearance="@style/TextAppearance.SolarGrid.BodyStrong" />
         </LinearLayout>
     </ScrollView>
 </FrameLayout>

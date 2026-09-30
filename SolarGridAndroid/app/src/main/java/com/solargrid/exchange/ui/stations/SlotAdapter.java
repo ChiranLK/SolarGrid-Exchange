@@ -11,6 +11,7 @@ import androidx.annotation.NonNull;
 
 import com.solargrid.exchange.R;
 import com.solargrid.exchange.data.model.Slot;
+import com.solargrid.exchange.ui.common.DisplayFormats;
 
 import java.util.List;
 
@@ -28,16 +29,17 @@ public final class SlotAdapter extends ArrayAdapter<Slot> {
         }
         Slot slot = getItem(position);
         if (slot != null) {
+            // Display only: readable local times instead of raw ISO UTC values.
             ((TextView) row.findViewById(R.id.slot_item_time)).setText(
-                    getContext().getString(
-                            R.string.slot_time_range,
+                    DisplayFormats.timeRange(
                             slot.getStartTimeUtc(),
                             slot.getEndTimeUtc()));
+            ((TextView) row.findViewById(R.id.slot_item_date)).setText(
+                    DisplayFormats.slotDay(getContext(), slot.getStartTimeUtc()));
             ((TextView) row.findViewById(R.id.slot_item_capacity)).setText(
                     getContext().getString(
-                            R.string.slot_capacity_status,
-                            slot.getAvailableCapacityKwh(),
-                            slot.getAvailabilityStatus()));
+                            R.string.sg_slot_available,
+                            slot.getAvailableCapacityKwh()));
         }
         return row;
     }
