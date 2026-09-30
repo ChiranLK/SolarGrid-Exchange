@@ -4,6 +4,8 @@ import { ApiError } from '../api/apiClient'
 import { resolvePostLoginDestination } from '../auth/roleRouting'
 import { useAuth } from '../auth/useAuth'
 import { LoadingState } from '../components/LoadingState'
+import { ArrowRightIcon, SolarGridLogoIcon } from '../components/icons'
+import { ThemeToggle } from '../components/ThemeToggle'
 
 interface LoginLocationState {
   from?: {
@@ -57,19 +59,25 @@ export function LoginPage() {
     <main className="login-page">
       <section className="login-brand-panel" aria-label="SolarGrid Exchange introduction">
         <div className="login-brand-content">
-          <span className="brand-mark brand-mark-large" aria-hidden="true">SG</span>
+          <span className="brand-mark brand-mark-large" aria-hidden="true"><SolarGridLogoIcon /></span>
           <p className="page-eyebrow text-white-50 mt-4">Smart microgrid operations</p>
           <h1 className="display-5 fw-semibold">Share clean energy with confidence.</h1>
           <p className="lead text-white-50 mb-0">
             One secure workspace for Prosumers, Grid Operators, and Backoffice teams.
           </p>
+          <div className="login-facts" aria-hidden="true">
+            <div><strong>24/7</strong><span>Live operations</span></div>
+            <div><strong>Secure</strong><span>Role-based access</span></div>
+            <div><strong>Precise</strong><span>Energy allocation</span></div>
+          </div>
         </div>
       </section>
 
       <section className="login-form-panel" aria-labelledby="login-heading">
+        <ThemeToggle className="login-theme" />
         <div className="login-card">
           <div className="d-lg-none d-flex align-items-center gap-2 mb-4">
-            <span className="brand-mark" aria-hidden="true">SG</span>
+            <span className="brand-mark" aria-hidden="true"><SolarGridLogoIcon /></span>
             <span className="fw-semibold">SolarGrid Exchange</span>
           </div>
           <p className="page-eyebrow">Welcome back</p>
@@ -117,6 +125,7 @@ export function LoginPage() {
               disabled={isSubmitting || !email.trim() || !password}
             >
               {isSubmitting ? 'Signing in…' : 'Sign in'}
+              {!isSubmitting && <ArrowRightIcon width={18} height={18} />}
             </button>
           </form>
           <p className="small text-body-secondary mt-4 mb-0">

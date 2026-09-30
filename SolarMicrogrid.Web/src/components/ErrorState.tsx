@@ -1,3 +1,5 @@
+import { AlertIcon } from './icons'
+
 interface ErrorStateProps {
   title?: string
   message: string
@@ -11,7 +13,7 @@ export function ErrorState({
 }: ErrorStateProps) {
   return (
     <section className="state-panel text-center" role="alert" aria-labelledby="error-state-title">
-      <div className="state-icon state-icon-error" aria-hidden="true">!</div>
+      <div className="state-icon state-icon-error" aria-hidden="true"><AlertIcon width={28} height={28} /></div>
       <h2 id="error-state-title" className="h5 mb-2">{title}</h2>
       <p className="text-body-secondary mb-3">{message}</p>
       {onRetry && (
