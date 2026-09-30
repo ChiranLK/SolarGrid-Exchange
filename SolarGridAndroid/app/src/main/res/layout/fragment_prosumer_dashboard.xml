@@ -3,12 +3,13 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/solar_surface">
+    android:background="?android:attr/colorBackground">
 
     <ScrollView
         android:id="@+id/prosumer_dashboard_content"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:clipToPadding="false"
         android:fillViewport="true"
         android:visibility="gone">
 
@@ -16,93 +17,203 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="@dimen/space_lg">
+            android:paddingStart="@dimen/sg_gutter"
+            android:paddingTop="@dimen/sg_space_8"
+            android:paddingEnd="@dimen/sg_gutter"
+            android:paddingBottom="@dimen/sg_space_32">
 
-            <LinearLayout
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
+                android:accessibilityHeading="true"
+                android:id="@+id/prosumer_dashboard_greeting"
+                android:contentDescription="@string/prosumer_dashboard_title"
+                android:text="@string/prosumer_dashboard_title"
+                android:textAppearance="@style/TextAppearance.SolarGrid.Display" />
 
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/prosumer_dashboard_title"
-                    android:textAppearance="@style/TextAppearance.SolarGrid.Headline" />
-
-                <Button
-                    android:id="@+id/prosumer_dashboard_refresh"
-                    style="@style/Widget.SolarGrid.Button"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:contentDescription="@string/refresh_dashboard"
-                    android:text="@string/refresh" />
-            </LinearLayout>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/sg_space_8"
+                android:text="@string/sg_dashboard_subtitle"
+                android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
 
             <TextView
                 android:id="@+id/prosumer_dashboard_refresh_notice"
+                style="@style/Widget.SolarGrid.Banner.Error"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_sm"
-                android:textColor="@color/solar_error"
+                android:layout_marginTop="@dimen/sg_space_16"
+                android:accessibilityLiveRegion="polite"
                 android:visibility="gone" />
 
+            <!-- Decorative hero: brand message only, no statistics or actions. -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/sg_space_24"
+                android:background="@drawable/sg_bg_hero"
+                android:clipToOutline="true"
+                android:importantForAccessibility="noHideDescendants">
+
+                <ImageView
+                    android:layout_width="190dp"
+                    android:layout_height="190dp"
+                    android:layout_gravity="top|end"
+                    android:layout_marginTop="-24dp"
+                    android:layout_marginEnd="-60dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/sg_illustration_rings" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/sg_space_24">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/app_name"
+                        android:textAppearance="@style/TextAppearance.SolarGrid.HeroEyebrow" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/sg_space_12"
+                        android:text="@string/sg_dashboard_hero_title"
+                        android:textAppearance="@style/TextAppearance.SolarGrid.Hero" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/sg_space_20"
+                        android:background="@drawable/sg_bg_hero_chip"
+                        android:drawablePadding="8dp"
+                        android:gravity="center_vertical"
+                        android:paddingStart="14dp"
+                        android:paddingTop="8dp"
+                        android:paddingEnd="16dp"
+                        android:paddingBottom="8dp"
+                        android:text="@string/prosumer_home"
+                        android:textColor="@color/sg_on_hero"
+                        android:textSize="14sp"
+                        app:drawableStartCompat="@drawable/sg_ic_sun_hero" />
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:layout_gravity="bottom|end"
+                    android:layout_margin="@dimen/sg_space_24"
+                    android:contentDescription="@null"
+                    android:src="@drawable/sg_ic_leaf_hero" />
+            </FrameLayout>
+
+            <!-- Metrics -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_md"
+                android:layout_marginTop="@dimen/sg_space_16"
                 android:baselineAligned="false"
                 android:orientation="horizontal">
 
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    app:cardCornerRadius="@dimen/card_radius">
+                    android:layout_height="match_parent"
+                    android:layout_weight="1">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="@dimen/space_md">
+                        android:padding="@dimen/sg_space_20">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/sg_metric_pending"
+                                android:textAppearance="@style/TextAppearance.SolarGrid.Eyebrow" />
+
+                            <ImageView
+                                android:layout_width="22dp"
+                                android:layout_height="22dp"
+                                android:contentDescription="@null"
+                                android:importantForAccessibility="no"
+                                android:src="@drawable/sg_ic_clock"
+                                app:tint="?attr/colorPrimary" />
+                        </LinearLayout>
 
                         <TextView
                             android:id="@+id/prosumer_dashboard_pending_count"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:textAppearance="@style/TextAppearance.SolarGrid.Headline" />
+                            android:layout_marginTop="@dimen/sg_space_12"
+                            android:textAppearance="@style/TextAppearance.SolarGrid.Metric" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="@string/pending_reservations" />
+                            android:layout_marginTop="@dimen/sg_space_4"
+                            android:text="@string/sg_dashboard_awaiting"
+                            android:textAppearance="@style/TextAppearance.SolarGrid.BodySmall" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="@dimen/space_sm"
-                    android:layout_weight="1"
-                    app:cardCornerRadius="@dimen/card_radius">
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="@dimen/sg_space_12"
+                    android:layout_weight="1">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="@dimen/space_md">
+                        android:padding="@dimen/sg_space_20">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/sg_metric_upcoming"
+                                android:textAppearance="@style/TextAppearance.SolarGrid.Eyebrow" />
+
+                            <ImageView
+                                android:layout_width="22dp"
+                                android:layout_height="22dp"
+                                android:contentDescription="@null"
+                                android:importantForAccessibility="no"
+                                android:src="@drawable/sg_ic_calendar"
+                                app:tint="?attr/colorPrimary" />
+                        </LinearLayout>
 
                         <TextView
                             android:id="@+id/prosumer_dashboard_future_count"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:textAppearance="@style/TextAppearance.SolarGrid.Headline" />
+                            android:layout_marginTop="@dimen/sg_space_12"
+                            android:textAppearance="@style/TextAppearance.SolarGrid.Metric" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="@string/approved_future_reservations" />
+                            android:layout_marginTop="@dimen/sg_space_4"
+                            android:text="@string/sg_dashboard_approved_bookings"
+                            android:textAppearance="@style/TextAppearance.SolarGrid.BodySmall" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
@@ -111,83 +222,105 @@
                 android:id="@+id/prosumer_dashboard_status_summary"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_md"
-                android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
+                android:layout_marginTop="@dimen/sg_space_16"
+                android:textAppearance="@style/TextAppearance.SolarGrid.BodySmall" />
 
-            <TextView
+            <!-- Current -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_lg"
-                android:text="@string/current_reservations"
-                android:textAppearance="@style/TextAppearance.SolarGrid.Title" />
+                android:layout_marginTop="@dimen/sg_space_32"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:accessibilityHeading="true"
+                    android:text="@string/current_reservations"
+                    android:textAppearance="@style/TextAppearance.SolarGrid.Title" />
+
+                <Button
+                    android:id="@+id/prosumer_dashboard_refresh"
+                    style="@style/Widget.SolarGrid.Button.Text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:contentDescription="@string/refresh_dashboard"
+                    android:text="@string/refresh" />
+            </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/prosumer_dashboard_current_list"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_sm"
+                android:layout_marginTop="@dimen/sg_space_12"
                 android:orientation="vertical" />
 
             <TextView
                 android:id="@+id/prosumer_dashboard_current_empty"
+                style="@style/Widget.SolarGrid.EmptyCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_sm"
-                android:text="@string/no_current_reservations"
-                android:textColor="@color/solar_muted" />
+                android:layout_marginTop="@dimen/sg_space_12"
+                android:text="@string/sg_empty_current" />
 
+            <!-- Pending -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_lg"
-                android:text="@string/pending_reservations"
+                android:layout_marginTop="@dimen/sg_space_32"
+                android:accessibilityHeading="true"
+                android:text="@string/sg_dashboard_pending_title"
                 android:textAppearance="@style/TextAppearance.SolarGrid.Title" />
 
             <LinearLayout
                 android:id="@+id/prosumer_dashboard_pending_list"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_sm"
+                android:layout_marginTop="@dimen/sg_space_12"
                 android:orientation="vertical" />
 
             <TextView
                 android:id="@+id/prosumer_dashboard_pending_empty"
+                style="@style/Widget.SolarGrid.EmptyCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_sm"
-                android:text="@string/no_pending_reservations"
-                android:textColor="@color/solar_muted" />
+                android:layout_marginTop="@dimen/sg_space_12"
+                android:text="@string/sg_empty_pending" />
 
+            <!-- History -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_lg"
-                android:text="@string/recent_booking_history"
+                android:layout_marginTop="@dimen/sg_space_32"
+                android:accessibilityHeading="true"
+                android:text="@string/sg_dashboard_history_title"
                 android:textAppearance="@style/TextAppearance.SolarGrid.Title" />
 
             <LinearLayout
                 android:id="@+id/prosumer_dashboard_history_list"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_sm"
+                android:layout_marginTop="@dimen/sg_space_12"
                 android:orientation="vertical" />
 
             <TextView
                 android:id="@+id/prosumer_dashboard_history_empty"
+                style="@style/Widget.SolarGrid.EmptyCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_sm"
-                android:text="@string/no_recent_history"
-                android:textColor="@color/solar_muted" />
+                android:layout_marginTop="@dimen/sg_space_12"
+                android:text="@string/sg_empty_history" />
 
             <Button
                 android:id="@+id/prosumer_dashboard_history"
-                style="@style/Widget.SolarGrid.Button"
+                style="@style/Widget.SolarGrid.Button.Secondary"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_lg"
-                android:layout_marginBottom="@dimen/space_lg"
-                android:text="@string/view_booking_history" />
+                android:layout_marginTop="@dimen/sg_space_24"
+                android:text="@string/view_booking_history"
+                app:icon="@drawable/sg_ic_history" />
         </LinearLayout>
     </ScrollView>
 

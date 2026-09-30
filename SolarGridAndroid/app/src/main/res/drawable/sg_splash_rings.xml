@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Concentric soft rings behind the splash logo (decorative). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="600dp" android:height="600dp"
+    android:viewportWidth="600" android:viewportHeight="600">
+    <path android:fillColor="#0FFFFFFF" android:pathData="M300,300m-300,0a300,300 0,1 1,600 0a300,300 0,1 1,-600 0" />
+    <path android:fillColor="#0DFFFFFF" android:pathData="M300,300m-240,0a240,240 0,1 1,480 0a240,240 0,1 1,-480 0" />
+    <path android:fillColor="#FF0E3D2D" android:pathData="M300,300m-180,0a180,180 0,1 1,360 0a180,180 0,1 1,-360 0" />
+    <path android:strokeColor="#26FFFFFF" android:strokeWidth="1" android:pathData="M300,300m-180,0a180,180 0,1 1,360 0a180,180 0,1 1,-360 0" />
+</vector>

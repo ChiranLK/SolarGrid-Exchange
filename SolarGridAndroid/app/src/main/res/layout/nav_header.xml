@@ -1,31 +1,78 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="180dp"
-    android:background="@color/solar_green_900"
-    android:gravity="bottom"
+    android:layout_height="wrap_content"
+    android:background="@color/sg_hero"
     android:orientation="vertical"
-    android:padding="@dimen/space_lg">
+    android:paddingStart="@dimen/sg_space_24"
+    android:paddingTop="56dp"
+    android:paddingEnd="@dimen/sg_space_24"
+    android:paddingBottom="@dimen/sg_space_24">
 
-    <ImageView
-        android:layout_width="56dp"
-        android:layout_height="56dp"
-        android:contentDescription="@null"
-        android:src="@drawable/ic_launcher" />
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:src="@drawable/sg_logo_mark" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/sg_space_12"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/sg_brand_name"
+                android:textAppearance="@style/TextAppearance.SolarGrid.Title"
+                android:textColor="@color/sg_on_hero" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/sg_brand_suffix"
+                android:textAppearance="@style/TextAppearance.SolarGrid.HeroEyebrow" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Initials are derived from the session name in MainActivity (display only). -->
+    <TextView
+        android:id="@+id/nav_header_initials"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_marginTop="@dimen/sg_space_24"
+        android:background="@drawable/sg_bg_avatar_hero"
+        android:gravity="center"
+        android:importantForAccessibility="no"
+        android:textColor="@color/sg_hero"
+        android:textSize="22sp"
+        android:textStyle="bold" />
 
     <TextView
         android:id="@+id/nav_header_name"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/space_md"
-        android:textColor="@color/white"
-        android:textSize="18sp"
-        android:textStyle="bold" />
+        android:layout_marginTop="@dimen/sg_space_16"
+        android:textAppearance="@style/TextAppearance.SolarGrid.Hero" />
 
     <TextView
         android:id="@+id/nav_header_role"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="@color/solar_green_100"
+        android:layout_marginTop="@dimen/sg_space_12"
+        android:background="@drawable/sg_bg_hero_chip"
+        android:paddingStart="14dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="14dp"
+        android:paddingBottom="6dp"
+        android:textColor="@color/sg_on_hero"
         android:textSize="14sp" />
 </LinearLayout>

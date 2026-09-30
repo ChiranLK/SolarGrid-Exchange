@@ -23,6 +23,7 @@ import com.solargrid.exchange.data.model.ProsumerDashboard;
 import com.solargrid.exchange.data.model.SessionUser;
 import com.solargrid.exchange.network.ApiError;
 import com.solargrid.exchange.ui.MainActivity;
+import com.solargrid.exchange.ui.common.DisplayFormats;
 import com.solargrid.exchange.ui.common.UiState;
 import com.solargrid.exchange.ui.common.UiStateView;
 import com.solargrid.exchange.ui.dashboard.DashboardReservationAdapter;
@@ -65,6 +66,9 @@ public final class ProsumerHomeFragment extends Fragment {
                     ApiError.Kind.FORBIDDEN, 403, getString(R.string.prosumer_screen_only)), null);
             return view;
         }
+        // Presentation only: personal greeting from the stored session name.
+        ((TextView) view.findViewById(R.id.prosumer_dashboard_greeting)).setText(
+                getString(R.string.sg_dashboard_greeting, DisplayFormats.firstName(session.getFullName())));
         viewModel = new ViewModelProvider(this).get(ProsumerDashboardViewModel.class);
 
         view.findViewById(R.id.prosumer_dashboard_refresh)
@@ -136,14 +140,13 @@ public final class ProsumerHomeFragment extends Fragment {
         ((TextView) root.findViewById(R.id.prosumer_dashboard_future_count))
                 .setText(String.valueOf(summary.getApprovedFutureCount()));
         ((TextView) root.findViewById(R.id.prosumer_dashboard_status_summary)).setText(getString(
-                R.string.prosumer_status_summary,
+                R.string.sg_dashboard_summary,
                 summary.getCurrentCount(),
                 summary.getPendingTotal(),
                 summary.getApprovedTotal(),
                 summary.getRejectedTotal(),
                 summary.getCancelledTotal(),
-                summary.getCompletedTotal(),
-                summary.getHistoryCount()));
+                summary.getCompletedTotal()));
         bindRows(root, R.id.prosumer_dashboard_current_list,
                 R.id.prosumer_dashboard_current_empty, dashboard.getCurrentReservations());
         bindRows(root, R.id.prosumer_dashboard_pending_list,

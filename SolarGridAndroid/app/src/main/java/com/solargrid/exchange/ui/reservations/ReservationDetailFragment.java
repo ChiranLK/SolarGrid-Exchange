@@ -1,6 +1,6 @@
 package com.solargrid.exchange.ui.reservations;
 
-import android.app.AlertDialog;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -22,6 +22,8 @@ import androidx.navigation.NavOptions;
 import androidx.navigation.Navigation;
 
 import com.solargrid.exchange.R;
+import com.solargrid.exchange.ui.common.DisplayFormats;
+import com.solargrid.exchange.ui.common.StatusStyles;
 import com.solargrid.exchange.data.model.Reservation;
 import com.solargrid.exchange.data.model.ReservationAllowedActions;
 import com.solargrid.exchange.data.model.ReservationStatusHistory;
@@ -211,24 +213,26 @@ public final class ReservationDetailFragment extends Fragment {
             return;
         }
         setText(view, R.id.reservation_detail_status, reservation.getStatus());
+        StatusStyles.apply(view.findViewById(R.id.reservation_detail_status), reservation.getStatus());
         setText(view, R.id.reservation_detail_station,
                 ReservationFormatters.station(reservation.getStationName(), reservation.getStationId()));
         setText(view, R.id.reservation_detail_address, reservation.getStationAddress());
-        setText(view, R.id.reservation_detail_time,
-                ReservationFormatters.localDateTime(reservation.getScheduledStartTimeUtc()) + " - "
-                        + ReservationFormatters.localDateTime(reservation.getScheduledEndTimeUtc()));
+        // Display only: readable local slot instead of two full date-time stamps.
+        ((TextView) view.findViewById(R.id.reservation_detail_time)).setText(
+                DisplayFormats.scheduleBlock(requireContext(),
+                        reservation.getScheduledStartTimeUtc(),
+                        reservation.getScheduledEndTimeUtc()));
         setText(view, R.id.reservation_detail_energy,
                 ReservationFormatters.energy(reservation.getRequestedEnergyKwh()));
-        setText(view, R.id.reservation_detail_reference, reservation.getId());
+        setText(view, R.id.reservation_detail_reference,
+                ReservationFormatters.displayReference(reservation.getId()));
         setText(view, R.id.reservation_detail_prosumer,
                 getString(R.string.prosumer_identity_format,
                         valueOrFallback(reservation.getProsumerFullName(), getString(R.string.current_user)),
                         reservation.getProsumerNic()));
         setText(view, R.id.reservation_detail_slot, reservation.getSlotId());
-        setText(view, R.id.reservation_detail_created,
-                ReservationFormatters.localDateTime(reservation.getCreatedAtUtc()));
-        setText(view, R.id.reservation_detail_updated,
-                ReservationFormatters.localDateTime(reservation.getUpdatedAtUtc()));
+        setText(view, R.id.reservation_detail_created, DisplayFormats.dateTime(reservation.getCreatedAtUtc()));
+        setText(view, R.id.reservation_detail_updated, DisplayFormats.dateTime(reservation.getUpdatedAtUtc()));
         bindOptionalReason(view, R.id.reservation_cancellation_reason_group,
                 R.id.reservation_detail_cancellation_reason, reservation.getCancellationReason());
         bindOptionalReason(view, R.id.reservation_rejection_reason_group,
@@ -314,15 +318,16 @@ public final class ReservationDetailFragment extends Fragment {
         View dialogView = LayoutInflater.from(requireContext()).inflate(
                 R.layout.dialog_cancel_reservation, null, false);
         EditText reason = dialogView.findViewById(R.id.cancel_dialog_reason);
-        setText(dialogView, R.id.cancel_dialog_reference, displayedReservation.getId());
+        setText(dialogView, R.id.cancel_dialog_reference,
+                ReservationFormatters.displayReference(displayedReservation.getId()));
         setText(dialogView, R.id.cancel_dialog_station,
                 ReservationFormatters.station(
                         displayedReservation.getStationName(), displayedReservation.getStationId()));
         setText(dialogView, R.id.cancel_dialog_time,
-                ReservationFormatters.localDateTime(displayedReservation.getScheduledStartTimeUtc()) + " - "
-                        + ReservationFormatters.localDateTime(
-                                displayedReservation.getScheduledEndTimeUtc()));
-        new AlertDialog.Builder(requireContext())
+                DisplayFormats.slotLabel(
+                        displayedReservation.getScheduledStartTimeUtc(),
+                        displayedReservation.getScheduledEndTimeUtc()));
+        new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.cancel_reservation)
                 .setMessage(R.string.cancel_confirmation)
                 .setView(dialogView)

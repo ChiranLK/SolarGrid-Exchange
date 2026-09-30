@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copy for splash, onboarding, bottom navigation, appearance, sign-out and role dashboards/profiles. -->
+<resources>
+    <!-- Splash -->
+    <string name="sg_splash_title">SolarGrid\nExchange.</string>
+    <string name="sg_splash_tagline">Local energy. Shared possibility.</string>
+
+    <!-- Onboarding -->
+    <string name="sg_onboarding_skip">Skip</string>
+    <string name="sg_onboarding_next">Next</string>
+    <string name="sg_onboarding_start">Get started</string>
+    <string name="sg_onboarding_page_description">Page %1$d of %2$d</string>
+    <string name="sg_onboarding_1_eyebrow">Find</string>
+    <string name="sg_onboarding_1_title">Clean energy,\ncloser to you.</string>
+    <string name="sg_onboarding_1_body">Discover solar stations within 25 km and see their live energy slots before you book.</string>
+    <string name="sg_onboarding_1_point_a">Nearby stations on a map and list</string>
+    <string name="sg_onboarding_1_point_b">Live available capacity per slot</string>
+    <string name="sg_onboarding_2_eyebrow">Book</string>
+    <string name="sg_onboarding_2_title">Reserve energy\nin seconds.</string>
+    <string name="sg_onboarding_2_body">Choose a slot, enter the kWh you need and follow every booking from request to approval.</string>
+    <string name="sg_onboarding_2_point_a">Book up to 7 days ahead</string>
+    <string name="sg_onboarding_2_point_b">Modify or cancel with 12 hours’ notice</string>
+    <string name="sg_onboarding_3_eyebrow">Transfer</string>
+    <string name="sg_onboarding_3_title">One secure scan\nat the station.</string>
+    <string name="sg_onboarding_3_body">Approved bookings unlock a short-lived QR. The Grid Operator verifies it and confirms your transfer.</string>
+    <string name="sg_onboarding_3_point_a">QR expires in minutes and is never stored</string>
+    <string name="sg_onboarding_3_point_b">Every step confirmed by the server</string>
+
+    <!-- Bottom navigation -->
+    <string name="sg_tab_home">Home</string>
+    <string name="sg_tab_stations">Stations</string>
+    <string name="sg_tab_bookings">Bookings</string>
+    <string name="sg_tab_history">History</string>
+    <string name="sg_tab_profile">Profile</string>
+    <string name="sg_tab_scan">Scan</string>
+
+    <!-- Appearance -->
+    <string name="sg_appearance">Appearance</string>
+    <string name="sg_appearance_title">Choose appearance</string>
+    <string name="sg_appearance_system">System default</string>
+    <string name="sg_appearance_light">Light</string>
+    <string name="sg_appearance_dark">Dark</string>
+    <string name="sg_open_profile">Open profile</string>
+
+    <!-- Sign out -->
+    <string name="sg_sign_out_title">Sign out of SolarGrid?</string>
+    <string name="sg_sign_out_message">You will need your email and password to sign in again. Your bookings stay safe on the server. Nothing is cancelled when you sign out.</string>
+    <string name="sg_sign_out_confirm">Sign out</string>
+    <string name="sg_sign_out_stay">Stay signed in</string>
+
+    <!-- Prosumer dashboard -->
+    <string name="sg_dashboard_greeting">Good to see you,\n%1$s.</string>
+    <string name="sg_dashboard_awaiting">Awaiting approval</string>
+    <string name="sg_dashboard_approved_bookings">Approved bookings</string>
+    <string name="sg_dashboard_summary">Current %1$d · Pending %2$d · Approved %3$d\nRejected %4$d · Cancelled %5$d · Completed %6$d</string>
+    <string name="sg_dashboard_pending_title">Pending approval</string>
+    <string name="sg_dashboard_history_title">Recent history</string>
+    <string name="sg_empty_current"><b>No transfer in progress</b>\nYour current reservations will appear here.</string>
+    <string name="sg_empty_pending"><b>Nothing awaiting approval</b>\nNew booking requests will appear here.</string>
+    <string name="sg_empty_history"><b>No recent history yet</b>\nCompleted and past bookings will appear here.</string>
+
+    <!-- Time zone labels -->
+    <string name="sg_zone_sl_short">SL time</string>
+    <string name="sg_zone_sl_long">Sri Lanka time</string>
+
+    <!-- Operator home -->
+    <string name="sg_operator_workspace">Grid Operator workspace</string>
+    <string name="sg_operator_scan_title">Scan a reservation</string>
+    <string name="sg_operator_scan_body">Scan the Prosumer’s QR, check the verified details, then confirm the transfer.</string>
+    <string name="sg_operator_control_body">Scanning verifies the booking. Only your explicit confirmation marks the transfer as complete.</string>
+
+    <!-- Profiles -->
+    <string name="sg_profile_prosumer_account">Prosumer account</string>
+    <string name="sg_profile_identity">Account identity</string>
+    <string name="sg_profile_deactivation">Deactivation</string>
+    <string name="sg_profile_identity_note">Identity and account status are managed by Backoffice.</string>
+    <string name="sg_profile_personal">Personal details</string>
+    <string name="sg_profile_close_body">Request deactivation from Backoffice. Your account stays active until the request is approved.</string>
+    <string name="sg_profile_name">Name</string>
+    <string name="sg_profile_staff_note">Your account details are managed by Backoffice.</string>
+
+    <!-- Login -->
+    <string name="sg_login_chip">Solar energy</string>
+    <string name="sg_login_intro">Welcome back. Sign in to manage your energy bookings.</string>
+    <string name="sg_login_error_title">We couldn’t sign you in</string>
+
+    <!-- Register -->
+    <string name="sg_register_toolbar">Create account</string>
+    <string name="sg_register_intro">Create your Prosumer account. Backoffice will review it before you can sign in.</string>
+    <string name="sg_navigate_back">Navigate back</string>
+</resources>

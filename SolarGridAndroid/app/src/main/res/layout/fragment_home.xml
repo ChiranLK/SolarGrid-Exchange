@@ -2,32 +2,59 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/solar_surface">
+    android:background="?android:attr/colorBackground"
+    android:fillViewport="true">
 
-    <com.google.android.material.card.MaterialCardView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="@dimen/space_md"
-        android:padding="@dimen/space_lg">
+        android:orientation="vertical"
+        android:padding="@dimen/sg_gutter">
 
-        <LinearLayout
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="@dimen/space_lg">
+            android:background="@drawable/sg_bg_hero"
+            android:clipToOutline="true">
 
-            <TextView
-                android:id="@+id/home_title"
+            <ImageView
+                android:layout_width="180dp"
+                android:layout_height="180dp"
+                android:layout_gravity="top|end"
+                android:layout_marginTop="-40dp"
+                android:layout_marginEnd="-50dp"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
+                android:src="@drawable/sg_illustration_rings" />
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textAppearance="@style/TextAppearance.SolarGrid.Headline" />
+                android:orientation="vertical"
+                android:padding="@dimen/sg_space_24">
 
-            <TextView
-                android:id="@+id/home_description"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_md"
-                android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
-        </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
+                <ImageView
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/sg_logo_mark" />
+
+                <TextView
+                    android:id="@+id/home_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/sg_space_20"
+                    android:accessibilityHeading="true"
+                    android:textAppearance="@style/TextAppearance.SolarGrid.Hero" />
+
+                <TextView
+                    android:id="@+id/home_description"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/sg_space_12"
+                    android:textAppearance="@style/TextAppearance.SolarGrid.HeroBody" />
+            </LinearLayout>
+        </FrameLayout>
+    </LinearLayout>
 </ScrollView>

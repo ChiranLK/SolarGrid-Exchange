@@ -2,41 +2,104 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/solar_surface">
+    android:background="@color/sg_hero"
+    android:clipChildren="false"
+    android:fitsSystemWindows="true">
+
+    <!-- Decorative rings; StartupActivity animates them (breathing scale + slow rotation). -->
+    <ImageView
+        android:id="@+id/startup_rings"
+        android:layout_width="720dp"
+        android:layout_height="720dp"
+        android:layout_gravity="center"
+        android:contentDescription="@null"
+        android:importantForAccessibility="no"
+        android:src="@drawable/sg_splash_rings" />
 
     <LinearLayout
         android:id="@+id/startup_loading"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:clipChildren="false"
         android:gravity="center"
         android:orientation="vertical"
-        android:padding="@dimen/space_xl">
+        android:padding="@dimen/sg_space_32">
 
-        <ImageView
-            android:layout_width="96dp"
-            android:layout_height="96dp"
-            android:contentDescription="@null"
-            android:src="@drawable/ic_launcher" />
+        <FrameLayout
+            android:layout_width="200dp"
+            android:layout_height="200dp"
+            android:clipChildren="false">
 
-        <ProgressBar
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_lg"
-            android:indeterminateTint="@color/solar_green_700" />
+            <View
+                android:id="@+id/startup_glow"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/sg_splash_glow"
+                android:importantForAccessibility="no" />
+
+            <ImageView
+                android:id="@+id/startup_logo"
+                android:layout_width="112dp"
+                android:layout_height="112dp"
+                android:layout_gravity="center"
+                android:background="@drawable/sg_bg_startup_logo"
+                android:contentDescription="@string/app_name"
+                android:padding="20dp"
+                android:src="@drawable/sg_logo_mark" />
+        </FrameLayout>
 
         <TextView
+            android:id="@+id/startup_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_md"
-            android:text="@string/startup_message"
-            android:textColor="@color/solar_text"
-            android:textSize="16sp" />
+            android:layout_marginTop="@dimen/sg_space_8"
+            android:gravity="center"
+            android:lineSpacingMultiplier="1.0"
+            android:text="@string/sg_splash_title"
+            android:textAppearance="@style/TextAppearance.SolarGrid.Display"
+            android:textColor="@color/sg_on_hero"
+            android:textSize="40sp" />
+
+        <TextView
+            android:id="@+id/startup_tagline"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/sg_space_16"
+            android:gravity="center"
+            android:text="@string/sg_splash_tagline"
+            android:textAppearance="@style/TextAppearance.SolarGrid.HeroBody" />
+
+        <LinearLayout
+            android:id="@+id/startup_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/sg_space_48"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ProgressBar
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:importantForAccessibility="no"
+                android:indeterminateTint="@color/sg_solar_gold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/sg_space_12"
+                android:accessibilityLiveRegion="polite"
+                android:text="@string/startup_message"
+                android:textAppearance="@style/TextAppearance.SolarGrid.HeroBody" />
+        </LinearLayout>
     </LinearLayout>
 
+    <!-- Error/retry state on a readable surface card over the hero background. -->
     <com.solargrid.exchange.ui.common.UiStateView
         android:id="@+id/startup_state"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
+        android:layout_margin="@dimen/sg_gutter"
+        android:background="@drawable/sg_bg_card"
         android:visibility="gone" />
 </FrameLayout>

@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="solar_green_900">#0B3D2E</color>
+    <!-- Legacy names kept for existing bindings (ProfileFragment uses solar_error / solar_text).
+         Values follow the redesign tokens; values-night/colors.xml supplies the dark variants. -->
+    <color name="solar_green_900">#0D3D2C</color>
     <color name="solar_green_700">#146B4A</color>
     <color name="solar_green_500">#2E9B68</color>
-    <color name="solar_green_100">#DDF3E8</color>
-    <color name="solar_gold_500">#F4B942</color>
-    <color name="solar_surface">#F6F8F7</color>
-    <color name="solar_text">#17231E</color>
-    <color name="solar_muted">#5D6D65</color>
-    <color name="solar_error">#B3261E</color>
+    <color name="solar_green_100">#E0EEDC</color>
+    <color name="solar_gold_500">#F4C65A</color>
+    <color name="solar_surface">#F5F6F0</color>
+    <color name="solar_text">#172D24</color>
+    <color name="solar_muted">#5C6E62</color>
+    <color name="solar_error">#A12E28</color>
     <color name="white">#FFFFFF</color>
 </resources>

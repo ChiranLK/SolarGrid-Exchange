@@ -1,24 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/solar_surface"
+    android:background="?android:attr/colorBackground"
     android:orientation="vertical"
-    android:padding="@dimen/space_md">
+    android:paddingStart="@dimen/sg_gutter"
+    android:paddingTop="@dimen/sg_space_8"
+    android:paddingEnd="@dimen/sg_gutter">
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:accessibilityHeading="true"
+        android:text="@string/sg_nearby_hero"
+        android:textAppearance="@style/TextAppearance.SolarGrid.Headline" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/sg_space_4"
         android:text="@string/station_list_explanation"
-        android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
+        android:textAppearance="@style/TextAppearance.SolarGrid.BodySmall" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/station_location_refresh"
-        style="@style/Widget.SolarGrid.Button"
+        style="@style/Widget.SolarGrid.Button.Tonal"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/space_sm"
-        android:text="@string/refresh_nearby_stations" />
+        android:layout_marginTop="@dimen/sg_space_12"
+        android:minHeight="48dp"
+        android:text="@string/refresh_nearby_stations"
+        app:icon="@drawable/sg_ic_refresh" />
 
     <com.solargrid.exchange.ui.common.UiStateView
         android:id="@+id/station_list_state"
@@ -27,25 +40,34 @@
 
     <TextView
         android:id="@+id/station_map_unavailable"
+        style="@style/Widget.SolarGrid.Banner.Info"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/space_sm"
+        android:layout_marginTop="@dimen/sg_space_12"
         android:text="@string/map_key_missing"
         android:visibility="gone" />
 
+    <!-- Hosts the real SupportMapFragment; rounded by its own background so GONE leaves no card. -->
     <FrameLayout
         android:id="@+id/station_map_container"
         android:layout_width="match_parent"
         android:layout_height="220dp"
-        android:layout_marginTop="@dimen/space_sm"
+        android:layout_marginTop="@dimen/sg_space_12"
+        android:background="@drawable/sg_bg_card"
+        android:clipToOutline="true"
         android:visibility="gone" />
 
     <ListView
         android:id="@+id/station_list"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="@dimen/space_md"
+        android:layout_marginTop="@dimen/sg_space_12"
         android:layout_weight="1"
-        android:dividerHeight="8dp"
+        android:clipToPadding="false"
+        android:divider="@android:color/transparent"
+        android:dividerHeight="12dp"
+        android:listSelector="@android:color/transparent"
+        android:paddingBottom="@dimen/sg_space_24"
+        android:scrollbarStyle="outsideOverlay"
         android:visibility="gone" />
 </LinearLayout>

@@ -5,19 +5,19 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <!-- Single inset owner for the content column: status bar on top, gesture bar at the bottom. -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:fitsSystemWindows="true"
         android:layout_height="match_parent"
+        android:background="?android:attr/colorBackground"
+        android:fitsSystemWindows="true"
         android:orientation="vertical">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/main_toolbar"
+            style="@style/Widget.SolarGrid.Toolbar"
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            android:background="@color/solar_green_900"
-            android:elevation="4dp"
-            app:titleTextColor="@color/white" />
+            android:layout_height="?attr/actionBarSize" />
 
         <androidx.fragment.app.FragmentContainerView
             android:id="@+id/main_nav_host"
@@ -26,16 +26,23 @@
             android:layout_height="0dp"
             android:layout_weight="1"
             app:defaultNavHost="true" />
+
+        <!-- Role-based tabs; MainActivity inflates the Prosumer or Grid Operator menu and
+             shows the bar only on top-level destinations. -->
+        <com.google.android.material.bottomnavigation.BottomNavigationView
+            android:id="@+id/main_bottom_nav"
+            style="@style/Widget.SolarGrid.BottomNav"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:paddingBottomSystemWindowInsets="false" />
     </LinearLayout>
 
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/main_navigation"
-        android:layout_width="300dp"
+        android:layout_width="312dp"
         android:layout_height="match_parent"
         android:layout_gravity="start"
         android:fitsSystemWindows="true"
         app:headerLayout="@layout/nav_header"
-        app:itemIconTint="@color/solar_green_700"
-        app:itemTextColor="@color/solar_text"
         app:menu="@menu/main_drawer_menu" />
 </androidx.drawerlayout.widget.DrawerLayout>

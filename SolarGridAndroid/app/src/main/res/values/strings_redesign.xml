@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Decorative copy added by the visual redesign. Existing strings files are unchanged. -->
+<resources>
+    <string name="sg_brand_name">SolarGrid</string>
+    <string name="sg_brand_suffix">EXCHANGE</string>
+    <string name="sg_login_hero">Your energy.\nYour community.</string>
+    <string name="sg_login_secure">Secure access for your microgrid community</string>
+    <string name="sg_email_placeholder">you@example.com</string>
+    <string name="sg_register_hero">Join your local energy network.</string>
+    <string name="sg_register_identity">01 / Identity</string>
+    <string name="sg_register_contact">02 / Contact</string>
+    <string name="sg_register_security">03 / Security</string>
+    <string name="sg_register_approval_note">Your account becomes available after Backoffice approval.</string>
+    <string name="sg_startup_tagline">Clean energy, shared locally.</string>
+    <string name="sg_role_grid_operator">Grid Operator</string>
+    <string name="sg_local_date_format">%1$s · local time</string>
+    <string name="sg_dashboard_subtitle">Your local energy, at a glance.</string>
+    <string name="sg_dashboard_hero_title">A brighter grid.\nBuilt together.</string>
+    <string name="sg_metric_pending">Pending</string>
+    <string name="sg_metric_upcoming">Upcoming</string>
+    <string name="sg_empty_card_hint">Nothing to show here yet.</string>
+    <string name="sg_view_station">View station</string>
+    <string name="sg_nearby_hero">Energy, closer to you.</string>
+    <string name="sg_station_eyebrow">Microgrid station</string>
+    <string name="sg_station_capacity">Station capacity</string>
+    <string name="sg_step_slot">Slot &amp; energy</string>
+    <string name="sg_step_review">Review</string>
+    <string name="sg_step_submitted">Submitted</string>
+    <string name="sg_step_one">1</string>
+    <string name="sg_step_two">2</string>
+    <string name="sg_step_three">3</string>
+    <string name="sg_energy_unit">kWh</string>
+    <string name="sg_review_hero">Looks good?\nReview your booking.</string>
+    <string name="sg_review_subtitle">Check the details before sending your request.</string>
+    <string name="sg_detail_details">Booking details</string>
+    <string name="sg_qr_hero">Your energy pass.</string>
+    <string name="sg_qr_subtitle">Show this QR to the Grid Operator at the station.</string>
+    <string name="sg_operator_hero">Ready for the\nnext transfer.</string>
+    <string name="sg_operator_hero_eyebrow">Verify. Review. Complete.</string>
+    <string name="sg_operator_hero_title">Trusted energy,\none scan away.</string>
+    <string name="sg_operator_chip">Server-verified</string>
+    <string name="sg_operator_control_title">You stay in control</string>
+    <string name="sg_verify_care_title">Confirm with care</string>
+    <string name="sg_onboarding_1_chip_a">25 km radius</string>
+    <string name="sg_onboarding_1_chip_b">Live slots</string>
+    <string name="sg_onboarding_2_chip_a">7-day window</string>
+    <string name="sg_onboarding_2_chip_b">Exact kWh</string>
+    <string name="sg_onboarding_3_chip_a">Server-verified</string>
+    <string name="sg_onboarding_3_chip_b">Short-lived QR</string>
+    <string name="sg_slot_available">%1$.2f kWh available</string>
+    <string name="sg_reservations_hero">Your reservations.</string>
+    <string name="sg_reservations_subtitle">Keep every energy booking in view.</string>
+    <string name="sg_reservations_show">Show reservations</string>
+</resources>

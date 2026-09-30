@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Shared decorative brand block for entry and account screens. Contains no bound IDs.
+     The chip sits on its own line so the brand name never breaks at large font scales. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="@drawable/sg_bg_logo_tile"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:padding="8dp"
+            android:src="@drawable/sg_logo_mark" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/sg_space_12"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/sg_brand_name"
+                android:textAppearance="@style/TextAppearance.SolarGrid.Title" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/sg_brand_suffix"
+                android:textAppearance="@style/TextAppearance.SolarGrid.Eyebrow"
+                android:textColor="?attr/colorOnSurface" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/sg_space_16"
+        android:background="@drawable/sg_bg_chip"
+        android:paddingStart="14dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="14dp"
+        android:paddingBottom="8dp"
+        android:text="@string/sg_login_chip"
+        android:textAppearance="@style/TextAppearance.SolarGrid.Eyebrow" />
+</LinearLayout>

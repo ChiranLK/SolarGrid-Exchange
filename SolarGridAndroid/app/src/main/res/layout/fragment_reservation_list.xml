@@ -2,43 +2,74 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/solar_surface">
+    android:background="?android:attr/colorBackground">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:padding="@dimen/space_lg">
+        android:paddingStart="@dimen/sg_gutter"
+        android:paddingTop="@dimen/sg_space_8"
+        android:paddingEnd="@dimen/sg_gutter">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:accessibilityHeading="true"
+            android:text="@string/sg_reservations_hero"
+            android:textAppearance="@style/TextAppearance.SolarGrid.Display" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/sg_space_8"
+            android:text="@string/sg_reservations_subtitle"
+            android:textAppearance="@style/TextAppearance.SolarGrid.Body" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/sg_space_20"
+            android:labelFor="@id/reservation_view_filter"
+            android:text="@string/sg_reservations_show"
+            android:textAppearance="@style/TextAppearance.SolarGrid.Label" />
 
         <Spinner
             android:id="@+id/reservation_view_filter"
             android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:contentDescription="@string/reservation_filter" />
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/sg_space_8"
+            android:contentDescription="@string/reservation_filter"
+            android:minHeight="56dp" />
 
         <TextView
             android:id="@+id/reservation_list_summary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_sm"
-            android:textAppearance="@style/TextAppearance.SolarGrid.Body"
+            android:layout_marginTop="@dimen/sg_space_12"
+            android:textAppearance="@style/TextAppearance.SolarGrid.BodySmall"
             android:visibility="gone" />
 
         <TextView
             android:id="@+id/reservation_refresh_notice"
+            style="@style/Widget.SolarGrid.Banner.Error"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_sm"
-            android:textColor="@android:color/holo_red_dark"
+            android:layout_marginTop="@dimen/sg_space_12"
+            android:accessibilityLiveRegion="polite"
             android:visibility="gone" />
 
         <ListView
             android:id="@+id/reservation_list"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_marginTop="@dimen/space_md"
+            android:layout_marginTop="@dimen/sg_space_16"
             android:layout_weight="1"
-            android:dividerHeight="8dp"
+            android:clipToPadding="false"
+            android:divider="@android:color/transparent"
+            android:dividerHeight="12dp"
+            android:listSelector="@android:color/transparent"
+            android:paddingBottom="@dimen/sg_space_24"
             android:visibility="gone" />
     </LinearLayout>
 
