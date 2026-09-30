@@ -506,3 +506,7 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Local design packs (not tracked)
+SolarGrid-Design-Pack/
+SolarGrid-Web-2026-Design-Pack/
