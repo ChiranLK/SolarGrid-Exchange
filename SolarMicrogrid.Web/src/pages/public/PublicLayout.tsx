@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, Outlet, useLocation } from 'react-router-dom'
 import { getHomePathForRole } from '../../auth/roleRouting'
 import { useAuth } from '../../auth/useAuth'
 import { ThemeToggle } from '../../components/ThemeToggle'
@@ -14,19 +14,31 @@ import {
 } from '../../components/icons'
 import { contactDetails, publicNavigation } from './siteContent'
 
+const homeSections = ['features', 'how-it-works']
+const sectionOffset = 140
+
 /** Shell for the public site: glass header, page content and footer. */
 export function PublicLayout({ children }: { children?: ReactNode }) {
   const { session } = useAuth()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const [currentSection, setCurrentSection] = useState<string | null>(null)
 
+  // Tracks the header shadow and which home-page section is on screen, for the menu underline.
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12)
+    const onScroll = () => {
+      setScrolled(window.scrollY > 12)
+      const inView = homeSections.find((id) => {
+        const rect = document.getElementById(id)?.getBoundingClientRect()
+        return rect !== undefined && rect.top <= sectionOffset && rect.bottom > sectionOffset
+      })
+      setCurrentSection(inView ?? null)
+    }
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
-  }, [])
+  }, [location.pathname])
 
   // Honour in-page anchors such as /#features, otherwise start each page at the top.
   useEffect(() => {
@@ -50,6 +62,13 @@ export function PublicLayout({ children }: { children?: ReactNode }) {
   }, [menuOpen])
 
   const closeMenu = () => setMenuOpen(false)
+
+  const isActive = (to: string) => {
+    const [path, section] = to.split('#')
+    if (location.pathname !== path) return false
+    if (path !== '/') return true
+    return section ? currentSection === section : currentSection === null
+  }
   const workspacePath = session ? getHomePathForRole(session.role) : null
 
   const accountAction = workspacePath ? (
@@ -76,14 +95,14 @@ export function PublicLayout({ children }: { children?: ReactNode }) {
 
           <nav className="site-nav d-none d-lg-flex" aria-label="Main">
             {publicNavigation.map((item) => (
-              <NavLink
+              <Link
                 key={item.to}
                 to={item.to}
-                end
-                className={({ isActive }) => `site-nav-link ${isActive && !item.to.includes('#') && !location.hash ? 'active' : ''}`}
+                className={`site-nav-link ${isActive(item.to) ? 'active' : ''}`}
+                aria-current={isActive(item.to) ? 'page' : undefined}
               >
                 {item.label}
-              </NavLink>
+              </Link>
             ))}
           </nav>
 

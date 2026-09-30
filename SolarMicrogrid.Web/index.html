@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en" data-bs-theme="light">
+<html lang="en" data-bs-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#EDF5EF" />
+    <meta name="theme-color" content="#06120E" />
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" type="image/svg+xml" href="/solargrid-logo.svg" />
     <meta
@@ -17,9 +17,9 @@
     <!-- Apply the stored theme before first paint to avoid a wrong-theme flash. -->
     <script>
       (function () {
-        var stored = 'system'
-        try { stored = localStorage.getItem('solargrid-theme') || 'system' } catch (e) { /* storage blocked */ }
-        var dark = stored === 'dark' || (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        var stored = 'dark'
+        try { stored = localStorage.getItem('solargrid-theme') || 'dark' } catch (e) { /* storage blocked */ }
+        var dark = stored !== 'light'
         document.documentElement.setAttribute('data-bs-theme', dark ? 'dark' : 'light')
         var meta = document.querySelector('meta[name="theme-color"]')
         if (meta) meta.setAttribute('content', dark ? '#06120E' : '#EDF5EF')

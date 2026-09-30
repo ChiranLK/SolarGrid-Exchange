@@ -6,9 +6,10 @@ const darkQuery = '(prefers-color-scheme: dark)'
 function readStoredMode(): ThemeMode {
   try {
     const stored = window.localStorage.getItem(themeStorageKey)
-    return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system'
+    // Dark is the default. The old "system" choice is no longer offered, so it also resolves to dark.
+    return stored === 'light' ? 'light' : 'dark'
   } catch {
-    return 'system'
+    return 'dark'
   }
 }
 
