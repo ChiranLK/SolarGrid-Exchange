@@ -196,19 +196,19 @@ The full runbook, including rollback and troubleshooting, is in [docs/deployment
 
 Each member's individual commits are visible in the [commit history](https://github.com/ChiranLK/SolarGrid-Exchange/commits/main).
 
-### Member 1 – IT23472020 – Authentication and Account Management (Maduwantha HAS)
+### Member 1 – Authentication and Account Management (Maduwantha HAS)
 
 Responsible for designing and implementing the system's authentication and account-management functionality. This includes MongoDB configuration, JWT-based authentication, role-based authorization, user and prosumer account management, login, profile management, account activation/reactivation, and deactivation requests. The member also develops the corresponding web-based administration interfaces and Android registration, login, profile, and session-management features.
 
-### Member 2 – IT23401976 – Solar Stations, Energy Slots and Maps (Serasinghe CS)
+### Member 2 – Solar Stations, Energy Slots and Maps (Serasinghe CS)
 
 Responsible for developing the solar-station and energy-slot management module. This includes implementing solar station information, GPS coordinates, capacity and battery details, operating schedules, station activation/deactivation, booking-slot management, and availability rules. The member also develops the web interfaces for station and slot administration and integrates Google Maps functionality into the Android application to display nearby stations, station markers, station details, and available energy slots.
 
-### Member 3 – IT23405240 – Reservation Workflow (Alahakoon PB)
+### Member 3 – Reservation Workflow (Alahakoon PB)
 
 Responsible for designing and implementing the complete energy-reservation workflow. This includes reservation creation, modification, cancellation, availability validation, duplicate-booking prevention, slot release, reservation approval/rejection, and enforcement of the seven-day booking and twelve-hour modification/cancellation rules. The member also develops the web-based reservation management functions and Android reservation features, including slot selection, booking, reservation summaries, modification, cancellation, and status handling.
 
-### Member 4 – IT23242272 – Dashboard, QR Verification and Deployment (Nimadith LMH)
+### Member 4 – Dashboard, QR Verification and Deployment (Nimadith LMH)
 
 Responsible for developing the operational dashboards, transaction management, QR-based verification, and deployment-related functionality. This includes dashboard statistics, reservation history, search and filtering, QR transaction data, server-side QR verification, energy-transfer completion, and prevention of duplicate transaction completion. The member also develops the Grid Operator dashboard and Android QR-generation/scanning functionality. In addition, the member contributes to IIS deployment, CORS configuration, OpenAPI verification, end-to-end integration testing, README consolidation, and overall system integration.
 
