@@ -5,10 +5,16 @@
   the MongoDB connection string and JWT key are passed as parameters and written only to
   the IIS app-pool environment.
 
-  Example:
-    powershell -ExecutionPolicy Bypass -File scripts\deploy-iis.ps1 `
-      -MongoConnectionString "mongodb://localhost:27019/?replicaSet=rs0&directConnection=true" `
-      -JwtKey "<at least 32 random characters>" -Port 8080
+  Examples:
+    Plain-HTTP lab/viva demo (Android debug build on the same network):
+      powershell -ExecutionPolicy Bypass -File scripts\deploy-iis.ps1 `
+        -MongoConnectionString "mongodb://localhost:27019/?replicaSet=rs0&directConnection=true" `
+        -JwtKey "<at least 32 random characters>" -Port 8080 -Environment Development
+
+    Real production (needs an HTTPS binding with a trusted certificate):
+      powershell -ExecutionPolicy Bypass -File scripts\deploy-iis.ps1 `
+        -MongoConnectionString "<connection-string>" -JwtKey "<random key>" `
+        -CorsOrigins "https://web-host.example"
 #>
 param(
     [Parameter(Mandatory = $true)][string]$MongoConnectionString,
@@ -17,7 +23,8 @@ param(
     [string]$SiteName = 'SolarGridApi',
     [string]$PhysicalPath = 'C:\inetpub\SolarGrid\current',
     [int]$Port = 8080,
-    [string[]]$CorsOrigins = @('http://localhost:5173'),
+    [string[]]$CorsOrigins = @(),
+    [ValidateSet('Production', 'Development')][string]$Environment = 'Production',
     [switch]$SkipPublish
 )
 
@@ -64,8 +71,15 @@ Set-ItemProperty "IIS:\AppPools\$SiteName" -Name enable32BitAppOnWin64 -Value $f
 if (Test-Path "IIS:\Sites\$SiteName") { Remove-Website -Name $SiteName }
 New-Website -Name $SiteName -ApplicationPool $SiteName -PhysicalPath $PhysicalPath -Port $Port | Out-Null
 
+if ($Environment -eq 'Production') {
+    Write-Warning 'Production mode redirects HTTP to HTTPS and accepts only HTTPS CORS origins. Add an HTTPS binding with a trusted certificate, or use -Environment Development for a plain-HTTP lab demo.'
+    if ($CorsOrigins | Where-Object { $_ -notmatch '^https://' }) {
+        throw 'Production requires every CORS origin to start with https://.'
+    }
+}
+
 $environment = [ordered]@{
-    ASPNETCORE_ENVIRONMENT          = 'Production'
+    ASPNETCORE_ENVIRONMENT          = $Environment
     MongoSettings__ConnectionString = $MongoConnectionString
     MongoSettings__DatabaseName     = $DatabaseName
     JwtSettings__Key                = $JwtKey

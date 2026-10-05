@@ -139,8 +139,10 @@ The latest recorded results are in [docs/member-4/final-audit.md](docs/member-4/
 To publish and host the API on a prepared IIS server in one step, run from an elevated PowerShell (it also creates the app pool, site, environment values and firewall rule, then checks `/health`):
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\deploy-iis.ps1 -MongoConnectionString "<connection-string>" -JwtKey "<random-value-at-least-32-characters>" -Port 8080
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\deploy-iis.ps1 -MongoConnectionString "<connection-string>" -JwtKey "<random-value-at-least-32-characters>" -Port 8080 -Environment Development
 ```
+
+`-Environment Development` is for a plain-HTTP lab or viva demo. For real production leave the default (`Production`), which requires an HTTPS binding with a trusted certificate and HTTPS CORS origins.
 
 For the Android app, set `SOLARGRID_API_BASE_URL` in `SolarGridAndroid/local.properties` to the server address (`http://<server-ip>:8080/api/` for a lab server, `https://<api-host>/api/` for release).
 
