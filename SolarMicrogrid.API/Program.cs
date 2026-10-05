@@ -204,6 +204,10 @@ if (!app.Environment.IsDevelopment())
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<ExceptionMiddleware>();
 
+// Serve the published React client from IIS on the API origin so browser requests can use /api.
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseCors("WebClient");
 
 // Authentication (who are you?) must come before authorization (what may you do?).
@@ -222,5 +226,25 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 });
 
 app.MapControllers();
+
+// Preserve client-side routing for non-file web URLs without turning unknown API routes into HTML.
+app.MapFallback(async context =>
+{
+    if (context.Request.Path.StartsWithSegments("/api"))
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+
+    string indexPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "index.html");
+    if (!File.Exists(indexPath))
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+
+    context.Response.ContentType = "text/html; charset=utf-8";
+    await context.Response.SendFileAsync(indexPath);
+});
 
 app.Run();

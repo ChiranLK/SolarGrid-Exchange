@@ -222,7 +222,7 @@ export function ReservationCreatePage() {
       <PageHeader
         eyebrow="Energy reservations"
         title={isStaff ? 'Create a reservation for a Prosumer' : 'Create reservation'}
-        description="The API makes the final account, schedule, overlap, booking-window, and capacity decisions."
+        description="Pick a station and slot, then enter the energy amount. Schedule, booking window and capacity are checked on save."
       />
 
       <CreationProgress step={step} isStaff={isStaff} />
@@ -250,7 +250,7 @@ export function ReservationCreatePage() {
       ) : stations.length === 0 ? (
         <EmptyState
           title="No active stations available"
-          description="A reservation cannot be created until the API returns an active station."
+          description="A reservation cannot be created until an active station is available."
           action={<Link className="btn btn-outline-secondary" to={returnTo}>Back to reservations</Link>}
         />
       ) : step === 'details' ? (
@@ -354,7 +354,7 @@ export function ReservationCreatePage() {
                   />
                   <div id="requested-energy-help" className="form-text">
                     {selectedSlot
-                      ? `The slot currently reports ${formatEnergy(selectedSlot.availableCapacityKwh)} available. The API rechecks capacity when saving.`
+                      ? `The slot currently reports ${formatEnergy(selectedSlot.availableCapacityKwh)} available. Capacity is checked again when saving.`
                       : 'Quantity is required by the slot allocation model.'}
                   </div>
                 </div>
@@ -378,12 +378,12 @@ export function ReservationCreatePage() {
           <div className="card-body p-4">
             <h2 id="reservation-review-title" className="h5 mb-2">Review reservation</h2>
             <p className="text-body-secondary mb-4">
-              Confirm the intended owner, slot, and quantity. Saving still requires the API's current validation.
+              Confirm the intended owner, slot, and quantity. The booking is validated when you save.
             </p>
             {submitError && <CreationErrorAlert error={submitError} />}
             {isReconciling && (
               <div className="alert alert-info" role="status">
-                The first response was not received. Reusing the same request identifier to safely reconcile with the API…
+                The first response was not received. Checking safely whether the reservation was saved…
               </div>
             )}
             <dl className="detail-grid mb-0">

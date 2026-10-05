@@ -133,7 +133,7 @@ export function ReservationListPage() {
       <PageHeader
         eyebrow="Energy reservations"
         title="Reservations"
-        description="Results and actions are scoped by the central API for your current account."
+        description="Reservations and actions shown are the ones your account can manage."
         actions={(
           <Link
             className="btn btn-success"

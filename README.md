@@ -99,13 +99,24 @@ Never commit connection strings, JWT keys, tokens, QR values or real NIC data.
 
 ## Demo data
 
-With the API running and an existing Backoffice account, seed two stations (open every day), upcoming energy slots and a Grid Operator. The script can be re-run safely.
+For a fresh database, create the first Backoffice account with the start-up bootstrap ([docs/member-1/backoffice-bootstrap.md](docs/member-1/backoffice-bootstrap.md)), then load the demo data through the running API. The script can be re-run safely and no passwords are stored in it.
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\seed-demo-data.ps1 -BackofficeEmail "<backoffice-email>" -BackofficePassword "<password>" -OperatorPassword "<new-operator-password>"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\seed-demo-data.ps1 -BackofficeEmail "<first-backoffice-email>" -BackofficePassword "<its-password>" -DemoPassword "<password-for-all-other-demo-accounts>"
 ```
 
-The Grid Operator is `demo.operator@solargrid.test`, assigned to Colombo Solar Hub, with the password you pass as `-OperatorPassword`.
+It loads data that matches the assignment brief for all three roles:
+
+| Data | What is created |
+| --- | --- |
+| Stations | 7 stations across Sri Lanka with GPS location, generation capacity (kW), battery storage (kWh) and a weekly operating schedule; one station is deactivated |
+| Energy slots | About 150 bookable slots for the next 6 days, respecting each station's opening hours; one slot is marked unavailable by an operator |
+| Backoffice | 2 accounts (the bootstrap account plus one created through the user management endpoint) |
+| Grid Operators | 4 accounts, each assigned to a station |
+| Prosumers | 9 accounts identified by NIC: active, awaiting activation, deactivation requested and deactivated |
+| Reservations | 14 reservations in every state: Pending, Approved, Rejected, Cancelled and Completed (through the real QR generate, verify and complete flow) |
+
+Demo accounts use the email pattern `first.last@solargrid.example` (for example `dilshan.fernando@solargrid.example`, a Grid Operator for Colombo Solar Hub) with the `-DemoPassword` you chose.
 
 ## Tests
 

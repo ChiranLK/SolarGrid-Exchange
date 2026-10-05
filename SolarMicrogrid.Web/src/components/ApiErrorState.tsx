@@ -38,7 +38,7 @@ export function ApiErrorState({
   if (error.status === 0) {
     return (
       <ErrorState
-        title="API unavailable"
+        title="Service unavailable"
         message={error.message}
         onRetry={onRetry}
       />

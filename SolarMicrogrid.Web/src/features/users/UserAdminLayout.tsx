@@ -44,7 +44,7 @@ export function UserAdminLayout() {
       <PageHeader
         eyebrow="Backoffice"
         title="Account administration"
-        description="Create staff accounts, approve new Prosumers, and manage account status. Every rule is enforced by the SolarGrid API."
+        description="Create staff accounts, approve new Prosumers, and manage account status."
         actions={<Link to="/users/new" className="btn btn-success">Create staff account</Link>}
       />
       <nav aria-label="Account administration sections" className="mb-4">

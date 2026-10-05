@@ -48,7 +48,7 @@ describe('user list states', () => {
 
   it('shows access denied for 403 and a retry for an unreachable API', () => {
     expect(listHtml({ error: new ApiError(403, 'You do not have permission to perform this action.') })).toContain('Access denied')
-    expect(listHtml({ error: new ApiError(0, 'Unable to reach the SolarGrid API.') })).toContain('API unavailable')
+    expect(listHtml({ error: new ApiError(0, 'Unable to reach SolarGrid right now.') })).toContain('Service unavailable')
   })
 
   it('renders safe account columns, station name and request state without secrets', () => {
@@ -136,7 +136,7 @@ describe('deactivation request states', () => {
     expect(html).toContain('dateTime="2026-09-20T04:30:00Z"')
     expect(html).toContain('20 Sept 2026')
     expect(html).toContain('aria-label="Approve deactivation for Leaving Prosumer"')
-    expect(html).toContain('does not currently support rejecting')
+    expect(html).toContain('cannot be declined here')
   })
 })
 

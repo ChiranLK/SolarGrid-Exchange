@@ -68,11 +68,11 @@ export function SlotFormPage() {
   return (
     <>
       <div className="mb-3"><Link to={stationId ? `/stations/${encodeURIComponent(stationId)}` : '/stations'}>← Back to station</Link></div>
-      <PageHeader eyebrow="Backoffice" title={slotId ? 'Edit energy slot' : 'Create energy slot'} description="Enter UTC times. The API checks the Asia/Colombo station schedule, overlap, reservations, and capacity." />
+      <PageHeader eyebrow="Backoffice" title={slotId ? 'Edit energy slot' : 'Create energy slot'} description="Enter UTC times. The slot must fit the station schedule (Asia/Colombo) without overlapping another slot." />
       {loading ? <LoadingState label="Loading slot form…" /> : loadError ? <ApiErrorState error={loadError} resourceName={slotId ? 'slot' : 'station'} /> : slotId && slot?.stationId !== stationId ? <ErrorState title="Slot and station do not match" message="Open this slot from its own station page." /> : !station?.isActive && !slotId ? <ErrorState title="Station is inactive" message="Activate the station before creating a slot." /> : (
         <form className="card border-0 shadow-sm" onSubmit={submit} noValidate><div className="card-body p-4">
           <p>Station: <strong>{station?.name}</strong></p>
-          {slot && <p className="text-body-secondary">Current available capacity: {slot.availableCapacityKwh} kWh. Existing reservations are protected by the API.</p>}
+          {slot && <p className="text-body-secondary">Current available capacity: {slot.availableCapacityKwh} kWh. Existing reservations are protected.</p>}
           {saveError !== null && <div className="mb-3">{saveError instanceof ApiError && saveError.status === 409
             ? <ErrorState title="Slot change conflicts with current data" message={saveError.message} />
             : <ApiErrorState error={saveError} resourceName="slot" />}{validationDetails.length > 0 && <ul className="alert alert-danger mt-2 mb-0">{validationDetails.map((message) => <li key={message}>{message}</li>)}</ul>}</div>}

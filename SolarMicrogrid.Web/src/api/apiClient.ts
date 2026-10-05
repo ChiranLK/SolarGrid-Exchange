@@ -73,7 +73,7 @@ export async function apiRequest<T>(
       throw new ApiError(status, getErrorMessage(status, problem), problem)
     }
 
-    throw new ApiError(0, 'Unable to reach the SolarGrid API. Check that it is running and try again.')
+    throw new ApiError(0, 'Unable to reach SolarGrid right now. Check your connection and try again.')
   }
 
   return payload as T

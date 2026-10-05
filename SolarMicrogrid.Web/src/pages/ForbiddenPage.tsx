@@ -5,7 +5,7 @@ export function ForbiddenPage() {
   return (
     <ErrorState
       title="Access denied"
-      message="Your current API role does not allow access to this page."
+      message="Your current role does not allow access to this page."
       onRetry={undefined}
     />
   )

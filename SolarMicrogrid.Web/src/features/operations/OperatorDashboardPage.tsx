@@ -60,7 +60,7 @@ export function OperatorDashboardPage() {
       <PageHeader
         eyebrow="Grid operations"
         title="Operator dashboard"
-        description="Live counts and activity are calculated by the API for your assigned station."
+        description="Live counts and activity for your assigned station."
         actions={(
           <>
             <Link className="btn btn-outline-success" to="/operator/history">
