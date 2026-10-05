@@ -78,7 +78,7 @@ if ($Environment -eq 'Production') {
     }
 }
 
-$environment = [ordered]@{
+$appPoolEnvironment = [ordered]@{
     ASPNETCORE_ENVIRONMENT          = $Environment
     MongoSettings__ConnectionString = $MongoConnectionString
     MongoSettings__DatabaseName     = $DatabaseName
@@ -86,11 +86,11 @@ $environment = [ordered]@{
     OpenApi__Enabled                = 'false'
 }
 for ($index = 0; $index -lt $CorsOrigins.Count; $index++) {
-    $environment["Cors__AllowedOrigins__$index"] = $CorsOrigins[$index]
+    $appPoolEnvironment["Cors__AllowedOrigins__$index"] = $CorsOrigins[$index]
 }
 
 & $appcmd set apppool "/apppool.name:$SiteName" "/-environmentVariables" 2>$null | Out-Null
-foreach ($entry in $environment.GetEnumerator()) {
+foreach ($entry in $appPoolEnvironment.GetEnumerator()) {
     & $appcmd set apppool "/apppool.name:$SiteName" "/+environmentVariables.[name='$($entry.Key)',value='$($entry.Value)']" | Out-Null
 }
 
