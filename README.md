@@ -1,8 +1,38 @@
 # SolarGrid-Exchange
 SolarGrid Exchange: A Client–Server Smart Solar Microgrid Energy Trading and Reservation System
 
-- Git repository: https://github.com/ChiranLK/SolarGrid-Exchange (individual contributions are listed under [Team contributions](#team-contributions) and visible in the commit history)
-- Demo video (5 minutes or less): `<video-link>` (replace with the YouTube or OneDrive link before submission)
+## Repository link
+
+https://github.com/ChiranLK/SolarGrid-Exchange
+
+## Demo video
+
+Walkthrough of the web and Android apps (5 minutes or less): [Watch the demo video (OneDrive)](https://mysliit-my.sharepoint.com/:v:/g/personal/it23401976_my_sliit_lk/IQAt1BFpoLNzR6RHGsvHW2kEAbS_Ev1V9Km-_RUGBHPLlUE?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=Uag22c)
+
+## Project overview
+
+SolarGrid Exchange lets people who generate solar power (prosumers) reserve time slots at solar microgrid stations to trade energy. Backoffice staff manage users, stations, slots and reservation approvals. Grid operators verify a prosumer's secure QR code at the station and complete the energy transfer. One central Web API holds all the rules; the web app and the Android app are clients of it.
+
+## Technologies
+
+| Part | Technology |
+| --- | --- |
+| Web frontend | React 19, TypeScript, Vite, Bootstrap 5 |
+| Mobile app | Native Android (Java 17, XML layouts, Fragments/ViewModels), SQLite for the signed-in session, CameraX + ML Kit for QR scanning, Google Maps |
+| Backend | C# ASP.NET Core Web API (.NET 10), JWT authentication |
+| Database | MongoDB (replica set) |
+| Hosting | Windows Server + IIS |
+| Tests | xUnit, Moq, Vitest, Android unit tests |
+
+## Main features
+
+- **User roles**: Backoffice, Grid Operator and Prosumer, with role-based access in the API and both apps.
+- **Prosumer management**: registration by NIC, approval/activation, deactivation requests.
+- **Grid nodes (stations)**: stations with location, generation capacity, battery storage, weekly operating schedule and bookable energy slots.
+- **Bookings**: create, modify, cancel, approve and reject reservations, with capacity and scheduling rules enforced by the server.
+- **QR scanning**: approved reservations show a short-lived secure QR; Grid Operators scan it, verify it and complete the transfer once.
+- **Maps**: nearby stations on a map and in a list in the Android app.
+- **Dashboards and history**: role-scoped dashboards and searchable booking history.
 
 ## Architecture
 
@@ -159,16 +189,34 @@ For the Android app, set `SOLARGRID_API_BASE_URL` in `SolarGridAndroid/local.pro
 
 The full runbook, including rollback and troubleshooting, is in [docs/deployment/iis-deployment.md](docs/deployment/iis-deployment.md).
 
-## Team contributions
+## Individual contributions
 
-| Member | Component |
-| --- | --- |
-| Member 1 `<name / ID>` | Authentication, JWT roles, users/prosumers, Android SQLite session |
-| Member 2 `<name / ID>` | Stations, slots, capacity, station location data |
-| Member 3 `<name / ID>` | Reservation create/update/cancel/approve/reject and scheduling rules |
-| Member 4 `<name / ID>` | Dashboards, booking history/search, secure QR verification and completion, deployment |
+| Member | IT number | Name | Component |
+| --- | --- | --- | --- |
+| Member 1 | IT23472020 | Maduwantha HAS | Authentication and Account Management |
+| Member 2 | IT23401976 | Serasinghe CS | Solar Stations, Energy Slots and Maps |
+| Member 3 | IT23405240 | Alahakoon PB | Reservation Workflow |
+| Member 4 | IT23242272 | Nimadith LMH | Dashboard, QR Verification and Deployment |
 
-### Member 4 contribution
+Each member's individual commits are visible in the [commit history](https://github.com/ChiranLK/SolarGrid-Exchange/commits/main).
+
+### Member 1 – IT23472020 – Authentication and Account Management (Maduwantha HAS)
+
+Responsible for designing and implementing the system's authentication and account-management functionality. This includes MongoDB configuration, JWT-based authentication, role-based authorization, user and prosumer account management, login, profile management, account activation/reactivation, and deactivation requests. The member also develops the corresponding web-based administration interfaces and Android registration, login, profile, and session-management features.
+
+### Member 2 – IT23401976 – Solar Stations, Energy Slots and Maps (Serasinghe CS)
+
+Responsible for developing the solar-station and energy-slot management module. This includes implementing solar station information, GPS coordinates, capacity and battery details, operating schedules, station activation/deactivation, booking-slot management, and availability rules. The member also develops the web interfaces for station and slot administration and integrates Google Maps functionality into the Android application to display nearby stations, station markers, station details, and available energy slots.
+
+### Member 3 – IT23405240 – Reservation Workflow (Alahakoon PB)
+
+Responsible for designing and implementing the complete energy-reservation workflow. This includes reservation creation, modification, cancellation, availability validation, duplicate-booking prevention, slot release, reservation approval/rejection, and enforcement of the seven-day booking and twelve-hour modification/cancellation rules. The member also develops the web-based reservation management functions and Android reservation features, including slot selection, booking, reservation summaries, modification, cancellation, and status handling.
+
+### Member 4 – IT23242272 – Dashboard, QR Verification and Deployment (Nimadith LMH)
+
+Responsible for developing the operational dashboards, transaction management, QR-based verification, and deployment-related functionality. This includes dashboard statistics, reservation history, search and filtering, QR transaction data, server-side QR verification, energy-transfer completion, and prevention of duplicate transaction completion. The member also develops the Grid Operator dashboard and Android QR-generation/scanning functionality. In addition, the member contributes to IIS deployment, CORS configuration, OpenAPI verification, end-to-end integration testing, README consolidation, and overall system integration.
+
+#### Member 4 technical details
 
 - **API**:
   - `GET /api/dashboard` and `GET /api/dashboard/history`: role-scoped counts, current/pending/approved-future lists, and history with search/status/station/date filters and stable paging.
@@ -195,3 +243,27 @@ The full runbook, including rollback and troubleshooting, is in [docs/deployment
 - **403 on verify**: the Grid Operator's assigned station does not match the reservation's station.
 - **409 on verify/complete**: the QR was already used, expired, or the reservation changed. Ask the Prosumer to reopen the QR.
 - **IIS 500.30 / 502.5**: check that the .NET 10 Hosting Bundle is installed and see the runbook troubleshooting section.
+
+## Application screenshots
+
+Main screens of the web and Android apps.
+
+### Web
+
+| Landing page | Sign in |
+| --- | --- |
+| ![Landing page](docs/screenshots/web/public/01-landing.png) | ![Sign in](docs/screenshots/web/public/04-login.png) |
+
+| Backoffice home | Backoffice reservations |
+| --- | --- |
+| ![Backoffice home](docs/screenshots/web/backoffice/01-home.png) | ![Backoffice reservations](docs/screenshots/web/backoffice/09-reservations.png) |
+
+| Grid Operator slot monitoring |
+| --- |
+| ![Grid Operator slot monitoring](docs/screenshots/web/grid-operator/02-slot-monitoring-dashboard.png) |
+
+### Android
+
+| Prosumer home | Station details | My bookings | Secure QR | Grid Operator home |
+| --- | --- | --- | --- | --- |
+| <img src="docs/screenshots/android/prosumer/01-home.png" width="160" alt="Prosumer home"> | <img src="docs/screenshots/android/prosumer/05-station-details.png" width="160" alt="Station details"> | <img src="docs/screenshots/android/prosumer/12-my-bookings.png" width="160" alt="My bookings"> | <img src="docs/screenshots/android/prosumer/20-secure-qr.png" width="160" alt="Secure QR"> | <img src="docs/screenshots/android/grid-operator/01-operator-home.png" width="160" alt="Grid Operator home"> |
