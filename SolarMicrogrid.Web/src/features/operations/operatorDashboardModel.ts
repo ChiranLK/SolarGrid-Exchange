@@ -4,6 +4,9 @@ import type { DashboardResponse, PagedBookingHistory } from './dashboardTypes'
 
 export const operatorRoles = ['GridOperator'] as const satisfies readonly UserRole[]
 
+/** Staff roles that may open operator dashboard and booking-history screens (API scopes by role). */
+export const operatorScreenRoles = ['Backoffice', 'GridOperator'] as const satisfies readonly UserRole[]
+
 export const operatorRoutes = {
   dashboard: 'operator/dashboard',
   history: 'operator/history',

@@ -31,10 +31,22 @@ public final class StationAdapter extends ArrayAdapter<NearbyStation> {
         if (nearby != null) {
             ((TextView) row.findViewById(R.id.station_item_name)).setText(nearby.getStation().getName());
             ((TextView) row.findViewById(R.id.station_item_address)).setText(nearby.getStation().getAddress());
-            ((TextView) row.findViewById(R.id.station_item_distance)).setText(String.format(
-                    Locale.getDefault(), getContext().getString(R.string.station_distance_km),
-                    nearby.getDistanceKm()));
+            ((TextView) row.findViewById(R.id.station_item_distance)).setText(
+                    formatDistance(getContext(), nearby.getDistanceKm()));
         }
         return row;
+    }
+
+    static String formatDistance(Context context, double distanceKm) {
+        if (distanceKm < 0.05) {
+            return context.getString(R.string.station_distance_here);
+        }
+        if (distanceKm < 1) {
+            int metres = (int) (Math.round(distanceKm * 100) * 10);
+            return String.format(Locale.getDefault(),
+                    context.getString(R.string.station_distance_m), metres);
+        }
+        return String.format(Locale.getDefault(),
+                context.getString(R.string.station_distance_km), distanceKm);
     }
 }

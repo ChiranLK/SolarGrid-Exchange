@@ -133,7 +133,7 @@ public final class BookingReviewViewModel extends AndroidViewModel {
                 finishError(new ApiError(
                         ApiError.Kind.NETWORK,
                         0,
-                        "The API result is still uncertain and no new matching Pending reservation " +
+                        "The booking result is still uncertain and no new matching Pending reservation " +
                                 "was found. Check your connection and retry; the same request " +
                                 "identifier will be reused to prevent a duplicate booking."));
             }
@@ -215,16 +215,16 @@ public final class BookingReviewViewModel extends AndroidViewModel {
                 }
                 break;
             case SERVER:
-                message = "The SolarGrid API could not complete the booking. Try again later.";
+                message = "SolarGrid could not complete the booking. Try again later.";
                 break;
             case NETWORK:
-                message = "The SolarGrid API could not be reached. Check the connection and retry.";
+                message = "SolarGrid could not be reached. Check your connection and retry.";
                 break;
             default:
                 return error;
         }
         if (!detail.isEmpty() && !message.contains(detail)) {
-            message += " API detail: " + detail;
+            message += " " + detail;
         }
         return new ApiError(error.getKind(), error.getStatusCode(), message);
     }

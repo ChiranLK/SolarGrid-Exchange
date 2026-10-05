@@ -240,7 +240,7 @@ public final class ReservationDetailViewModel extends AndroidViewModel {
         return new ApiError(
                 ApiError.Kind.NETWORK,
                 0,
-                "The connection was interrupted and the API could not confirm cancellation. " +
+                "The connection was interrupted and SolarGrid could not confirm cancellation. " +
                         "This booking has not been labelled Cancelled locally. Retry when connected; " +
                         "the same request identifier will be reused safely.");
     }
@@ -288,14 +288,14 @@ public final class ReservationDetailViewModel extends AndroidViewModel {
                 message = "This signed-in account cannot cancel this reservation.";
                 break;
             case SERVER:
-                message = "The API could not complete cancellation. The booking was not marked " +
-                        "Cancelled by this client.";
+                message = "SolarGrid could not complete cancellation. The booking was not marked " +
+                        "Cancelled on this device.";
                 break;
             default:
                 return error;
         }
         if (!detail.isEmpty() && !message.contains(detail)) {
-            message += " API detail: " + detail;
+            message += " " + detail;
         }
         return new ApiError(error.getKind(), error.getStatusCode(), message);
     }

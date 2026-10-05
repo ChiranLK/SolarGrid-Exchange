@@ -94,7 +94,7 @@ $env:SOLARGRID_API_BASE_URL = 'https://api.example.invalid/api/'
 
 ## Google Maps key
 
-Maps SDK for Android needs a key for map tiles. Provide `SOLARGRID_MAPS_API_KEY` as a local Gradle property (for example, in your user-level Gradle properties) or environment variable before building. Enable Maps SDK for Android in the Google Cloud project and restrict the key to the Android application IDs and signing certificate fingerprints. The key is intentionally absent from Git; when it is not configured, nearby API results remain available as a list and the map area explains the missing key. Use a Google Play-enabled emulator or device for Maps and fused location testing. Do not commit a key in `local.properties`, source, or screenshots.
+Maps SDK for Android needs a key for map tiles. Provide `SOLARGRID_MAPS_API_KEY` in the ignored project `local.properties`, as a user-level Gradle property, or as an environment variable before building. A local file entry uses `SOLARGRID_MAPS_API_KEY=<your-key>`; never commit the real value. Enable Maps SDK for Android in the Google Cloud project and restrict the key to the Android application IDs and signing certificate fingerprints. When no key is configured, nearby API results remain available as a list and the map area explains the missing key. Use a Google Play-enabled emulator or device for Maps and fused location testing. Do not commit a key in source or screenshots.
 
 ## Build and test
 

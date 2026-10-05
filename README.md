@@ -1,7 +1,8 @@
 # SolarGrid-Exchange
 SolarGrid Exchange: A Client–Server Smart Solar Microgrid Energy Trading and Reservation System
 
-Repository: `<repository-url>` (replace with the submission repository link)
+- Git repository: https://github.com/ChiranLK/SolarGrid-Exchange (individual contributions are listed under [Team contributions](#team-contributions) and visible in the commit history)
+- Demo video (5 minutes or less): `<video-link>` (replace with the YouTube or OneDrive link before submission)
 
 ## Architecture
 
@@ -96,6 +97,16 @@ Never commit connection strings, JWT keys, tokens, QR values or real NIC data.
    .\gradlew.bat assembleDebug
    ```
 
+## Demo data
+
+With the API running and an existing Backoffice account, seed two stations (open every day), upcoming energy slots and a Grid Operator. The script can be re-run safely.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\seed-demo-data.ps1 -BackofficeEmail "<backoffice-email>" -BackofficePassword "<password>" -OperatorPassword "<new-operator-password>"
+```
+
+The Grid Operator is `demo.operator@solargrid.test`, assigned to Colombo Solar Hub, with the password you pass as `-OperatorPassword`.
+
 ## Tests
 
 | Area | Command (from repository root unless noted) |
@@ -124,6 +135,14 @@ The latest recorded results are in [docs/member-4/final-audit.md](docs/member-4/
 4. Set `ASPNETCORE_ENVIRONMENT=Production`, the MongoDB/JWT secrets and `Cors__AllowedOrigins__0` as environment variables.
 5. Build the web client with `VITE_API_BASE_URL` (`/api` for same-origin). Build Android release with `SOLARGRID_API_BASE_URL=https://<api-host>/api/`.
 6. Check `https://<api-host>/health` and run the smoke tests.
+
+To publish and host the API on a prepared IIS server in one step, run from an elevated PowerShell (it also creates the app pool, site, environment values and firewall rule, then checks `/health`):
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\deploy-iis.ps1 -MongoConnectionString "<connection-string>" -JwtKey "<random-value-at-least-32-characters>" -Port 8080
+```
+
+For the Android app, set `SOLARGRID_API_BASE_URL` in `SolarGridAndroid/local.properties` to the server address (`http://<server-ip>:8080/api/` for a lab server, `https://<api-host>/api/` for release).
 
 The full runbook, including rollback and troubleshooting, is in [docs/deployment/iis-deployment.md](docs/deployment/iis-deployment.md).
 

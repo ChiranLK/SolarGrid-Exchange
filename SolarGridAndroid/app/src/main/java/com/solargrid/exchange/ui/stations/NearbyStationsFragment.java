@@ -6,6 +6,8 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -22,12 +24,17 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.fragment.NavHostFragment;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.Priority;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.CancellationTokenSource;
@@ -44,8 +51,12 @@ import java.util.List;
 public final class NearbyStationsFragment extends Fragment {
     private final ActivityResultLauncher<String[]> permissionRequest = registerForActivityResult(
             new ActivityResultContracts.RequestMultiplePermissions(), result -> {
-                if (hasLocationPermission()) findLocation();
-                else showPermissionDenied();
+                if (hasLocationPermission()) {
+                    findLocation();
+                    startLiveUpdates();
+                } else {
+                    showPermissionDenied();
+                }
             });
 
     private StationListViewModel viewModel;
@@ -56,7 +67,39 @@ public final class NearbyStationsFragment extends Fragment {
     private CancellationTokenSource locationCancellation;
     private List<NearbyStation> displayedStations = Collections.emptyList();
     private LatLng lastDeviceLocation;
+    private Location lastLoadedLocation;
+    private String fittedSignature;
+    private boolean liveUpdatesActive;
     private boolean returningFromSettings;
+    private final Handler refreshHandler = new Handler(Looper.getMainLooper());
+    private final Runnable periodicRefresh = new Runnable() {
+        @Override
+        public void run() {
+            if (getView() != null && lastLoadedLocation != null) {
+                viewModel.refreshNearby(
+                        lastLoadedLocation.getLatitude(), lastLoadedLocation.getLongitude());
+            }
+            refreshHandler.postDelayed(this, PERIODIC_REFRESH_MS);
+        }
+    };
+    private final LocationCallback liveLocationCallback = new LocationCallback() {
+        @Override
+        public void onLocationResult(@NonNull LocationResult result) {
+            Location location = result.getLastLocation();
+            if (location == null || getView() == null) return;
+            lastDeviceLocation = new LatLng(location.getLatitude(), location.getLongitude());
+            boolean movedFarEnough = lastLoadedLocation == null
+                    || location.distanceTo(lastLoadedLocation) >= REFRESH_DISTANCE_METERS;
+            if (movedFarEnough) {
+                lastLoadedLocation = location;
+                viewModel.refreshNearby(location.getLatitude(), location.getLongitude());
+            }
+        }
+    };
+
+    private static final float REFRESH_DISTANCE_METERS = 100f;
+    private static final long LIVE_LOCATION_INTERVAL_MS = 10_000L;
+    private static final long PERIODIC_REFRESH_MS = 60_000L;
 
     @Nullable
     @Override
@@ -91,15 +134,14 @@ public final class NearbyStationsFragment extends Fragment {
             mapFragment.getMapAsync(googleMap -> {
                 if (getView() == null) return;
                 map = googleMap;
-                map.setOnMarkerClickListener(marker -> {
+                map.getUiSettings().setZoomControlsEnabled(true);
+                map.getUiSettings().setMapToolbarEnabled(false);
+                enableMyLocationLayer();
+                map.setOnInfoWindowClickListener(marker -> {
                     Object stationId = marker.getTag();
                     if (stationId instanceof String) openStation((String) stationId);
-                    return true;
                 });
                 renderMarkers();
-                if (lastDeviceLocation != null) {
-                    map.moveCamera(CameraUpdateFactory.newLatLngZoom(lastDeviceLocation, 10f));
-                }
             });
         }
 
@@ -143,11 +185,20 @@ public final class NearbyStationsFragment extends Fragment {
             returningFromSettings = false;
             requestLocation();
         }
+        startLiveUpdates();
+    }
+
+    @Override
+    public void onPause() {
+        stopLiveUpdates();
+        super.onPause();
     }
 
     @Override
     public void onDestroyView() {
+        stopLiveUpdates();
         if (locationCancellation != null) locationCancellation.cancel();
+        fittedSignature = null;
         map = null;
         stateView = null;
         list = null;
@@ -216,10 +267,34 @@ public final class NearbyStationsFragment extends Fragment {
                 getString(R.string.location_unavailable_message), ignored -> requestLocation());
     }
 
+    private void startLiveUpdates() {
+        if (liveUpdatesActive || locationClient == null || !hasLocationPermission()) return;
+        LocationRequest request = new LocationRequest.Builder(
+                Priority.PRIORITY_BALANCED_POWER_ACCURACY, LIVE_LOCATION_INTERVAL_MS)
+                .setMinUpdateDistanceMeters(50f)
+                .build();
+        try {
+            locationClient.requestLocationUpdates(request, liveLocationCallback, Looper.getMainLooper());
+            liveUpdatesActive = true;
+            refreshHandler.postDelayed(periodicRefresh, PERIODIC_REFRESH_MS);
+        } catch (SecurityException ignored) {
+            // Permission was revoked; the one-off lookup flow reports it to the user.
+        }
+    }
+
+    private void stopLiveUpdates() {
+        refreshHandler.removeCallbacks(periodicRefresh);
+        if (!liveUpdatesActive || locationClient == null) return;
+        locationClient.removeLocationUpdates(liveLocationCallback);
+        liveUpdatesActive = false;
+    }
+
     private void loadNearby(Location location) {
+        lastLoadedLocation = location;
         lastDeviceLocation = new LatLng(location.getLatitude(), location.getLongitude());
+        enableMyLocationLayer();
         if (map != null) map.moveCamera(CameraUpdateFactory.newLatLngZoom(
-                lastDeviceLocation, 10f));
+                lastDeviceLocation, 12f));
         viewModel.loadNearby(location.getLatitude(), location.getLongitude());
     }
 
@@ -238,16 +313,61 @@ public final class NearbyStationsFragment extends Fragment {
                 });
     }
 
+    private void enableMyLocationLayer() {
+        if (map == null || !hasLocationPermission()) return;
+        try {
+            map.setMyLocationEnabled(true);
+            map.getUiSettings().setMyLocationButtonEnabled(true);
+        } catch (SecurityException ignored) {
+            // Permission was revoked between the check and the call; the map still shows stations.
+        }
+    }
+
     private void renderMarkers() {
         if (map == null) return;
         map.clear();
+        StringBuilder signature = new StringBuilder();
         for (NearbyStation nearby : displayedStations) {
+            signature.append(nearby.getStation().getId()).append(',');
+        }
+        if (lastDeviceLocation != null) {
+            signature.append(Math.round(lastDeviceLocation.latitude * 1000)).append(':')
+                    .append(Math.round(lastDeviceLocation.longitude * 1000));
+        }
+        boolean refitCamera = !signature.toString().equals(fittedSignature);
+        fittedSignature = signature.toString();
+        if (displayedStations.isEmpty()) {
+            if (refitCamera && lastDeviceLocation != null) {
+                map.moveCamera(CameraUpdateFactory.newLatLngZoom(lastDeviceLocation, 12f));
+            }
+            return;
+        }
+        LatLngBounds.Builder bounds = new LatLngBounds.Builder();
+        if (lastDeviceLocation != null) bounds.include(lastDeviceLocation);
+        for (NearbyStation nearby : displayedStations) {
+            LatLng position = new LatLng(nearby.getStation().getLatitude(),
+                    nearby.getStation().getLongitude());
+            bounds.include(position);
             Marker marker = map.addMarker(new MarkerOptions()
-                    .position(new LatLng(nearby.getStation().getLatitude(),
-                            nearby.getStation().getLongitude()))
+                    .position(position)
                     .title(nearby.getStation().getName())
-                    .snippet(nearby.getStation().getAddress()));
+                    .snippet(StationAdapter.formatDistance(requireContext(), nearby.getDistanceKm()))
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
             if (marker != null) marker.setTag(nearby.getStation().getId());
+        }
+        if (!refitCamera) return;
+        View mapView = getView() == null ? null : getView().findViewById(R.id.station_map_container);
+        int padding = (int) (48 * getResources().getDisplayMetrics().density);
+        if (mapView != null && mapView.getWidth() > 0 && mapView.getHeight() > 0) {
+            LatLngBounds area = bounds.build();
+            boolean tinyArea = Math.abs(area.northeast.latitude - area.southwest.latitude) < 0.003
+                    && Math.abs(area.northeast.longitude - area.southwest.longitude) < 0.003;
+            map.animateCamera(tinyArea
+                    ? CameraUpdateFactory.newLatLngZoom(area.getCenter(), 15f)
+                    : CameraUpdateFactory.newLatLngBounds(
+                            area, mapView.getWidth(), mapView.getHeight(), padding));
+        } else if (lastDeviceLocation != null) {
+            map.animateCamera(CameraUpdateFactory.newLatLngZoom(lastDeviceLocation, 12f));
         }
     }
 

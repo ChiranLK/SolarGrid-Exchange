@@ -86,7 +86,7 @@ public final class RegistrationControllerTest {
     @Test
     public void networkAndServerFailuresKeepTheFormForRetry() {
         controller.submit(RegistrationFormTest.valid());
-        pending.onError(new ApiError(ApiError.Kind.NETWORK, 0, "Unable to reach the SolarGrid API."));
+        pending.onError(new ApiError(ApiError.Kind.NETWORK, 0, "Unable to reach SolarGrid."));
 
         assertEquals(ApiError.Kind.NETWORK, controller.getState().getError().getKind());
         assertTrue(controller.getState().getFieldErrors().isEmpty());

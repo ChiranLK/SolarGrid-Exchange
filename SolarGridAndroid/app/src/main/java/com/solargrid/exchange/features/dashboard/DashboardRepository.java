@@ -29,7 +29,7 @@ public final class DashboardRepository {
             public void onSuccess(JSONObject value) {
                 try {
                     if (!"Prosumer".equals(value.getString("role"))) {
-                        callback.onError(malformed("The API returned a dashboard for the wrong role."));
+                        callback.onError(malformed("This dashboard is not available for your account type."));
                         return;
                     }
                     JSONObject summary = value.getJSONObject("statusSummary");
@@ -97,7 +97,7 @@ public final class DashboardRepository {
             JSONObject item = values.getJSONObject(index);
             String status = item.getString("status");
             if (!SharedReservationContract.isKnownStatus(status)) {
-                throw new JSONException("The API returned an unknown reservation status.");
+                throw new JSONException("An unknown reservation status was received.");
             }
             reservations.add(new DashboardReservation(
                     item.getString("reservationId"),

@@ -156,12 +156,12 @@ public final class ApiClient {
             deliverError(callback, new ApiError(
                     ApiError.Kind.NETWORK,
                     0,
-                    "Unable to reach the SolarGrid API. Check the connection and API address."));
+                    "Unable to reach SolarGrid. Check your connection and try again."));
         } catch (JSONException exception) {
             deliverError(callback, new ApiError(
                     ApiError.Kind.UNKNOWN,
                     0,
-                    "The API returned an unreadable response."));
+                    "SolarGrid returned an unreadable response."));
         } finally {
             if (connection != null) {
                 connection.disconnect();
@@ -262,7 +262,7 @@ public final class ApiClient {
             case CONFLICT:
                 return "The request conflicts with the current server state. Refresh and try again.";
             case SERVER:
-                return "The SolarGrid API encountered an error. Please try again later.";
+                return "SolarGrid encountered an error. Please try again later.";
             default:
                 return "The request could not be completed.";
         }

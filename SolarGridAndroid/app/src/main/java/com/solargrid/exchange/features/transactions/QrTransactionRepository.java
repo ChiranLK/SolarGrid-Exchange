@@ -36,7 +36,7 @@ public final class QrTransactionRepository {
                                 callback.onError(new ApiError(
                                         ApiError.Kind.UNKNOWN,
                                         0,
-                                        "The API returned an unsafe QR payload."));
+                                        "The QR code could not be verified safely."));
                                 return;
                             }
                             callback.onSuccess(token);

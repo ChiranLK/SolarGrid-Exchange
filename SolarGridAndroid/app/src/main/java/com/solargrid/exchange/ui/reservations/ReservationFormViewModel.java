@@ -301,7 +301,7 @@ public final class ReservationFormViewModel extends AndroidViewModel {
         return new ApiError(
                 ApiError.Kind.NETWORK,
                 0,
-                "The connection was interrupted and the API could not confirm this update. " +
+                "The connection was interrupted and SolarGrid could not confirm this update. " +
                         "The displayed booking has not been treated as updated. Retry when connected; " +
                         "the same request identifier will be reused safely.");
     }
@@ -357,13 +357,13 @@ public final class ReservationFormViewModel extends AndroidViewModel {
                 message = "This signed-in account cannot modify this reservation.";
                 break;
             case SERVER:
-                message = "The API could not apply the update. The original booking remains unchanged.";
+                message = "SolarGrid could not apply the update. The original booking remains unchanged.";
                 break;
             default:
                 return error;
         }
         if (!detail.isEmpty() && !message.contains(detail)) {
-            message += " API detail: " + detail;
+            message += " " + detail;
         }
         return new ApiError(error.getKind(), error.getStatusCode(), message);
     }

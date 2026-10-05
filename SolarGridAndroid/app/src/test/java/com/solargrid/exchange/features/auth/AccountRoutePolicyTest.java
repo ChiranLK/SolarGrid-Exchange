@@ -38,7 +38,7 @@ public final class AccountRoutePolicyTest {
         assertEquals(Destination.SHOW_ERROR, AccountRoutePolicy.afterLoginFailure(
                 new ApiError(ApiError.Kind.UNAUTHORIZED, 401, "Invalid email or password.")));
         assertEquals(Destination.SHOW_ERROR, AccountRoutePolicy.afterLoginFailure(
-                new ApiError(ApiError.Kind.NETWORK, 0, "Unable to reach the SolarGrid API.")));
+                new ApiError(ApiError.Kind.NETWORK, 0, "Unable to reach SolarGrid.")));
         assertEquals(Destination.SHOW_ERROR, AccountRoutePolicy.afterLoginFailure(
                 new ApiError(ApiError.Kind.SERVER, 500, "An unexpected error occurred.")));
         assertEquals(Destination.SHOW_ERROR, AccountRoutePolicy.afterLoginFailure(
