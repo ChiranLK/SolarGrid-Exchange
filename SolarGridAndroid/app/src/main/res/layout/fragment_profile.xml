@@ -385,5 +385,14 @@
                     android:text="@string/request_deactivation" />
             </LinearLayout>
         </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/profile_sign_out"
+            style="@style/Widget.SolarGrid.Button.Secondary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/sg_space_24"
+            android:text="@string/sign_out"
+            app:icon="@drawable/sg_ic_logout" />
     </LinearLayout>
 </ScrollView>

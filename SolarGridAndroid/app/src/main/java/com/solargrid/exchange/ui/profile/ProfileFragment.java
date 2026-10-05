@@ -52,6 +52,8 @@ public final class ProfileFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_profile, container, false);
+        view.findViewById(R.id.profile_sign_out)
+                .setOnClickListener(ignored -> ((MainActivity) requireActivity()).requestSignOut());
         SessionUser session = ((SolarGridApplication) requireActivity().getApplication())
                 .getAppContainer().getSessionStore().read();
         if (session == null) {

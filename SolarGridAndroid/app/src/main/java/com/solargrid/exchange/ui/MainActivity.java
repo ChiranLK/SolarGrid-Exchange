@@ -229,6 +229,11 @@ public final class MainActivity extends AppCompatActivity
         return true;
     }
 
+    /** Entry point for the Sign out button on the profile screen. */
+    public void requestSignOut() {
+        confirmSignOut();
+    }
+
     /** Asks before ending the session; signing out itself is unchanged. */
     private void confirmSignOut() {
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
