@@ -3,6 +3,7 @@ package com.solargrid.exchange.features.stations;
 import com.solargrid.exchange.data.model.Slot;
 import com.solargrid.exchange.data.model.NearbyStation;
 import com.solargrid.exchange.data.model.Station;
+import com.solargrid.exchange.data.local.ReferenceDataStore;
 import com.solargrid.exchange.network.ApiCallback;
 import com.solargrid.exchange.network.ApiClient;
 import com.solargrid.exchange.network.ApiError;
@@ -21,21 +22,27 @@ import java.util.TimeZone;
 
 public final class StationRepository {
     private final ApiClient apiClient;
+    private final ReferenceDataStore referenceDataStore;
 
-    public StationRepository(ApiClient apiClient) {
+    public StationRepository(ApiClient apiClient, ReferenceDataStore referenceDataStore) {
         this.apiClient = apiClient;
+        this.referenceDataStore = referenceDataStore;
     }
 
     public void getActiveStations(ApiCallback<List<Station>> callback) {
         apiClient.get("stations?isActive=true&page=1&pageSize=100", new ApiCallback<>() {
             @Override
             public void onSuccess(JSONObject value) {
-                callback.onSuccess(parseStations(value.optJSONArray("items")));
+                List<Station> stations = parseStations(value.optJSONArray("items"));
+                referenceDataStore.upsertStations(stations);
+                callback.onSuccess(stations);
             }
 
             @Override
             public void onError(ApiError error) {
-                callback.onError(error);
+                List<Station> cached = referenceDataStore.readActiveStations();
+                if (isOffline(error) && !cached.isEmpty()) callback.onSuccess(cached);
+                else callback.onError(error);
             }
         });
     }
@@ -52,12 +59,18 @@ public final class StationRepository {
         apiClient.getArray(path, new ApiCallback<>() {
             @Override
             public void onSuccess(JSONArray value) {
-                callback.onSuccess(parseNearbyStations(value));
+                List<NearbyStation> nearby = parseNearbyStations(value);
+                List<Station> stations = new ArrayList<>();
+                for (NearbyStation item : nearby) stations.add(item.getStation());
+                referenceDataStore.upsertStations(stations);
+                callback.onSuccess(nearby);
             }
 
             @Override
             public void onError(ApiError error) {
-                callback.onError(error);
+                List<NearbyStation> cached = cachedNearby(latitude, longitude);
+                if (isOffline(error) && !cached.isEmpty()) callback.onSuccess(cached);
+                else callback.onError(error);
             }
         });
     }
@@ -70,7 +83,8 @@ public final class StationRepository {
             @Override
             public void onSuccess(JSONObject value) {
                 Station station = parseStation(value);
-                loadAvailableSlots(encodedStationId, new ApiCallback<>() {
+                referenceDataStore.upsertStation(station);
+                loadAvailableSlots(stationId, new ApiCallback<>() {
                     @Override
                     public void onSuccess(List<Slot> slots) {
                         callback.onSuccess(new StationDetailData(station, slots));
@@ -85,7 +99,10 @@ public final class StationRepository {
 
             @Override
             public void onError(ApiError error) {
-                callback.onError(error);
+                Station station = referenceDataStore.readStation(stationId);
+                List<Slot> slots = referenceDataStore.readSlots(stationId);
+                if (isOffline(error) && station != null) callback.onSuccess(new StationDetailData(station, slots));
+                else callback.onError(error);
             }
         });
     }
@@ -103,33 +120,42 @@ public final class StationRepository {
                         fromUtc + "&page=" + page + "&pageSize=20", new ApiCallback<>() {
                     @Override
                     public void onSuccess(JSONObject value) {
+                        List<Slot> slots = parseSlots(value.optJSONArray("items"));
+                        referenceDataStore.replaceSlots(stationId, slots);
                         callback.onSuccess(new AvailableSlotPage(
-                                parseSlots(value.optJSONArray("items")),
+                                slots,
                                 value.optInt("page", page),
                                 value.optInt("totalPages", 0)));
                     }
 
                     @Override
                     public void onError(ApiError error) {
-                        callback.onError(error);
+                        List<Slot> cached = referenceDataStore.readSlots(stationId);
+                        if (isOffline(error) && !cached.isEmpty()) {
+                            callback.onSuccess(new AvailableSlotPage(cached, 1, 1));
+                        } else callback.onError(error);
                     }
                 });
     }
 
-    private void loadAvailableSlots(String encodedStationId, ApiCallback<List<Slot>> callback) {
+    private void loadAvailableSlots(String stationId, ApiCallback<List<Slot>> callback) {
         String fromUtc = currentUtcQueryValue();
         apiClient.get(
-                "stations/" + encodedStationId + "/slots/available?fromUtc=" + fromUtc +
+                "stations/" + encode(stationId) + "/slots/available?fromUtc=" + fromUtc +
                         "&page=1&pageSize=100",
                 new ApiCallback<>() {
                     @Override
                     public void onSuccess(JSONObject value) {
-                        callback.onSuccess(parseSlots(value.optJSONArray("items")));
+                        List<Slot> slots = parseSlots(value.optJSONArray("items"));
+                        referenceDataStore.replaceSlots(stationId, slots);
+                        callback.onSuccess(slots);
                     }
 
                     @Override
                     public void onError(ApiError error) {
-                        callback.onError(error);
+                        List<Slot> cached = referenceDataStore.readSlots(stationId);
+                        if (isOffline(error) && !cached.isEmpty()) callback.onSuccess(cached);
+                        else callback.onError(error);
                     }
                 });
     }
@@ -223,5 +249,32 @@ public final class StationRepository {
             }
         }
         return slots;
+    }
+
+    private List<NearbyStation> cachedNearby(double latitude, double longitude) {
+        // Recalculate distance from cached coordinates so offline ordering remains meaningful.
+        List<NearbyStation> nearby = new ArrayList<>();
+        for (Station station : referenceDataStore.readActiveStations()) {
+            nearby.add(new NearbyStation(station, distanceKm(
+                    latitude, longitude, station.getLatitude(), station.getLongitude())));
+        }
+        nearby.sort((first, second) -> Double.compare(first.getDistanceKm(), second.getDistanceKm()));
+        return nearby.size() <= 50 ? nearby : new ArrayList<>(nearby.subList(0, 50));
+    }
+
+    private static boolean isOffline(ApiError error) {
+        // Cache fallback is limited to transport/server failures, never authorization failures.
+        return error.getKind() == ApiError.Kind.NETWORK || error.getKind() == ApiError.Kind.SERVER;
+    }
+
+    private static double distanceKm(double firstLatitude, double firstLongitude,
+                                     double secondLatitude, double secondLongitude) {
+        // Calculate the great-circle distance used to order cached nearby stations.
+        double latitudeDelta = Math.toRadians(secondLatitude - firstLatitude);
+        double longitudeDelta = Math.toRadians(secondLongitude - firstLongitude);
+        double value = Math.sin(latitudeDelta / 2) * Math.sin(latitudeDelta / 2)
+                + Math.cos(Math.toRadians(firstLatitude)) * Math.cos(Math.toRadians(secondLatitude))
+                * Math.sin(longitudeDelta / 2) * Math.sin(longitudeDelta / 2);
+        return 6371.0088 * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
     }
 }

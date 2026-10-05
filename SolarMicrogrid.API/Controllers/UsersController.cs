@@ -40,6 +40,7 @@ namespace SolarMicrogrid.API.Controllers
         // Receives UserService through dependency injection.
         public UsersController(UserService userService)
         {
+            // Execute UsersController with validated inputs and the authoritative application state.
             _userService = userService;
         }
 
@@ -67,6 +68,35 @@ namespace SolarMicrogrid.API.Controllers
         {
             // Return safe user DTOs matching the optional role/status filters.
             List<UserResponseDto> result = await _userService.GetAllAsync(role, status);
+            return Ok(result);
+        }
+
+        // GET api/users/{nic}
+        // Loads one account for the Backoffice edit screen without exposing its password hash.
+        [HttpGet("{nic}")]
+        [Authorize(Roles = "Backoffice")]
+        [RequireActiveAccount]
+        public async Task<ActionResult<UserResponseDto>> GetByNic(
+            string nic,
+            CancellationToken cancellationToken)
+        {
+            // Resolve the canonical NIC and return the safe account projection.
+            UserResponseDto result = await _userService.GetByNicAsync(nic, cancellationToken);
+            return Ok(result);
+        }
+
+        // PUT api/users/{nic}
+        // Updates contact/profile fields while keeping NIC, role, status and password immutable.
+        [HttpPut("{nic}")]
+        [Authorize(Roles = "Backoffice")]
+        [RequireActiveAccount]
+        public async Task<ActionResult<UserResponseDto>> UpdateDetails(
+            string nic,
+            [FromBody] UpdateProfileDto request,
+            CancellationToken cancellationToken)
+        {
+            // Apply the validated Backoffice edit through the service-layer uniqueness checks.
+            UserResponseDto result = await _userService.UpdateDetailsAsync(nic, request, cancellationToken);
             return Ok(result);
         }
 

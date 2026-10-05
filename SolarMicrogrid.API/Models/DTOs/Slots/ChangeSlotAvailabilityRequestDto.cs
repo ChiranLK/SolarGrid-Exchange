@@ -1,3 +1,10 @@
+/*
+ * ChangeSlotAvailabilityRequestDto.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Defines the request contract for changing slot availability.
+ * -----------------------------------------------------------------------------
+ */
+
 using System.ComponentModel.DataAnnotations;
 
 namespace SolarMicrogrid.API.Models.DTOs.Slots;

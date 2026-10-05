@@ -1,3 +1,10 @@
+/*
+ * CreateStationRequestDto.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Defines the validated request contract for creating a station.
+ * -----------------------------------------------------------------------------
+ */
+
 using System.ComponentModel.DataAnnotations;
 
 namespace SolarMicrogrid.API.Models.DTOs.Stations;

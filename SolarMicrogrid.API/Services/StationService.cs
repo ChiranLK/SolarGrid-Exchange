@@ -1,3 +1,10 @@
+/*
+ * StationService.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Implements station, schedule, location and lifecycle business rules.
+ * -----------------------------------------------------------------------------
+ */
+
 using System.Globalization;
 using System.Text.RegularExpressions;
 using MongoDB.Bson;
@@ -21,6 +28,7 @@ public sealed class StationService
 
     public StationService(MongoDbContext context, ReservationGuardService reservationGuardService)
     {
+        // Execute StationService with validated inputs and the authoritative application state.
         _context = context;
         _reservationGuardService = reservationGuardService;
     }
@@ -29,6 +37,7 @@ public sealed class StationService
         StationListQueryDto query,
         CancellationToken cancellationToken)
     {
+        // Execute GetStationsAsync with validated inputs and the authoritative application state.
         ArgumentNullException.ThrowIfNull(query);
 
         int page = Math.Max(query.Page, 1);
@@ -84,6 +93,7 @@ public sealed class StationService
         string stationId,
         CancellationToken cancellationToken)
     {
+        // Execute GetStationByIdAsync with validated inputs and the authoritative application state.
         if (!ObjectId.TryParse(stationId, out _))
         {
             return null;
@@ -103,6 +113,7 @@ public sealed class StationService
         int maximumResults,
         CancellationToken cancellationToken)
     {
+        // Execute GetNearbyStationsAsync with validated inputs and the authoritative application state.
         ValidateCoordinates(latitude, longitude);
 
         if (!double.IsFinite(radiusKm) || radiusKm <= 0)
@@ -143,6 +154,7 @@ public sealed class StationService
         CreateStationRequestDto request,
         CancellationToken cancellationToken)
     {
+        // Execute CreateStationAsync with validated inputs and the authoritative application state.
         ArgumentNullException.ThrowIfNull(request);
 
         ValidateCoordinates(request.Latitude, request.Longitude);
@@ -178,6 +190,7 @@ public sealed class StationService
         UpdateStationRequestDto request,
         CancellationToken cancellationToken)
     {
+        // Execute UpdateStationAsync with validated inputs and the authoritative application state.
         ArgumentNullException.ThrowIfNull(request);
 
         if (!ObjectId.TryParse(stationId, out _))
@@ -232,6 +245,7 @@ public sealed class StationService
         string stationId,
         CancellationToken cancellationToken)
     {
+        // Execute ActivateStationAsync with validated inputs and the authoritative application state.
         if (!ObjectId.TryParse(stationId, out _))
         {
             return null;
@@ -257,6 +271,7 @@ public sealed class StationService
         string stationId,
         CancellationToken cancellationToken)
     {
+        // Execute DeactivateStationAsync with validated inputs and the authoritative application state.
         if (!ObjectId.TryParse(stationId, out _))
         {
             return null;
@@ -337,6 +352,7 @@ public sealed class StationService
     private static List<StationOperatingSchedule> ValidateAndMapSchedule(
         IReadOnlyCollection<OperatingScheduleDto>? scheduleItems)
     {
+        // Execute ValidateAndMapSchedule with validated inputs and the authoritative application state.
         if (scheduleItems is null || scheduleItems.Count == 0)
         {
             throw new ArgumentException("At least one operating-schedule entry is required.");
@@ -399,6 +415,7 @@ public sealed class StationService
 
     private static bool TryParseTime(string? value, out TimeOnly result)
     {
+        // Execute TryParseTime with validated inputs and the authoritative application state.
         return TimeOnly.TryParseExact(
             value?.Trim(),
             "HH:mm",
@@ -409,6 +426,7 @@ public sealed class StationService
 
     private static void ValidateCoordinates(double latitude, double longitude)
     {
+        // Execute ValidateCoordinates with validated inputs and the authoritative application state.
         if (!double.IsFinite(latitude) || latitude is < -90 or > 90)
         {
             throw new ArgumentOutOfRangeException(nameof(latitude), "Latitude must be between -90 and 90.");
@@ -422,6 +440,7 @@ public sealed class StationService
 
     private static void ValidateCapacities(decimal generationCapacity, decimal batteryCapacity)
     {
+        // Execute ValidateCapacities with validated inputs and the authoritative application state.
         if (generationCapacity <= 0)
         {
             throw new ArgumentOutOfRangeException(
@@ -439,6 +458,7 @@ public sealed class StationService
 
     private static string NormalizeRequired(string? value, string parameterName, int maximumLength)
     {
+        // Execute NormalizeRequired with validated inputs and the authoritative application state.
         string normalized = value?.Trim() ?? string.Empty;
         if (normalized.Length == 0)
         {
@@ -457,6 +477,7 @@ public sealed class StationService
 
     private static string? NormalizeOptional(string? value, int maximumLength = int.MaxValue)
     {
+        // Execute NormalizeOptional with validated inputs and the authoritative application state.
         string? normalized = value?.Trim();
         if (string.IsNullOrEmpty(normalized))
         {
@@ -473,6 +494,7 @@ public sealed class StationService
 
     private static StationResponseDto MapToResponse(SolarStationInfo station)
     {
+        // Execute MapToResponse with validated inputs and the authoritative application state.
         return new StationResponseDto
         {
             Id = station.Id,
@@ -505,6 +527,7 @@ public sealed class StationService
         double latitude2,
         double longitude2)
     {
+        // Execute CalculateDistanceKm with validated inputs and the authoritative application state.
         double latitudeDelta = DegreesToRadians(latitude2 - latitude1);
         double longitudeDelta = DegreesToRadians(longitude2 - longitude1);
         double firstLatitude = DegreesToRadians(latitude1);
@@ -519,6 +542,7 @@ public sealed class StationService
 
     private static double DegreesToRadians(double degrees)
     {
+        // Execute DegreesToRadians with validated inputs and the authoritative application state.
         return degrees * Math.PI / 180;
     }
 }

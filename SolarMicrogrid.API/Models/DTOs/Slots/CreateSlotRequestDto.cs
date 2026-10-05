@@ -1,3 +1,10 @@
+/*
+ * CreateSlotRequestDto.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Defines the validated request contract for creating an energy slot.
+ * -----------------------------------------------------------------------------
+ */
+
 using System.ComponentModel.DataAnnotations;
 
 namespace SolarMicrogrid.API.Models.DTOs.Slots;

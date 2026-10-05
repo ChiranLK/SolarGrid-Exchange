@@ -4,6 +4,7 @@ import type {
   PagedEligibleProsumers,
   UserAccount,
   UserListFilter,
+  UpdateUserRequest,
 } from '../features/users/userTypes'
 import { apiRequest } from './apiClient'
 
@@ -34,6 +35,16 @@ export const userApi = {
     if (filter.status) parameters.set('status', filter.status)
     const query = parameters.toString()
     return apiRequest<UserAccount[]>(query ? `/users?${query}` : '/users', { signal })
+  },
+
+  get(nic: string, signal?: AbortSignal): Promise<UserAccount> {
+    return apiRequest<UserAccount>(`/users/${encodeURIComponent(nic)}`, { signal })
+  },
+
+  update(nic: string, request: UpdateUserRequest, signal?: AbortSignal): Promise<UserAccount> {
+    return apiRequest<UserAccount>(`/users/${encodeURIComponent(nic)}`, {
+      method: 'PUT', body: JSON.stringify(request), signal,
+    })
   },
 
   listPending(signal?: AbortSignal): Promise<UserAccount[]> {

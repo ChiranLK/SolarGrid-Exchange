@@ -1,3 +1,10 @@
+/*
+ * MongoTestContext.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Provides mocked MongoDB collections for service unit tests.
+ * -----------------------------------------------------------------------------
+ */
+
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 using Moq;
@@ -13,6 +20,7 @@ internal sealed class MongoTestContext
 
     public MongoTestContext()
     {
+        // Exercise MongoTestContext with isolated synthetic data and explicit assertions.
         Client.Setup(client => client.GetDatabase("test", null)).Returns(_database.Object);
         _database
             .Setup(database => database.GetCollection<User>("users", null))
@@ -55,6 +63,7 @@ internal sealed class MongoTestContext
 
     public void ReturnUsers(params User[] users)
     {
+        // Exercise ReturnUsers with isolated synthetic data and explicit assertions.
         Users
             .Setup(collection => collection.FindAsync<User>(
                 It.IsAny<FilterDefinition<User>>(),
@@ -65,6 +74,7 @@ internal sealed class MongoTestContext
 
     public void ReturnStations(params SolarStationInfo[] stations)
     {
+        // Exercise ReturnStations with isolated synthetic data and explicit assertions.
         ConfiguredStationId = stations.FirstOrDefault()?.Id;
         Stations
             .Setup(collection => collection.FindAsync<SolarStationInfo>(
@@ -76,6 +86,7 @@ internal sealed class MongoTestContext
 
     public void ReturnSlots(params EnergyBookingSlot[] slots)
     {
+        // Exercise ReturnSlots with isolated synthetic data and explicit assertions.
         Slots
             .Setup(collection => collection.FindAsync<EnergyBookingSlot>(
                 It.IsAny<FilterDefinition<EnergyBookingSlot>>(),
@@ -86,6 +97,7 @@ internal sealed class MongoTestContext
 
     public void ReturnReservations(params EnergyReservation[] reservations)
     {
+        // Exercise ReturnReservations with isolated synthetic data and explicit assertions.
         Reservations
             .Setup(collection => collection.FindAsync<EnergyReservation>(
                 It.IsAny<FilterDefinition<EnergyReservation>>(),
@@ -96,6 +108,7 @@ internal sealed class MongoTestContext
 
     public static IAsyncCursor<T> Cursor<T>(IEnumerable<T> values)
     {
+        // Exercise test operation with isolated synthetic data and explicit assertions.
         var cursor = new Mock<IAsyncCursor<T>>();
         cursor.SetupGet(item => item.Current).Returns(values);
         cursor.SetupSequence(item => item.MoveNext(It.IsAny<CancellationToken>()))

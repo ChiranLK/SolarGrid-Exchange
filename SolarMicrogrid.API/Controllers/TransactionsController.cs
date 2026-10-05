@@ -12,6 +12,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SolarMicrogrid.API.Exceptions;
+using SolarMicrogrid.API.Filters;
 using SolarMicrogrid.API.Models.DTOs.Transactions;
 using SolarMicrogrid.API.Models.Entities;
 using SolarMicrogrid.API.Services;
@@ -20,6 +21,7 @@ namespace SolarMicrogrid.API.Controllers;
 
 [ApiController]
 [Authorize]
+[RequireActiveAccount]
 [Route("api/transactions")]
 [Tags("Transactions")]
 [Produces("application/json")]

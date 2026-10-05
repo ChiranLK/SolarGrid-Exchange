@@ -3,6 +3,7 @@ package com.solargrid.exchange.core;
 import android.content.Context;
 
 import com.solargrid.exchange.data.local.SessionDatabaseHelper;
+import com.solargrid.exchange.data.local.ReferenceDataStore;
 import com.solargrid.exchange.data.local.SessionStore;
 import com.solargrid.exchange.features.auth.AuthRepository;
 import com.solargrid.exchange.features.dashboard.DashboardRepository;
@@ -15,6 +16,7 @@ import com.solargrid.exchange.network.ApiClient;
 
 public final class AppContainer {
     private final SessionStore sessionStore;
+    private final ReferenceDataStore referenceDataStore;
     private final ApiClient apiClient;
     private final AuthRepository authRepository;
     private final StationRepository stationRepository;
@@ -28,9 +30,10 @@ public final class AppContainer {
         Context applicationContext = context.getApplicationContext();
         SessionDatabaseHelper databaseHelper = new SessionDatabaseHelper(applicationContext);
         sessionStore = new SessionStore(databaseHelper);
+        referenceDataStore = new ReferenceDataStore(databaseHelper);
         apiClient = new ApiClient(sessionStore);
         authRepository = new AuthRepository(apiClient, sessionStore);
-        stationRepository = new StationRepository(apiClient);
+        stationRepository = new StationRepository(apiClient, referenceDataStore);
         userRepository = new UserRepository(apiClient);
         reservationRepository = new ReservationRepository(apiClient);
         dashboardRepository = new DashboardRepository(apiClient);
@@ -40,6 +43,10 @@ public final class AppContainer {
 
     public SessionStore getSessionStore() {
         return sessionStore;
+    }
+
+    public ReferenceDataStore getReferenceDataStore() {
+        return referenceDataStore;
     }
 
     public AuthRepository getAuthRepository() {

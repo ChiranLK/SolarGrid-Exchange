@@ -1,3 +1,10 @@
+/*
+ * NearbyStationResponseDto.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Defines a station result with its calculated distance.
+ * -----------------------------------------------------------------------------
+ */
+
 namespace SolarMicrogrid.API.Models.DTOs.Stations;
 
 public sealed class NearbyStationResponseDto

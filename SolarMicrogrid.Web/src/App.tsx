@@ -27,6 +27,7 @@ import { DeactivationRequestsPage } from './features/users/DeactivationRequestsP
 import { PendingActivationsPage } from './features/users/PendingActivationsPage'
 import { UserAdminLayout } from './features/users/UserAdminLayout'
 import { UserManagementPage } from './features/users/UserManagementPage'
+import { EditUserPage } from './features/users/EditUserPage'
 import { ProsumerWebNoticePage } from './pages/ProsumerWebNoticePage'
 
 export default function App() {
@@ -45,13 +46,12 @@ export default function App() {
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
-          <Route path="stations" element={<StationListPage />} />
-          <Route path="stations/:stationId" element={<StationDetailPage />} />
-          <Route path="reservations" element={<ReservationListPage />} />
-          <Route path="reservations/new" element={<ReservationCreatePage />} />
-          <Route path="reservations/:reservationId" element={<ReservationDetailPage />} />
-
           <Route element={<RoleRoute allowedRoles={['Backoffice', 'GridOperator']} />}>
+            <Route path="stations" element={<StationListPage />} />
+            <Route path="stations/:stationId" element={<StationDetailPage />} />
+            <Route path="reservations" element={<ReservationListPage />} />
+            <Route path="reservations/new" element={<ReservationCreatePage />} />
+            <Route path="reservations/:reservationId" element={<ReservationDetailPage />} />
             <Route
               path="operations"
               element={(
@@ -78,6 +78,7 @@ export default function App() {
             <Route path="users" element={<UserAdminLayout />}>
               <Route index element={<UserManagementPage />} />
               <Route path="new" element={<CreateStaffPage />} />
+              <Route path=":nic/edit" element={<EditUserPage />} />
               <Route path="pending" element={<PendingActivationsPage />} />
               <Route path="deactivation-requests" element={<DeactivationRequestsPage />} />
             </Route>

@@ -1,3 +1,10 @@
+/*
+ * DeletionServiceTests.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Verifies safe station and slot deletion/deactivation behaviour.
+ * -----------------------------------------------------------------------------
+ */
+
 using System.Reflection;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -23,6 +30,7 @@ public sealed class DeletionServiceTests
     [InlineData(ReservationStatus.Completed)]
     public async Task SlotWithAnyReservationHistory_CannotBeDeleted(ReservationStatus status)
     {
+        // Exercise SlotWithAnyReservationHistory_CannotBeDeleted with isolated synthetic data and explicit assertions.
         var database = new MongoTestContext();
         EnergyBookingSlot slot = Slot();
         database.ReturnSlots(slot);
@@ -55,6 +63,7 @@ public sealed class DeletionServiceTests
     [Fact]
     public async Task UnreferencedSlot_IsDeleted()
     {
+        // Exercise UnreferencedSlot_IsDeleted with isolated synthetic data and explicit assertions.
         var database = new MongoTestContext();
         EnergyBookingSlot slot = Slot();
         database.ReturnSlots(slot);
@@ -83,6 +92,7 @@ public sealed class DeletionServiceTests
     [Fact]
     public async Task MissingSlot_DoesNotQueryOrDeleteReservations()
     {
+        // Exercise MissingSlot_DoesNotQueryOrDeleteReservations with isolated synthetic data and explicit assertions.
         var database = new MongoTestContext();
         database.ReturnSlots();
 
@@ -99,6 +109,7 @@ public sealed class DeletionServiceTests
     [Fact]
     public async Task StationDelete_UsesDeactivationAndPreservesStationDocument()
     {
+        // Exercise StationDelete_UsesDeactivationAndPreservesStationDocument with isolated synthetic data and explicit assertions.
         var database = new MongoTestContext();
         SolarStationInfo station = StationServiceTests.Station();
         database.ReturnStations(station);
@@ -129,6 +140,7 @@ public sealed class DeletionServiceTests
     [Fact]
     public async Task StationDelete_WithActiveReservation_IsBlocked()
     {
+        // Exercise StationDelete_WithActiveReservation_IsBlocked with isolated synthetic data and explicit assertions.
         var database = new MongoTestContext();
         SolarStationInfo station = StationServiceTests.Station();
         database.ReturnStations(station);
@@ -151,6 +163,7 @@ public sealed class DeletionServiceTests
     [InlineData(typeof(StationsController), nameof(StationsController.DeleteStation), "{stationId}")]
     public void DeleteRoutes_AreBackofficeOnly(Type controllerType, string actionName, string route)
     {
+        // Exercise DeleteRoutes_AreBackofficeOnly with isolated synthetic data and explicit assertions.
         MethodInfo action = controllerType.GetMethod(actionName)!;
         Assert.Equal(route, action.GetCustomAttribute<HttpDeleteAttribute>()?.Template);
         Assert.Equal(nameof(UserRole.Backoffice),
@@ -159,6 +172,7 @@ public sealed class DeletionServiceTests
 
     private static EnergyBookingSlot Slot() => new()
     {
+        // Exercise Slot with isolated synthetic data and explicit assertions.
         Id = ObjectId.GenerateNewId().ToString(),
         StationId = ObjectId.GenerateNewId().ToString(),
         TotalCapacityKwh = 20,

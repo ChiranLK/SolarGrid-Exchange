@@ -1,3 +1,10 @@
+/*
+ * StationListQueryDto.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Defines validated filtering and paging parameters for station queries.
+ * -----------------------------------------------------------------------------
+ */
+
 using System.ComponentModel.DataAnnotations;
 
 namespace SolarMicrogrid.API.Models.DTOs.Stations;

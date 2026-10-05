@@ -62,3 +62,11 @@ export interface CreateStaffRequest {
   role: StaffRole
   assignedStationId?: string
 }
+
+/** Editable profile fields for PUT /api/users/{nic}. */
+export interface UpdateUserRequest {
+  fullName: string
+  email: string
+  phone: string
+  address?: string | null
+}

@@ -4,9 +4,9 @@
  * File        : UpdateProfileDto.cs
  * Author      : H.A.S MADUWANTHA
  * IT Number   : IT23472020
- * Description : Request body for PUT /api/prosumers/me. Contains only the fields a
- *               Prosumer may change (name, email, phone, address); NIC, role, status
- *               and password cannot be bound from the request.
+ * Description : Shared editable-account request for the Prosumer self-service and
+ *               Backoffice user-detail endpoints. NIC, role, status, station
+ *               assignment, and password cannot be bound from this request.
  * Date        : 2026-09-29
  * -----------------------------------------------------------------------------
  */

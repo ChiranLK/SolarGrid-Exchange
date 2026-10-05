@@ -1,3 +1,10 @@
+/*
+ * SolarStationInfo.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Defines the MongoDB station aggregate and embedded operating schedule.
+ * -----------------------------------------------------------------------------
+ */
+
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver.GeoJsonObjectModel;

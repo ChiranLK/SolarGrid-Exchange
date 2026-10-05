@@ -1,3 +1,10 @@
+/*
+ * ReservationGuardServiceTests.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Verifies reservation guards used by station deactivation.
+ * -----------------------------------------------------------------------------
+ */
+
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
@@ -16,6 +23,7 @@ public sealed class ReservationGuardServiceTests
     [InlineData(ReservationStatus.Approved)]
     public async Task ActiveReservation_PreventsStationDeactivation(ReservationStatus status)
     {
+        // Exercise ActiveReservation_PreventsStationDeactivation with isolated synthetic data and explicit assertions.
         var database = new MongoTestContext();
         SolarStationInfo station = StationServiceTests.Station();
         database.ReturnStations(station);
@@ -41,6 +49,7 @@ public sealed class ReservationGuardServiceTests
     [Fact]
     public async Task NoActiveReservations_DeactivatesStationAndUpdatesTimestamp()
     {
+        // Exercise NoActiveReservations_DeactivatesStationAndUpdatesTimestamp with isolated synthetic data and explicit assertions.
         var database = new MongoTestContext();
         SolarStationInfo station = StationServiceTests.Station();
         DateTime originalUpdatedAt = station.UpdatedAtUtc;
@@ -79,6 +88,7 @@ public sealed class ReservationGuardServiceTests
     [Fact]
     public async Task MissingStation_DoesNotQueryReservations()
     {
+        // Exercise MissingStation_DoesNotQueryReservations with isolated synthetic data and explicit assertions.
         var database = new MongoTestContext();
         database.ReturnStations();
 
@@ -92,6 +102,7 @@ public sealed class ReservationGuardServiceTests
     [Fact]
     public async Task GuardQuery_UsesStationIdAndOnlyPendingApprovedStatuses()
     {
+        // Exercise GuardQuery_UsesStationIdAndOnlyPendingApprovedStatuses with isolated synthetic data and explicit assertions.
         var database = new MongoTestContext();
         string stationId = ObjectId.GenerateNewId().ToString();
         FilterDefinition<EnergyReservation>? queriedFilter = null;

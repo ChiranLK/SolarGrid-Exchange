@@ -149,6 +149,7 @@ internal static class ReservationReadPolicy
     /// </summary>
     internal static bool IsQrUsable(EnergyReservation reservation, DateTime serverNowUtc)
     {
+        // Execute IsQrUsable with validated inputs and the authoritative application state.
         return reservation.Status == ReservationStatus.Approved &&
             reservation.CapacityState == ReservationCapacityState.Held &&
             reservation.ScheduledEndTimeUtc > serverNowUtc;

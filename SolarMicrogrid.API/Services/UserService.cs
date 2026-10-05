@@ -17,6 +17,7 @@
  * -----------------------------------------------------------------------------
  */
 
+using System.ComponentModel.DataAnnotations;
 using System.Text.RegularExpressions;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -31,6 +32,12 @@ namespace SolarMicrogrid.API.Services
 {
     public class UserService
     {
+        private const int MaxFullNameLength = 100;
+        private const int MaxEmailLength = 100;
+        private const int MaxPhoneLength = 20;
+        private const int MaxAddressLength = 200;
+        private static readonly EmailAddressAttribute EmailValidator = new();
+
         private readonly MongoDbContext _context;
         private readonly TimeProvider _timeProvider;
 
@@ -38,11 +45,13 @@ namespace SolarMicrogrid.API.Services
         public UserService(MongoDbContext context)
             : this(context, TimeProvider.System)
         {
+            // Preserve the compatibility constructor while delegating to the injectable clock overload.
         }
 
         // Receives the shared MongoDB context and clock through dependency injection.
         public UserService(MongoDbContext context, TimeProvider timeProvider)
         {
+            // Execute UserService with validated inputs and the authoritative application state.
             _context = context;
             _timeProvider = timeProvider;
         }
@@ -131,6 +140,7 @@ namespace SolarMicrogrid.API.Services
         // which is a worse failure mode than a clear error.
         public async Task<List<UserResponseDto>> GetAllAsync(string? role, string? status)
         {
+            // Execute GetAllAsync with validated inputs and the authoritative application state.
             var filter = Builders<User>.Filter.Empty;
 
             if (!string.IsNullOrWhiteSpace(role))
@@ -156,6 +166,70 @@ namespace SolarMicrogrid.API.Services
             List<User> users = await _context.Users.Find(filter).ToListAsync();
 
             return users.Select(UserMapper.ToUserResponse).ToList();
+        }
+
+        // Loads one account by NIC for Backoffice administration and exposes only the safe DTO.
+        public async Task<UserResponseDto> GetByNicAsync(
+            string nic,
+            CancellationToken cancellationToken = default)
+        {
+            // Normalise the route identifier before querying the authoritative user collection.
+            User user = await FindUserOrThrowAsync(NormaliseNic(nic), cancellationToken);
+            return UserMapper.ToUserResponse(user);
+        }
+
+        // Updates Backoffice-managed profile fields without allowing identity, role or status changes.
+        public async Task<UserResponseDto> UpdateDetailsAsync(
+            string nic,
+            UpdateProfileDto request,
+            CancellationToken cancellationToken = default)
+        {
+            // Normalise and validate values again in the FAT service before touching MongoDB.
+            ArgumentNullException.ThrowIfNull(request);
+            string normalisedNic = NormaliseNic(nic);
+            string fullName = RequireText(request.FullName, "Full name", MaxFullNameLength);
+            string email = RequireText(request.Email, "Email", MaxEmailLength).ToLowerInvariant();
+            string phone = RequireText(request.Phone, "Phone", MaxPhoneLength);
+            string? address = OptionalText(request.Address, "Address", MaxAddressLength);
+            if (!EmailValidator.IsValid(email))
+            {
+                throw new BadRequestException("Enter a valid email address.");
+            }
+
+            await FindUserOrThrowAsync(normalisedNic, cancellationToken);
+            FilterDefinition<User> duplicateEmail = Builders<User>.Filter.Eq(user => user.Email, email)
+                & Builders<User>.Filter.Ne(user => user.Nic, normalisedNic);
+            if (await _context.Users.CountDocumentsAsync(
+                    duplicateEmail,
+                    new CountOptions { Limit = 1 },
+                    cancellationToken) > 0)
+            {
+                throw new ConflictException("A user with this email already exists.");
+            }
+
+            UpdateDefinition<User> update = Builders<User>.Update
+                .Set(user => user.FullName, fullName)
+                .Set(user => user.Email, email)
+                .Set(user => user.Phone, phone)
+                .Set(user => user.UpdatedAtUtc, _timeProvider.GetUtcNow().UtcDateTime);
+            update = address is null
+                ? update.Unset(user => user.Address)
+                : update.Set(user => user.Address, address);
+
+            try
+            {
+                User? updated = await _context.Users.FindOneAndUpdateAsync(
+                    Builders<User>.Filter.Eq(user => user.Nic, normalisedNic),
+                    update,
+                    new FindOneAndUpdateOptions<User> { ReturnDocument = ReturnDocument.After },
+                    cancellationToken);
+                return UserMapper.ToUserResponse(updated
+                    ?? throw new ConflictException("This account changed while saving. Please reload and try again."));
+            }
+            catch (MongoCommandException exception) when (exception.Code == 11000)
+            {
+                throw new ConflictException("A user with this email already exists.");
+            }
         }
 
         public async Task<PagedEligibleProsumerResponseDto> SearchEligibleProsumersAsync(
@@ -219,6 +293,7 @@ namespace SolarMicrogrid.API.Services
         // GetAllAsync with no role filter and Status = PendingActivation.
         public Task<List<UserResponseDto>> GetPendingActivationsAsync()
         {
+            // Execute GetPendingActivationsAsync with validated inputs and the authoritative application state.
             return GetAllAsync(null, "PendingActivation");
         }
 
@@ -227,6 +302,7 @@ namespace SolarMicrogrid.API.Services
         public async Task<List<DeactivationRequestResponseDto>> GetDeactivationRequestsAsync(
             CancellationToken cancellationToken = default)
         {
+            // Execute GetDeactivationRequestsAsync with validated inputs and the authoritative application state.
             FilterDefinition<User> filter = Builders<User>.Filter.Eq(u => u.Role, UserRole.Prosumer)
                 & Builders<User>.Filter.Eq(u => u.DeactivationRequested, true);
 
@@ -253,6 +329,7 @@ namespace SolarMicrogrid.API.Services
         // Backoffice-only access is enforced by the controller's [Authorize].
         public async Task<UserResponseDto> ActivateAsync(string nic, CancellationToken cancellationToken = default)
         {
+            // Execute ActivateAsync with validated inputs and the authoritative application state.
             string normalisedNic = NormaliseNic(nic);
             DateTime now = _timeProvider.GetUtcNow().UtcDateTime;
 
@@ -290,6 +367,7 @@ namespace SolarMicrogrid.API.Services
             string callerNic,
             CancellationToken cancellationToken = default)
         {
+            // Execute DeactivateAsync with validated inputs and the authoritative application state.
             string normalisedNic = NormaliseNic(nic);
 
             if (string.Equals(normalisedNic, NormaliseNic(callerNic), StringComparison.Ordinal))
@@ -352,6 +430,7 @@ namespace SolarMicrogrid.API.Services
             string stationId,
             CancellationToken cancellationToken = default)
         {
+            // Execute AssignStationAsync with validated inputs and the authoritative application state.
             string normalisedNic = NormaliseNic(nic);
 
             User target = await FindUserOrThrowAsync(normalisedNic, cancellationToken);
@@ -386,6 +465,7 @@ namespace SolarMicrogrid.API.Services
         // reservation/dashboard code compares against with ordinal string equality.
         private async Task<string> ResolveActiveStationIdAsync(string? stationId, CancellationToken cancellationToken)
         {
+            // Execute ResolveActiveStationIdAsync with validated inputs and the authoritative application state.
             if (!ObjectId.TryParse(stationId?.Trim(), out ObjectId objectId))
             {
                 throw new BadRequestException("Station ID is not valid.");
@@ -412,6 +492,7 @@ namespace SolarMicrogrid.API.Services
         // Loads a user by normalised NIC, or throws 404 if no such account exists.
         private async Task<User> FindUserOrThrowAsync(string normalisedNic, CancellationToken cancellationToken)
         {
+            // Execute FindUserOrThrowAsync with validated inputs and the authoritative application state.
             User? user = await _context.Users
                 .Find(u => u.Nic == normalisedNic)
                 .FirstOrDefaultAsync(cancellationToken);
@@ -419,9 +500,46 @@ namespace SolarMicrogrid.API.Services
             return user ?? throw new NotFoundException($"No user found with NIC '{normalisedNic}'.");
         }
 
+        // Trims a required profile value and enforces the shared assignment field limit.
+        private static string RequireText(string? value, string fieldName, int maxLength)
+        {
+            // Reject blank and overlong values after normalisation.
+            string trimmed = value?.Trim() ?? string.Empty;
+            if (trimmed.Length == 0)
+            {
+                throw new BadRequestException($"{fieldName} is required.");
+            }
+
+            if (trimmed.Length > maxLength)
+            {
+                throw new BadRequestException($"{fieldName} cannot be longer than {maxLength} characters.");
+            }
+
+            return trimmed;
+        }
+
+        // Trims an optional profile value; blank input removes the stored field.
+        private static string? OptionalText(string? value, string fieldName, int maxLength)
+        {
+            // Store null for an empty optional field and reject only overlong content.
+            string? trimmed = value?.Trim();
+            if (string.IsNullOrEmpty(trimmed))
+            {
+                return null;
+            }
+
+            if (trimmed.Length > maxLength)
+            {
+                throw new BadRequestException($"{fieldName} cannot be longer than {maxLength} characters.");
+            }
+
+            return trimmed;
+        }
+
         // Applies the same NIC normalisation as registration (trim + upper-case V/X suffix).
         private static string NormaliseNic(string? nic)
         {
+            // Execute NormaliseNic with validated inputs and the authoritative application state.
             return (nic ?? string.Empty).Trim().ToUpperInvariant();
         }
     }

@@ -27,14 +27,15 @@ SDK 24, 34, 35, and 36 and build tools through 36 were installed when this found
 
 The mobile client does not contain reservation, capacity, approval, cutoff, or authorization business rules. Those remain in the C# API.
 
-## SQLite session database
+## SQLite session and reference-data database
 
-`SessionDatabaseHelper` extends `SQLiteOpenHelper` and owns `solargrid_local.db`, schema version 1. It contains one `authenticated_session` row with the API token and identity summary: NIC, full name, email when restored from `/api/auth/me`, exact role, status, and local update timestamp.
+`SessionDatabaseHelper` extends `SQLiteOpenHelper` and owns `solargrid_local.db`, schema version 2. It contains one `authenticated_session` row with the API token and identity summary, plus `reference_stations` and `reference_slots` tables for the latest station/slot reference responses.
 
 - Passwords are never written to SQLite, preferences, logs, or source.
-- There is one session database and one session table; feature teams must extend it through explicit forward-only migrations instead of creating competing user/session stores.
+- There is one app-private database. Version 2 is a forward-only migration that preserves the session while adding station and slot reference tables with a foreign-key relationship.
 - `SessionStore` provides synchronized read, replace, and clear operations.
-- The database is app-private and is not a booking database.
+- `ReferenceDataStore` upserts server station projections and replaces each station's slot reference page atomically. Network/server failures may use cached reference data; authentication and authorization failures never do.
+- The database is not a booking database. Reservation writes, capacity decisions and transaction results are never queued locally.
 - Reservation success, approval, capacity, and history must always come from the API.
 - This foundation does not queue offline bookings and never represents an offline action as confirmed.
 
@@ -58,7 +59,7 @@ The implementation was matched to the repository's controllers and DTOs:
 | `PUT /api/reservations/{reservationId}` | Versioned slot/energy modification with an idempotency key |
 | `POST /api/reservations/{reservationId}/cancel` | Versioned cancellation with an optional reason and idempotency key |
 
-The nearby-stations destination requests approximate or precise location, obtains a device location through Google Play services, and sends its coordinates to the API. Only the API's returned station coordinates become map markers. If location is denied or unavailable, the screen offers recovery; network errors retain the shared retry state. Station details link to a read-only, paged available-slot screen. No availability is cached in SQLite.
+The nearby-stations destination requests approximate or precise location, obtains a device location through Google Play services, and sends its coordinates to the API. Only server-returned station coordinates become map markers. If location is denied or unavailable, the screen offers recovery. Successful station/slot reads update SQLite reference data; a later network/server failure can show that cached reference projection, while every booking confirmation still re-enters the authoritative API workflow.
 
 Component 3 adds API-backed booking creation from Member 2's available-slot screen, including a fresh station-slot query, single selection, required kWh input, seven-day guidance, and a signed-in Prosumer review screen before submission. Back navigation preserves the valid draft, while the central API remains authoritative for availability and capacity at confirmation. Creation sends only slot and quantity because ownership comes from authenticated claims. One idempotency key is retained for each logical request; after a network interruption, the client reconciles against a pre-submit reservation baseline before reporting an uncertain outcome. Successful creation opens a dedicated server-response summary and refreshes the Pending list endpoint used by Android and web. The app also provides filtered current/pending reservation lists, history, details, modification, cancellation, and update/cancel response summaries. Failed or offline requests are never queued or represented as confirmed. Member 4 adds API-authoritative Prosumer QR display and Grid Operator scan, verification, confirmation, and completion flows without storing raw QR values or receipts. No fake production data is returned.
 

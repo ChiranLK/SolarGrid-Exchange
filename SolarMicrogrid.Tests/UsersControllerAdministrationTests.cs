@@ -42,6 +42,8 @@ public sealed class UsersControllerAdministrationTests
         string[] actions =
         [
             nameof(UsersController.CreateStaffUser),
+            nameof(UsersController.GetByNic),
+            nameof(UsersController.UpdateDetails),
             nameof(UsersController.GetPending),
             nameof(UsersController.GetDeactivationRequests),
             nameof(UsersController.Activate),

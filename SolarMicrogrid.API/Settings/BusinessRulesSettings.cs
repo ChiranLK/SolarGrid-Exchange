@@ -1,3 +1,10 @@
+/*
+ * BusinessRulesSettings.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Binds configurable booking-horizon and change-notice rules.
+ * -----------------------------------------------------------------------------
+ */
+
 namespace SolarMicrogrid.API.Settings
 {
     

@@ -143,6 +143,7 @@ namespace SolarMicrogrid.API.Services
         // Converts a User document into the safe, public-facing DTO (no password hash).
         private static UserResponseDto MapToUserResponse(User user)
         {
+            // Execute MapToUserResponse with validated inputs and the authoritative application state.
             return new UserResponseDto
             {
                 Nic = user.Nic,
