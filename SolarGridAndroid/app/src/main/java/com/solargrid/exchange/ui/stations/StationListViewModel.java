@@ -30,8 +30,19 @@ public final class StationListViewModel extends AndroidViewModel {
     public LiveData<UiState<List<NearbyStation>>> getState() { return state; }
 
     public void loadNearby(double latitude, double longitude) {
+        fetchNearby(latitude, longitude, true);
+    }
+
+    /** Re-queries without a loading state; a failed refresh keeps the stations already shown. */
+    public void refreshNearby(double latitude, double longitude) {
+        fetchNearby(latitude, longitude, false);
+    }
+
+    private void fetchNearby(double latitude, double longitude, boolean showLoading) {
         int generation = ++requestGeneration;
-        state.setValue(UiState.loading());
+        if (showLoading) {
+            state.setValue(UiState.loading());
+        }
         repository.getNearbyStations(latitude, longitude, new ApiCallback<>() {
             @Override
             public void onSuccess(List<NearbyStation> value) {
@@ -42,7 +53,12 @@ public final class StationListViewModel extends AndroidViewModel {
 
             @Override
             public void onError(ApiError error) {
-                if (generation == requestGeneration) {
+                if (generation != requestGeneration) {
+                    return;
+                }
+                boolean showingStations = state.getValue() != null
+                        && state.getValue().getStatus() == UiState.Status.SUCCESS;
+                if (showLoading || !showingStations || error.isAuthenticationExpired()) {
                     state.setValue(UiState.error(error));
                 }
             }
