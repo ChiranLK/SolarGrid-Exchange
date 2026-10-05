@@ -187,12 +187,12 @@ The full runbook, including rollback and troubleshooting, is in [docs/deployment
 
 ## Individual contributions
 
-| Member | IT number | Name | Component |
-| --- | --- | --- | --- |
-| Member 1 | IT23472020 | Maduwantha HAS | Authentication and Account Management |
-| Member 2 | IT23401976 | Serasinghe CS | Solar Stations, Energy Slots and Maps |
-| Member 3 | IT23405240 | Alahakoon PB | Reservation Workflow |
-| Member 4 | IT23242272 | Nimadith LMH | Dashboard, QR Verification and Deployment |
+| Member | Name | Component |
+| --- | --- | --- |
+| Member 1 | Maduwantha HAS | Authentication and Account Management |
+| Member 2 | Serasinghe CS | Solar Stations, Energy Slots and Maps |
+| Member 3 | Alahakoon PB | Reservation Workflow |
+| Member 4 | Nimadith LMH | Dashboard, QR Verification and Deployment |
 
 Each member's individual commits are visible in the [commit history](https://github.com/ChiranLK/SolarGrid-Exchange/commits/main).
 
