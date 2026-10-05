@@ -2,8 +2,15 @@ plugins {
     id 'com.android.application'
 }
 
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withInputStream { stream -> localProperties.load(stream) }
+}
+
 def configuredApiBaseUrl = providers.gradleProperty('SOLARGRID_API_BASE_URL')
         .orElse(providers.environmentVariable('SOLARGRID_API_BASE_URL'))
+        .orElse(localProperties.getProperty('SOLARGRID_API_BASE_URL', ''))
         .orElse('')
         .get()
         .trim()
@@ -11,6 +18,7 @@ def debugApiBaseUrl = configuredApiBaseUrl ?: 'http://10.0.2.2:5076/api/'
 def javaString = { value -> value.replace('\\', '\\\\').replace('"', '\\"') }
 def configuredMapsApiKey = providers.gradleProperty('SOLARGRID_MAPS_API_KEY')
         .orElse(providers.environmentVariable('SOLARGRID_MAPS_API_KEY'))
+        .orElse(localProperties.getProperty('SOLARGRID_MAPS_API_KEY', ''))
         .orElse('')
         .get()
 
