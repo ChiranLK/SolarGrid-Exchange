@@ -229,8 +229,6 @@ Responsible for developing the operational dashboards, transaction management, Q
   - Prosumer dashboard, booking history and QR display.
   - Grid Operator CameraX/ML Kit scanner, verification, confirmation and completion screens.
 - **Deployment**: bounded `/health`, validated CORS, OpenAPI with bearer security, correlation IDs, safe error logging, IIS publish profile and runbook, and removal of a previously tracked JWT key.
-- **Documentation**: [contracts](docs/member-4/contracts.md), [progress](docs/member-4/progress.md), [test evidence](docs/member-4/test-evidence.md), [final audit](docs/member-4/final-audit.md), [screenshot checklist](docs/member-4/screenshot-checklist.md), [video script](docs/member-4/video-script.md), [viva notes](docs/member-4/viva-notes.md).
-
 ## Troubleshooting
 
 - **API fails at startup with a configuration error**: the JWT key or MongoDB connection string is missing. Set them through user secrets or environment variables.
