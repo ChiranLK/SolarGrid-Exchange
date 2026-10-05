@@ -73,7 +73,7 @@ public final class AuthRepository implements RegistrationController.Gateway, Pro
         apiClient.postAnonymous("auth/login", body, new ApiCallback<>() {
             @Override
             public void onSuccess(JSONObject value) {
-                SessionUser session = parseLogin(value);
+                SessionUser session = parseLogin(value, email.trim());
                 if (session == null) {
                     callback.onError(new ApiError(
                             ApiError.Kind.UNKNOWN,
@@ -138,7 +138,7 @@ public final class AuthRepository implements RegistrationController.Gateway, Pro
     }
 
     @Nullable
-    private static SessionUser parseLogin(JSONObject value) {
+    private static SessionUser parseLogin(JSONObject value, String signInEmail) {
         String token = value.optString("token", "");
         String nic = value.optString("nic", "");
         String fullName = value.optString("fullName", "");
@@ -148,7 +148,7 @@ public final class AuthRepository implements RegistrationController.Gateway, Pro
                 status.isEmpty() || !isSupportedRole(role)) {
             return null;
         }
-        return new SessionUser(token, nic, fullName, "", role, status);
+        return new SessionUser(token, nic, fullName, value.optString("email", signInEmail), role, status);
     }
 
     private static boolean isSupportedRole(String role) {
