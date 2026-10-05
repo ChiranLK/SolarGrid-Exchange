@@ -46,7 +46,7 @@
     <string name="account_no_longer_active">Your account is no longer active. %1$s</string>
 
     <!-- Profile -->
-    <string name="loading_profile">Loading your profile from the API…</string>
+    <string name="loading_profile">Loading your profile…</string>
     <string name="profile_account_details">Account details</string>
     <string name="profile_edit_title">Edit profile</string>
     <string name="profile_edit_description">NIC, role and account status are managed by SolarGrid and cannot be changed here.</string>

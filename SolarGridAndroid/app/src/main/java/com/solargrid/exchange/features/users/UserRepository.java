@@ -55,7 +55,7 @@ public final class UserRepository implements ProfileController.Gateway {
                 ProsumerProfile profile = ProsumerProfile.fromJson(value);
                 if (profile == null) {
                     callback.onError(new ApiError(
-                            ApiError.Kind.UNKNOWN, 0, "The API returned an incomplete profile."));
+                            ApiError.Kind.UNKNOWN, 0, "Your profile could not be loaded completely."));
                 } else {
                     callback.onSuccess(profile);
                 }

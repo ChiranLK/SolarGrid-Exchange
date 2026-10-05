@@ -268,34 +268,33 @@ public final class ReservationDetailFragment extends Fragment {
                 ? getString(R.string.cancel_reservation)
                 : valueOrFallback(reservation.getAllowedActions().getCancelUnavailableReason(),
                         getString(R.string.action_unavailable_fallback)));
-        setText(view, R.id.reservation_detail_allowed_actions,
-                buildAllowedActions(reservation.getAllowedActions()));
+        String unavailable = buildUnavailableActions(reservation.getAllowedActions());
+        int notesVisibility = unavailable.isEmpty() ? View.GONE : View.VISIBLE;
+        view.findViewById(R.id.reservation_detail_allowed_actions_title).setVisibility(notesVisibility);
+        view.findViewById(R.id.reservation_detail_allowed_actions).setVisibility(notesVisibility);
+        setText(view, R.id.reservation_detail_allowed_actions, unavailable);
     }
 
-    private String buildAllowedActions(ReservationAllowedActions actions) {
+    private String buildUnavailableActions(ReservationAllowedActions actions) {
         StringBuilder result = new StringBuilder();
-        appendAction(result, getString(R.string.modify_reservation), actions.canUpdate(),
+        appendUnavailable(result, getString(R.string.modify_reservation), actions.canUpdate(),
                 actions.getUpdateUnavailableReason());
-        appendAction(result, getString(R.string.cancel_reservation), actions.canCancel(),
+        appendUnavailable(result, getString(R.string.cancel_reservation), actions.canCancel(),
                 actions.getCancelUnavailableReason());
-        appendAction(result, getString(R.string.qr_access), actions.canGetQr(),
+        appendUnavailable(result, getString(R.string.qr_access), actions.canGetQr(),
                 actions.getGetQrUnavailableReason());
-        if (actions.canGetQr()) {
-            result.append("\n").append(getString(R.string.qr_destination_dependency));
-        }
         return result.toString();
     }
 
-    private void appendAction(StringBuilder result, String label, boolean allowed, String reason) {
+    private void appendUnavailable(StringBuilder result, String label, boolean allowed, String reason) {
+        if (allowed) {
+            return;
+        }
         if (result.length() > 0) {
             result.append("\n\n");
         }
-        result.append(label).append(": ")
-                .append(allowed ? getString(R.string.action_available) : getString(R.string.action_unavailable));
-        if (!allowed) {
-            result.append("\n").append(valueOrFallback(
-                    reason, getString(R.string.action_unavailable_fallback)));
-        }
+        result.append(label).append("\n").append(valueOrFallback(
+                reason, getString(R.string.action_unavailable_fallback)));
     }
 
     private static void bindOptionalReason(View view, int groupId, int valueId, String value) {

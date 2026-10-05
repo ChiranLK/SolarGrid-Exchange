@@ -307,8 +307,9 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Server-provided action availability and reasons -->
+            <!-- Reasons for actions the server currently refuses; hidden when everything is allowed -->
             <TextView
+                android:id="@+id/reservation_detail_allowed_actions_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/sg_space_32"
