@@ -1,6 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from './layouts/AppLayout'
-import { FeaturePlaceholderPage } from './pages/FeaturePlaceholderPage'
 import { ForbiddenPageWithNavigation } from './pages/ForbiddenPage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
@@ -16,7 +15,7 @@ import { ReservationDetailPage } from './features/reservations/ReservationDetail
 import { ReservationListPage } from './features/reservations/ReservationListPage'
 import { BookingHistoryPage } from './features/operations/BookingHistoryPage'
 import { OperatorDashboardPage } from './features/operations/OperatorDashboardPage'
-import { operatorRoles, operatorRoutes } from './features/operations/operatorDashboardModel'
+import { operatorRoutes, operatorScreenRoles } from './features/operations/operatorDashboardModel'
 import { StationDetailPage } from './features/stations/StationDetailPage'
 import { StationFormPage } from './features/stations/StationFormPage'
 import { StationListPage } from './features/stations/StationListPage'
@@ -52,19 +51,10 @@ export default function App() {
             <Route path="reservations" element={<ReservationListPage />} />
             <Route path="reservations/new" element={<ReservationCreatePage />} />
             <Route path="reservations/:reservationId" element={<ReservationDetailPage />} />
-            <Route
-              path="operations"
-              element={(
-                <FeaturePlaceholderPage
-                  title="Operations"
-                  description="Staff-only route for grid operations workflows."
-                  ownerNote="The Grid Operator workspace can be implemented here as backend contracts become available."
-                />
-              )}
-            />
+            <Route path="operations" element={<Navigate to={`/${operatorRoutes.dashboard}`} replace />} />
           </Route>
 
-          <Route element={<RoleRoute allowedRoles={operatorRoles} />}>
+          <Route element={<RoleRoute allowedRoles={operatorScreenRoles} />}>
             <Route path={operatorRoutes.dashboard} element={<OperatorDashboardPage />} />
             <Route path={operatorRoutes.history} element={<BookingHistoryPage />} />
             <Route path="dashboard" element={<Navigate to={`/${operatorRoutes.dashboard}`} replace />} />
@@ -87,16 +77,7 @@ export default function App() {
             <Route path="stations/:stationId/schedule" element={<StationSchedulePage />} />
             <Route path="stations/:stationId/slots/new" element={<SlotFormPage />} />
             <Route path="stations/:stationId/slots/:slotId/edit" element={<SlotFormPage />} />
-            <Route
-              path="backoffice"
-              element={(
-                <FeaturePlaceholderPage
-                  title="Backoffice"
-                  description="Backoffice-only administration route."
-                  ownerNote="This route is protected by the API role convention and ready for administrative screens."
-                />
-              )}
-            />
+            <Route path="backoffice" element={<Navigate to="/users" replace />} />
           </Route>
 
           <Route path="forbidden" element={<ForbiddenPageWithNavigation />} />
