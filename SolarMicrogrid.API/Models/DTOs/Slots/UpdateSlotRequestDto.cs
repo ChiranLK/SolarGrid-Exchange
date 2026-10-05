@@ -1,3 +1,10 @@
+/*
+ * UpdateSlotRequestDto.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Defines the validated request contract for updating an energy slot.
+ * -----------------------------------------------------------------------------
+ */
+
 using System.ComponentModel.DataAnnotations;
 
 namespace SolarMicrogrid.API.Models.DTOs.Slots;

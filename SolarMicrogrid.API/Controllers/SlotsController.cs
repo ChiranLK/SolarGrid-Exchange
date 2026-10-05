@@ -1,7 +1,15 @@
+/*
+ * SlotsController.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Exposes authenticated slot query and management endpoints.
+ * -----------------------------------------------------------------------------
+ */
+
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SolarMicrogrid.API.Exceptions;
+using SolarMicrogrid.API.Filters;
 using SolarMicrogrid.API.Models.DTOs.Slots;
 using SolarMicrogrid.API.Models.Entities;
 using SolarMicrogrid.API.Services;
@@ -10,6 +18,7 @@ namespace SolarMicrogrid.API.Controllers;
 
 [ApiController]
 [Authorize]
+[RequireActiveAccount]
 [Route("api")]
 public sealed class SlotsController : ControllerBase
 {
@@ -20,6 +29,7 @@ public sealed class SlotsController : ControllerBase
         SlotService slotService,
         StationAccessService stationAccessService)
     {
+        // Execute SlotsController with validated inputs and the authoritative application state.
         _slotService = slotService;
         _stationAccessService = stationAccessService;
     }
@@ -30,6 +40,7 @@ public sealed class SlotsController : ControllerBase
         [FromQuery] SlotListQueryDto query,
         CancellationToken cancellationToken)
     {
+        // Execute GetSlotsByStation with validated inputs and the authoritative application state.
         PagedSlotResponseDto result = await _slotService.GetSlotsByStationAsync(
             stationId,
             query,
@@ -43,6 +54,7 @@ public sealed class SlotsController : ControllerBase
         [FromQuery] SlotListQueryDto query,
         CancellationToken cancellationToken)
     {
+        // Execute GetAvailableSlotsByStation with validated inputs and the authoritative application state.
         PagedSlotResponseDto result = await _slotService.GetAvailableSlotsByStationAsync(
             stationId,
             query,
@@ -55,6 +67,7 @@ public sealed class SlotsController : ControllerBase
         string slotId,
         CancellationToken cancellationToken)
     {
+        // Execute GetSlotById with validated inputs and the authoritative application state.
         SlotResponseDto? slot = await _slotService.GetSlotByIdAsync(slotId, cancellationToken);
         return slot is null ? NotFound() : Ok(slot);
     }
@@ -66,6 +79,7 @@ public sealed class SlotsController : ControllerBase
         [FromBody] CreateSlotRequestDto request,
         CancellationToken cancellationToken)
     {
+        // Execute CreateSlot with validated inputs and the authoritative application state.
         if (!string.IsNullOrWhiteSpace(request.StationId) &&
             !string.Equals(request.StationId.Trim(), stationId.Trim(), StringComparison.OrdinalIgnoreCase))
         {
@@ -87,6 +101,7 @@ public sealed class SlotsController : ControllerBase
         [FromBody] UpdateSlotRequestDto request,
         CancellationToken cancellationToken)
     {
+        // Execute UpdateSlot with validated inputs and the authoritative application state.
         SlotResponseDto? slot = await _slotService.UpdateSlotAsync(slotId, request, cancellationToken);
         return slot is null ? NotFound() : Ok(slot);
     }
@@ -97,6 +112,7 @@ public sealed class SlotsController : ControllerBase
         string slotId,
         CancellationToken cancellationToken)
     {
+        // Execute DeleteSlot with validated inputs and the authoritative application state.
         bool deleted = await _slotService.DeleteSlotAsync(slotId, cancellationToken);
         return deleted ? NoContent() : NotFound();
     }
@@ -108,6 +124,7 @@ public sealed class SlotsController : ControllerBase
         [FromBody] ChangeSlotAvailabilityRequestDto request,
         CancellationToken cancellationToken)
     {
+        // Execute ChangeSlotAvailability with validated inputs and the authoritative application state.
         string? actorNic = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrWhiteSpace(actorNic))
         {

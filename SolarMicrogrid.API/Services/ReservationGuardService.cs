@@ -1,3 +1,10 @@
+/*
+ * ReservationGuardService.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Checks whether a station has reservations that block deactivation.
+ * -----------------------------------------------------------------------------
+ */
+
 using MongoDB.Driver;
 using SolarMicrogrid.API.Data;
 using SolarMicrogrid.API.Models.Entities;
@@ -13,6 +20,7 @@ public sealed class ReservationGuardService
 
     public ReservationGuardService(MongoDbContext context)
     {
+        // Execute ReservationGuardService with validated inputs and the authoritative application state.
         _context = context;
     }
 
@@ -20,6 +28,7 @@ public sealed class ReservationGuardService
         string stationId,
         CancellationToken cancellationToken)
     {
+        // Execute HasActiveReservationsForStationAsync with validated inputs and the authoritative application state.
         FilterDefinition<EnergyReservation> filter = Builders<EnergyReservation>.Filter.And(
             Builders<EnergyReservation>.Filter.Eq(reservation => reservation.StationId, stationId),
             Builders<EnergyReservation>.Filter.In(reservation => reservation.Status, ActiveStatuses));

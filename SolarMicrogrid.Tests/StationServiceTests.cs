@@ -1,3 +1,10 @@
+/*
+ * StationServiceTests.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Verifies station validation, nearby search, lifecycle and schedule behaviour.
+ * -----------------------------------------------------------------------------
+ */
+
 using System.Reflection;
 using Microsoft.AspNetCore.Authorization;
 using MongoDB.Bson;
@@ -18,6 +25,7 @@ public sealed class StationServiceTests
     [Fact]
     public async Task CreateStation_WithValidRequest_CreatesActiveStation()
     {
+        // Exercise CreateStation_WithValidRequest_CreatesActiveStation with isolated synthetic data and explicit assertions.
         var database = new MongoTestContext();
         SolarStationInfo? inserted = null;
         database.Stations
@@ -45,6 +53,7 @@ public sealed class StationServiceTests
     [InlineData(double.NaN)]
     public async Task CreateStation_WithInvalidLatitude_IsRejected(double latitude)
     {
+        // Exercise CreateStation_WithInvalidLatitude_IsRejected with isolated synthetic data and explicit assertions.
         var request = ValidCreateRequest();
         request.Latitude = latitude;
 
@@ -59,6 +68,7 @@ public sealed class StationServiceTests
     [InlineData(double.PositiveInfinity)]
     public async Task CreateStation_WithInvalidLongitude_IsRejected(double longitude)
     {
+        // Exercise CreateStation_WithInvalidLongitude_IsRejected with isolated synthetic data and explicit assertions.
         var request = ValidCreateRequest();
         request.Longitude = longitude;
 
@@ -72,6 +82,7 @@ public sealed class StationServiceTests
     [InlineData(-1)]
     public async Task CreateStation_WithNonPositiveGenerationCapacity_IsRejected(decimal capacity)
     {
+        // Exercise CreateStation_WithNonPositiveGenerationCapacity_IsRejected with isolated synthetic data and explicit assertions.
         var request = ValidCreateRequest();
         request.EnergyGenerationCapacityKw = capacity;
 
@@ -83,6 +94,7 @@ public sealed class StationServiceTests
     [Fact]
     public async Task CreateStation_WithInvalidSchedule_IsRejected()
     {
+        // Exercise CreateStation_WithInvalidSchedule_IsRejected with isolated synthetic data and explicit assertions.
         var request = ValidCreateRequest();
         request.OperatingSchedule[0].OpeningTime = "18:00";
         request.OperatingSchedule[0].ClosingTime = "08:00";
@@ -95,6 +107,7 @@ public sealed class StationServiceTests
     [Fact]
     public async Task CreateStation_WithDuplicateScheduleDay_IsRejected()
     {
+        // Exercise CreateStation_WithDuplicateScheduleDay_IsRejected with isolated synthetic data and explicit assertions.
         var request = ValidCreateRequest();
         request.OperatingSchedule.Add(new OperatingScheduleDto
         {
@@ -112,6 +125,7 @@ public sealed class StationServiceTests
     [Fact]
     public async Task UpdateStation_PreservesIdAndCreationDate()
     {
+        // Exercise UpdateStation_PreservesIdAndCreationDate with isolated synthetic data and explicit assertions.
         var database = new MongoTestContext();
         DateTime createdAt = DateTime.UtcNow.AddDays(-7);
         SolarStationInfo existing = Station(createdAt: createdAt);
@@ -151,6 +165,7 @@ public sealed class StationServiceTests
     [Fact]
     public void CreateStation_RequiresAuthenticatedBackofficeUser()
     {
+        // Exercise CreateStation_RequiresAuthenticatedBackofficeUser with isolated synthetic data and explicit assertions.
         AuthorizeAttribute? controllerAuthorization = typeof(StationsController)
             .GetCustomAttribute<AuthorizeAttribute>();
         AuthorizeAttribute? actionAuthorization = typeof(StationsController)
@@ -164,6 +179,7 @@ public sealed class StationServiceTests
     [Fact]
     public async Task NearbyQuery_RequestsActiveStationsOnly()
     {
+        // Exercise NearbyQuery_RequestsActiveStationsOnly with isolated synthetic data and explicit assertions.
         var database = new MongoTestContext();
         SolarStationInfo activeStation = Station();
         FilterDefinition<SolarStationInfo>? requestedFilter = null;
@@ -196,6 +212,7 @@ public sealed class StationServiceTests
 
     internal static CreateStationRequestDto ValidCreateRequest() => new()
     {
+        // Exercise ValidCreateRequest with isolated synthetic data and explicit assertions.
         Name = " Central Solar Hub ",
         Description = "Test station",
         Address = "Colombo",
@@ -210,6 +227,7 @@ public sealed class StationServiceTests
     [
         new()
         {
+        // Exercise ValidSchedule with isolated synthetic data and explicit assertions.
             DayOfWeek = "Monday",
             IsOpen = true,
             OpeningTime = "08:00",
@@ -222,6 +240,7 @@ public sealed class StationServiceTests
         DateTime? createdAt = null,
         List<StationOperatingSchedule>? schedule = null) => new()
     {
+        // Exercise Station with isolated synthetic data and explicit assertions.
         Id = ObjectId.GenerateNewId().ToString(),
         Name = "Central Solar Hub",
         Address = "Colombo",

@@ -1,3 +1,10 @@
+/*
+ * SlotResponseDto.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Defines the public slot response contract.
+ * -----------------------------------------------------------------------------
+ */
+
 namespace SolarMicrogrid.API.Models.DTOs.Slots;
 
 public sealed class SlotResponseDto

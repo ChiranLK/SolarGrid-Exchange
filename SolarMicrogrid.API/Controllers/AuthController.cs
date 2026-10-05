@@ -34,6 +34,7 @@ namespace SolarMicrogrid.API.Controllers
         // Receives AuthService through dependency injection.
         public AuthController(AuthService authService)
         {
+            // Execute AuthController with validated inputs and the authoritative application state.
             _authService = authService;
         }
 

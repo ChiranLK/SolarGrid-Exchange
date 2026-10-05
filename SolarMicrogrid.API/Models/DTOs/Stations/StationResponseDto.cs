@@ -1,3 +1,10 @@
+/*
+ * StationResponseDto.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Defines the public station response contract.
+ * -----------------------------------------------------------------------------
+ */
+
 namespace SolarMicrogrid.API.Models.DTOs.Stations;
 
 public sealed class StationResponseDto

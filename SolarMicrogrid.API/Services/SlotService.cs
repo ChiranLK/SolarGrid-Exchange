@@ -1,3 +1,10 @@
+/*
+ * SlotService.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Implements slot validation, availability and persistence business rules.
+ * -----------------------------------------------------------------------------
+ */
+
 using System.Globalization;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -20,6 +27,7 @@ public sealed class SlotService
 
     public SlotService(MongoDbContext context)
     {
+        // Execute SlotService with validated inputs and the authoritative application state.
         _context = context;
     }
 
@@ -28,6 +36,7 @@ public sealed class SlotService
         SlotListQueryDto query,
         CancellationToken cancellationToken)
     {
+        // Execute GetSlotsByStationAsync with validated inputs and the authoritative application state.
         return QuerySlotsAsync(
             stationId,
             query,
@@ -41,6 +50,7 @@ public sealed class SlotService
         SlotListQueryDto query,
         CancellationToken cancellationToken)
     {
+        // Execute GetAvailableSlotsByStationAsync with validated inputs and the authoritative application state.
         return QuerySlotsAsync(
             stationId,
             query,
@@ -53,6 +63,7 @@ public sealed class SlotService
         string slotId,
         CancellationToken cancellationToken)
     {
+        // Execute GetSlotByIdAsync with validated inputs and the authoritative application state.
         if (!ObjectId.TryParse(slotId, out _))
         {
             return null;
@@ -69,6 +80,7 @@ public sealed class SlotService
         string slotId,
         CancellationToken cancellationToken)
     {
+        // Execute DeleteSlotAsync with validated inputs and the authoritative application state.
         if (!ObjectId.TryParse(slotId, out _))
         {
             return false;
@@ -116,6 +128,7 @@ public sealed class SlotService
         CreateSlotRequestDto request,
         CancellationToken cancellationToken)
     {
+        // Execute CreateSlotAsync with validated inputs and the authoritative application state.
         ArgumentNullException.ThrowIfNull(request);
 
         string stationId = NormalizeObjectId(request.StationId, nameof(request.StationId));
@@ -165,6 +178,7 @@ public sealed class SlotService
         UpdateSlotRequestDto request,
         CancellationToken cancellationToken)
     {
+        // Execute UpdateSlotAsync with validated inputs and the authoritative application state.
         ArgumentNullException.ThrowIfNull(request);
 
         if (!ObjectId.TryParse(slotId, out _))
@@ -273,6 +287,7 @@ public sealed class SlotService
         ChangeSlotAvailabilityRequestDto request,
         CancellationToken cancellationToken)
     {
+        // Execute ChangeSlotAvailabilityAsync with validated inputs and the authoritative application state.
         ArgumentNullException.ThrowIfNull(request);
 
         if (!ObjectId.TryParse(slotId, out _))
@@ -365,6 +380,7 @@ public sealed class SlotService
         bool requireRemainingCapacity,
         CancellationToken cancellationToken)
     {
+        // Execute QuerySlotsAsync with validated inputs and the authoritative application state.
         ArgumentNullException.ThrowIfNull(query);
         string normalizedStationId = NormalizeObjectId(stationId, nameof(stationId));
         await GetRequiredStationAsync(normalizedStationId, cancellationToken);
@@ -444,6 +460,7 @@ public sealed class SlotService
         string stationId,
         CancellationToken cancellationToken)
     {
+        // Execute GetRequiredStationAsync with validated inputs and the authoritative application state.
         SolarStationInfo? station = await _context.Stations
             .Find(item => item.Id == stationId)
             .FirstOrDefaultAsync(cancellationToken);
@@ -458,6 +475,7 @@ public sealed class SlotService
         string? excludedSlotId,
         CancellationToken cancellationToken)
     {
+        // Execute EnsureNoOverlapAsync with validated inputs and the authoritative application state.
         FilterDefinition<EnergyBookingSlot> filter = Builders<EnergyBookingSlot>.Filter.And(
             Builders<EnergyBookingSlot>.Filter.Eq(slot => slot.StationId, stationId),
             Builders<EnergyBookingSlot>.Filter.Lt(slot => slot.StartTimeUtc, endUtc),
@@ -484,6 +502,7 @@ public sealed class SlotService
         DateTime endTime,
         DateTime? currentUtc = null)
     {
+        // Execute static with validated inputs and the authoritative application state.
         DateTime startUtc = NormalizeRequiredUtc(startTime, nameof(startTime));
         DateTime endUtc = NormalizeRequiredUtc(endTime, nameof(endTime));
 
@@ -505,6 +524,7 @@ public sealed class SlotService
         DateTime startUtc,
         DateTime endUtc)
     {
+        // Execute ValidateSlotFitsOperatingSchedule with validated inputs and the authoritative application state.
         DateTime localStart = TimeZoneInfo.ConvertTimeFromUtc(startUtc, OperatingScheduleTimeZone);
         DateTime localEnd = TimeZoneInfo.ConvertTimeFromUtc(endUtc, OperatingScheduleTimeZone);
 
@@ -537,6 +557,7 @@ public sealed class SlotService
 
     private static bool TryParseScheduleTime(string? value, out TimeOnly result)
     {
+        // Execute TryParseScheduleTime with validated inputs and the authoritative application state.
         return TimeOnly.TryParseExact(
             value,
             "HH:mm",
@@ -547,6 +568,7 @@ public sealed class SlotService
 
     private static void ValidateCapacity(decimal capacity)
     {
+        // Execute ValidateCapacity with validated inputs and the authoritative application state.
         if (capacity <= 0)
         {
             throw new ArgumentOutOfRangeException(
@@ -557,6 +579,7 @@ public sealed class SlotService
 
     private static string NormalizeObjectId(string? value, string parameterName)
     {
+        // Execute NormalizeObjectId with validated inputs and the authoritative application state.
         string normalized = value?.Trim() ?? string.Empty;
         if (!ObjectId.TryParse(normalized, out ObjectId objectId))
         {
@@ -568,6 +591,7 @@ public sealed class SlotService
 
     private static DateTime NormalizeRequiredUtc(DateTime value, string parameterName)
     {
+        // Execute NormalizeRequiredUtc with validated inputs and the authoritative application state.
         if (value == default || value.Kind == DateTimeKind.Unspecified)
         {
             throw new ArgumentException("A UTC timestamp with an explicit offset is required.", parameterName);
@@ -578,11 +602,13 @@ public sealed class SlotService
 
     private static DateTime? NormalizeOptionalUtc(DateTime? value, string parameterName)
     {
+        // Execute NormalizeOptionalUtc with validated inputs and the authoritative application state.
         return value.HasValue ? NormalizeRequiredUtc(value.Value, parameterName) : null;
     }
 
     private static SlotResponseDto MapToResponse(EnergyBookingSlot slot)
     {
+        // Execute MapToResponse with validated inputs and the authoritative application state.
         return new SlotResponseDto
         {
             Id = slot.Id,

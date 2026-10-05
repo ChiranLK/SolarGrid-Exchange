@@ -1,3 +1,10 @@
+/*
+ * StationAccessService.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Enforces live user and station scope for operator slot changes.
+ * -----------------------------------------------------------------------------
+ */
+
 using MongoDB.Driver;
 using SolarMicrogrid.API.Data;
 using SolarMicrogrid.API.Exceptions;
@@ -13,6 +20,7 @@ public sealed class StationAccessService
 
     public StationAccessService(MongoDbContext context, SlotService slotService)
     {
+        // Execute StationAccessService with validated inputs and the authoritative application state.
         _context = context;
         _slotService = slotService;
     }
@@ -23,6 +31,7 @@ public sealed class StationAccessService
         ChangeSlotAvailabilityRequestDto request,
         CancellationToken cancellationToken)
     {
+        // Execute ChangeSlotAvailabilityAsync with validated inputs and the authoritative application state.
         ArgumentNullException.ThrowIfNull(request);
 
         string normalizedNic = actorNic?.Trim().ToUpperInvariant() ?? string.Empty;

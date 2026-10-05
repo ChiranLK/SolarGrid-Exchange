@@ -83,6 +83,69 @@ public sealed class UserAdministrationServiceTests
             forbidden.Any(word => property.Name.Contains(word, StringComparison.OrdinalIgnoreCase)));
     }
 
+    // ---- Backoffice profile editing --------------------------------------------------
+
+    [Fact]
+    public async Task UpdateDetails_ChangesOnlyEditableProfileFields()
+    {
+        // Proves Backoffice can edit contact data without changing identity, role or status.
+        User original = Account(ProsumerNic, UserRole.Prosumer, UserStatus.Active);
+        string originalHash = original.PasswordHash;
+        var (service, store) = Create(original);
+
+        UserResponseDto result = await service.UpdateDetailsAsync(ProsumerNic, new UpdateProfileDto
+        {
+            FullName = " Updated Prosumer ",
+            Email = " UPDATED@example.com ",
+            Phone = " 0771234567 ",
+            Address = " Colombo "
+        });
+
+        User stored = store.Get(ProsumerNic)!;
+        Assert.Equal("Updated Prosumer", result.FullName);
+        Assert.Equal("updated@example.com", stored.Email);
+        Assert.Equal("0771234567", stored.Phone);
+        Assert.Equal("Colombo", stored.Address);
+        Assert.Equal(UserRole.Prosumer, stored.Role);
+        Assert.Equal(UserStatus.Active, stored.Status);
+        Assert.Equal(originalHash, stored.PasswordHash);
+        Assert.Equal(FixedNow.UtcDateTime, stored.UpdatedAtUtc);
+    }
+
+    [Fact]
+    public async Task UpdateDetails_DuplicateEmailIsConflict()
+    {
+        // Proves the service blocks an email already owned by another account.
+        User target = Account(ProsumerNic, UserRole.Prosumer, UserStatus.Active);
+        User other = Account(OperatorNic, UserRole.GridOperator, UserStatus.Active);
+        var (service, store) = Create(target, other);
+
+        await Assert.ThrowsAsync<ConflictException>(() => service.UpdateDetailsAsync(
+            target.Nic,
+            new UpdateProfileDto
+            {
+                FullName = target.FullName,
+                Email = other.Email,
+                Phone = target.Phone,
+                Address = target.Address
+            }));
+
+        Assert.Equal(target.Email, store.Get(target.Nic)!.Email);
+    }
+
+    [Fact]
+    public async Task GetByNic_ReturnsSafeUserProjection()
+    {
+        // Proves the edit screen can load one user without exposing the password hash.
+        User target = Account(ProsumerNic, UserRole.Prosumer, UserStatus.Active);
+        var (service, _) = Create(target);
+
+        UserResponseDto result = await service.GetByNicAsync($" {target.Nic} ");
+
+        Assert.Equal(target.Nic, result.Nic);
+        Assert.Equal(target.Email, result.Email);
+    }
+
     // ---- Activate / reactivate --------------------------------------------------------
 
     [Fact]

@@ -119,6 +119,8 @@ public sealed class ActiveAccountFilterTests
     [Theory]
     [InlineData(nameof(UsersController.CreateStaffUser))]
     [InlineData(nameof(UsersController.GetAll))]
+    [InlineData(nameof(UsersController.GetByNic))]
+    [InlineData(nameof(UsersController.UpdateDetails))]
     [InlineData(nameof(UsersController.GetPending))]
     [InlineData(nameof(UsersController.GetDeactivationRequests))]
     [InlineData(nameof(UsersController.Activate))]
@@ -160,6 +162,18 @@ public sealed class ActiveAccountFilterTests
     {
         // Proves every Component 3 reservation endpoint rechecks the account before the service runs.
         Assert.NotNull(typeof(ReservationsController).GetCustomAttribute<RequireActiveAccountAttribute>());
+    }
+
+    [Theory]
+    [InlineData(typeof(StationsController))]
+    [InlineData(typeof(SlotsController))]
+    [InlineData(typeof(DashboardController))]
+    [InlineData(typeof(TransactionsController))]
+    [InlineData(typeof(ProsumersController))]
+    public void RemainingProtectedControllers_RequireActiveAccount(Type controllerType)
+    {
+        // Proves a stale token cannot use any protected station, dashboard, QR or profile endpoint.
+        Assert.NotNull(controllerType.GetCustomAttribute<RequireActiveAccountAttribute>());
     }
 
     private static ClaimsPrincipal Principal(string nic, string role)

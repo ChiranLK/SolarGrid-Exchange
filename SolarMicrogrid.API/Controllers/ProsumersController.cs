@@ -20,6 +20,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SolarMicrogrid.API.Exceptions;
+using SolarMicrogrid.API.Filters;
 using SolarMicrogrid.API.Models.DTOs;
 using SolarMicrogrid.API.Models.DTOs.Prosumers;
 using SolarMicrogrid.API.Services;
@@ -29,6 +30,7 @@ namespace SolarMicrogrid.API.Controllers
     [ApiController]
     [Route("api/prosumers")]
     [Authorize(Roles = "Prosumer")]
+    [RequireActiveAccount]
     public class ProsumersController : ControllerBase
     {
         private readonly ProsumerService _prosumerService;
@@ -36,6 +38,7 @@ namespace SolarMicrogrid.API.Controllers
         // Receives ProsumerService through dependency injection.
         public ProsumersController(ProsumerService prosumerService)
         {
+            // Execute ProsumersController with validated inputs and the authoritative application state.
             _prosumerService = prosumerService;
         }
 

@@ -1,14 +1,23 @@
+/*
+ * StationsController.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Exposes authenticated station, schedule, activation and nearby-search endpoints.
+ * -----------------------------------------------------------------------------
+ */
+
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SolarMicrogrid.API.Models.DTOs.Stations;
 using SolarMicrogrid.API.Models.Entities;
+using SolarMicrogrid.API.Filters;
 using SolarMicrogrid.API.Services;
 
 namespace SolarMicrogrid.API.Controllers;
 
 [ApiController]
 [Authorize]
+[RequireActiveAccount]
 [Route("api/stations")]
 public sealed class StationsController : ControllerBase
 {
@@ -16,6 +25,7 @@ public sealed class StationsController : ControllerBase
 
     public StationsController(StationService stationService)
     {
+        // Execute StationsController with validated inputs and the authoritative application state.
         _stationService = stationService;
     }
 
@@ -24,6 +34,7 @@ public sealed class StationsController : ControllerBase
         [FromQuery] StationListQueryDto query,
         CancellationToken cancellationToken)
     {
+        // Execute GetStations with validated inputs and the authoritative application state.
         PagedStationResponseDto result = await _stationService.GetStationsAsync(query, cancellationToken);
         return Ok(result);
     }
@@ -36,6 +47,7 @@ public sealed class StationsController : ControllerBase
         [FromQuery, Range(1, 100)] int maximumResults = 20,
         CancellationToken cancellationToken = default)
     {
+        // Execute Range with validated inputs and the authoritative application state.
         IReadOnlyList<NearbyStationResponseDto> result =
             await _stationService.GetNearbyStationsAsync(
                 latitude,
@@ -52,6 +64,7 @@ public sealed class StationsController : ControllerBase
         string stationId,
         CancellationToken cancellationToken)
     {
+        // Execute GetStationById with validated inputs and the authoritative application state.
         StationResponseDto? station = await _stationService.GetStationByIdAsync(
             stationId,
             cancellationToken);
@@ -65,6 +78,7 @@ public sealed class StationsController : ControllerBase
         [FromBody] CreateStationRequestDto request,
         CancellationToken cancellationToken)
     {
+        // Execute CreateStation with validated inputs and the authoritative application state.
         StationResponseDto station = await _stationService.CreateStationAsync(request, cancellationToken);
         return CreatedAtAction(nameof(GetStationById), new { stationId = station.Id }, station);
     }
@@ -76,6 +90,7 @@ public sealed class StationsController : ControllerBase
         [FromBody] UpdateStationRequestDto request,
         CancellationToken cancellationToken)
     {
+        // Execute UpdateStation with validated inputs and the authoritative application state.
         StationResponseDto? station = await _stationService.UpdateStationAsync(
             stationId,
             request,
@@ -90,6 +105,7 @@ public sealed class StationsController : ControllerBase
         string stationId,
         CancellationToken cancellationToken)
     {
+        // Execute ActivateStation with validated inputs and the authoritative application state.
         StationResponseDto? station = await _stationService.ActivateStationAsync(stationId, cancellationToken);
         return station is null ? NotFound() : Ok(station);
     }
@@ -100,6 +116,7 @@ public sealed class StationsController : ControllerBase
         string stationId,
         CancellationToken cancellationToken)
     {
+        // Execute DeactivateStation with validated inputs and the authoritative application state.
         StationResponseDto? station = await _stationService.DeactivateStationAsync(stationId, cancellationToken);
         return station is null ? NotFound() : Ok(station);
     }
@@ -110,6 +127,7 @@ public sealed class StationsController : ControllerBase
         string stationId,
         CancellationToken cancellationToken)
     {
+        // Execute DeleteStation with validated inputs and the authoritative application state.
         StationResponseDto? station = await _stationService.DeactivateStationAsync(
             stationId,
             cancellationToken);

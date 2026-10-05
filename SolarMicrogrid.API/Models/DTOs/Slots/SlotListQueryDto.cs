@@ -1,3 +1,10 @@
+/*
+ * SlotListQueryDto.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Defines validated filtering and paging parameters for slot queries.
+ * -----------------------------------------------------------------------------
+ */
+
 using System.ComponentModel.DataAnnotations;
 using SolarMicrogrid.API.Models.Entities;
 

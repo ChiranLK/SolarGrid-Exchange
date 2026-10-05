@@ -1,3 +1,10 @@
+/*
+ * SlotServiceTests.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Verifies slot creation, update, paging, overlap and availability rules.
+ * -----------------------------------------------------------------------------
+ */
+
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
@@ -18,6 +25,7 @@ public sealed class SlotServiceTests
     [Fact]
     public async Task CreateSlot_WithValidRequest_CreatesAvailableSlot()
     {
+        // Exercise CreateSlot_WithValidRequest_CreatesAvailableSlot with isolated synthetic data and explicit assertions.
         (DateTime start, DateTime end) = FutureLocalSlot(10, 11);
         var database = CreateDatabaseWithStation(StationFor(start));
         database.ReturnSlots();
@@ -44,6 +52,7 @@ public sealed class SlotServiceTests
     [Fact]
     public async Task CreateSlot_WhenStationIsMissing_IsRejected()
     {
+        // Exercise CreateSlot_WhenStationIsMissing_IsRejected with isolated synthetic data and explicit assertions.
         var database = new MongoTestContext();
         database.ReturnStations();
         (DateTime start, DateTime end) = FutureLocalSlot(10, 11);
@@ -63,6 +72,7 @@ public sealed class SlotServiceTests
     [Fact]
     public async Task CreateSlot_WhenStationIsInactive_IsRejected()
     {
+        // Exercise CreateSlot_WhenStationIsInactive_IsRejected with isolated synthetic data and explicit assertions.
         (DateTime start, DateTime end) = FutureLocalSlot(10, 11);
         var database = CreateDatabaseWithStation(StationFor(start, isActive: false));
 
@@ -74,6 +84,7 @@ public sealed class SlotServiceTests
     [Fact]
     public async Task CreateSlot_WhenStartIsAfterEnd_IsRejected()
     {
+        // Exercise CreateSlot_WhenStartIsAfterEnd_IsRejected with isolated synthetic data and explicit assertions.
         (DateTime start, DateTime end) = FutureLocalSlot(10, 11);
         var database = CreateDatabaseWithStation(StationFor(start));
 
@@ -85,6 +96,7 @@ public sealed class SlotServiceTests
     [Fact]
     public async Task CreateSlot_WhenStartIsInPast_IsRejected()
     {
+        // Exercise CreateSlot_WhenStartIsInPast_IsRejected with isolated synthetic data and explicit assertions.
         DateTime start = DateTime.UtcNow.AddHours(-2);
         DateTime end = DateTime.UtcNow.AddHours(-1);
         var database = CreateDatabaseWithStation(StationFor(start));
@@ -97,6 +109,7 @@ public sealed class SlotServiceTests
     [Fact]
     public async Task CreateSlot_OutsideStationSchedule_IsRejected()
     {
+        // Exercise CreateSlot_OutsideStationSchedule_IsRejected with isolated synthetic data and explicit assertions.
         (DateTime start, DateTime end) = FutureLocalSlot(10, 11);
         DayOfWeek localDay = TimeZoneInfo.ConvertTimeFromUtc(start, ColomboTimeZone).DayOfWeek;
         var station = StationServiceTests.Station(schedule:
@@ -119,6 +132,7 @@ public sealed class SlotServiceTests
     [Fact]
     public async Task CreateSlot_WhenIdenticalSlotExists_IsRejected()
     {
+        // Exercise CreateSlot_WhenIdenticalSlotExists_IsRejected with isolated synthetic data and explicit assertions.
         (DateTime start, DateTime end) = FutureLocalSlot(10, 11);
         var database = CreateDatabaseWithStation(StationFor(start));
         database.ReturnSlots(Slot(database, start, end));
@@ -133,6 +147,7 @@ public sealed class SlotServiceTests
     [Fact]
     public async Task CreateSlot_WhenSlotOverlaps_IsRejected()
     {
+        // Exercise CreateSlot_WhenSlotOverlaps_IsRejected with isolated synthetic data and explicit assertions.
         (DateTime start, DateTime end) = FutureLocalSlot(10, 12);
         var database = CreateDatabaseWithStation(StationFor(start));
         database.ReturnSlots(Slot(database, start.AddMinutes(30), end.AddMinutes(30)));
@@ -147,6 +162,7 @@ public sealed class SlotServiceTests
     [InlineData(-1)]
     public async Task CreateSlot_WithInvalidCapacity_IsRejected(decimal capacity)
     {
+        // Exercise CreateSlot_WithInvalidCapacity_IsRejected with isolated synthetic data and explicit assertions.
         (DateTime start, DateTime end) = FutureLocalSlot(10, 11);
         var database = CreateDatabaseWithStation(StationFor(start));
 
@@ -158,6 +174,7 @@ public sealed class SlotServiceTests
     [Fact]
     public async Task UpdateSlot_BelowReservedCapacity_IsRejected()
     {
+        // Exercise UpdateSlot_BelowReservedCapacity_IsRejected with isolated synthetic data and explicit assertions.
         (DateTime start, DateTime end) = FutureLocalSlot(10, 11);
         var station = StationFor(start);
         var database = CreateDatabaseWithStation(station);
@@ -185,6 +202,7 @@ public sealed class SlotServiceTests
     [Fact]
     public async Task ChangeAvailability_CanDisableAndReEnableSlot()
     {
+        // Exercise ChangeAvailability_CanDisableAndReEnableSlot with isolated synthetic data and explicit assertions.
         (DateTime start, DateTime end) = FutureLocalSlot(10, 11);
         var database = new MongoTestContext();
         EnergyBookingSlot available = Slot(database, start, end);
@@ -223,6 +241,7 @@ public sealed class SlotServiceTests
     [Fact]
     public async Task AvailableSlotQuery_FiltersStatusCapacityAndExpiry()
     {
+        // Exercise AvailableSlotQuery_FiltersStatusCapacityAndExpiry with isolated synthetic data and explicit assertions.
         (DateTime start, DateTime end) = FutureLocalSlot(10, 11);
         SolarStationInfo station = StationFor(start);
         var database = CreateDatabaseWithStation(station);
@@ -264,6 +283,7 @@ public sealed class SlotServiceTests
 
     private static MongoTestContext CreateDatabaseWithStation(SolarStationInfo station)
     {
+        // Exercise CreateDatabaseWithStation with isolated synthetic data and explicit assertions.
         var database = new MongoTestContext();
         database.ReturnStations(station);
         return database;
@@ -286,6 +306,7 @@ public sealed class SlotServiceTests
         DateTime end,
         decimal capacity) => new()
     {
+        // Exercise Request with isolated synthetic data and explicit assertions.
         StationId = stationId,
         StartTimeUtc = start,
         EndTimeUtc = end,
@@ -294,6 +315,7 @@ public sealed class SlotServiceTests
 
     private static SolarStationInfo StationFor(DateTime slotStart, bool isActive = true)
     {
+        // Exercise StationFor with isolated synthetic data and explicit assertions.
         DayOfWeek localDay = TimeZoneInfo.ConvertTimeFromUtc(slotStart, ColomboTimeZone).DayOfWeek;
         return StationServiceTests.Station(
             isActive,
@@ -316,6 +338,7 @@ public sealed class SlotServiceTests
         decimal total = 20,
         decimal? available = null) => new()
     {
+        // Exercise Slot with isolated synthetic data and explicit assertions.
         Id = ObjectId.GenerateNewId().ToString(),
         StationId = database.ConfiguredStationId ?? ObjectId.GenerateNewId().ToString(),
         StartTimeUtc = start,
@@ -331,6 +354,7 @@ public sealed class SlotServiceTests
         EnergyBookingSlot source,
         SlotAvailabilityStatus status) => new()
     {
+        // Exercise Clone with isolated synthetic data and explicit assertions.
         Id = source.Id,
         StationId = source.StationId,
         StartTimeUtc = source.StartTimeUtc,
@@ -346,6 +370,7 @@ public sealed class SlotServiceTests
         int startHour,
         int endHour)
     {
+        // Exercise static with isolated synthetic data and explicit assertions.
         DateTime localDate = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, ColomboTimeZone)
             .Date
             .AddDays(2);

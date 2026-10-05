@@ -1,3 +1,10 @@
+/*
+ * PagedStationResponseDto.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Defines the paged station-list response contract.
+ * -----------------------------------------------------------------------------
+ */
+
 namespace SolarMicrogrid.API.Models.DTOs.Stations;
 
 public sealed class PagedStationResponseDto

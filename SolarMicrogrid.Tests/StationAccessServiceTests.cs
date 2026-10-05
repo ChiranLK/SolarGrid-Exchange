@@ -1,3 +1,10 @@
+/*
+ * StationAccessServiceTests.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Verifies role, account-status and station scope for slot availability changes.
+ * -----------------------------------------------------------------------------
+ */
+
 using System.Reflection;
 using Microsoft.AspNetCore.Authorization;
 using MongoDB.Bson;
@@ -17,6 +24,7 @@ public sealed class StationAccessServiceTests
     [Fact]
     public async Task Backoffice_CanChangeAvailabilityWithoutStationAssignment()
     {
+        // Exercise Backoffice_CanChangeAvailabilityWithoutStationAssignment with isolated synthetic data and explicit assertions.
         EnergyBookingSlot slot = Slot();
         MongoTestContext database = DatabaseWith(
             User(UserRole.Backoffice),
@@ -35,6 +43,7 @@ public sealed class StationAccessServiceTests
     [Fact]
     public async Task GridOperator_CanChangeAvailabilityForAssignedStation()
     {
+        // Exercise GridOperator_CanChangeAvailabilityForAssignedStation with isolated synthetic data and explicit assertions.
         EnergyBookingSlot slot = Slot();
         MongoTestContext database = DatabaseWith(
             User(UserRole.GridOperator, slot.StationId),
@@ -56,6 +65,7 @@ public sealed class StationAccessServiceTests
     [InlineData("000000000000000000000000")]
     public async Task GridOperator_WithoutMatchingAssignment_IsForbidden(string? assignedStationId)
     {
+        // Exercise GridOperator_WithoutMatchingAssignment_IsForbidden with isolated synthetic data and explicit assertions.
         EnergyBookingSlot slot = Slot();
         MongoTestContext database = DatabaseWith(
             User(UserRole.GridOperator, assignedStationId),
@@ -72,6 +82,7 @@ public sealed class StationAccessServiceTests
     [Fact]
     public async Task MissingAccount_IsUnauthorized()
     {
+        // Exercise MissingAccount_IsUnauthorized with isolated synthetic data and explicit assertions.
         var database = new MongoTestContext();
         database.ReturnUsers();
 
@@ -86,6 +97,7 @@ public sealed class StationAccessServiceTests
     [Fact]
     public async Task InactiveGridOperator_IsForbidden()
     {
+        // Exercise InactiveGridOperator_IsForbidden with isolated synthetic data and explicit assertions.
         EnergyBookingSlot slot = Slot();
         User user = User(UserRole.GridOperator, slot.StationId);
         user.Status = UserStatus.Deactivated;
@@ -102,6 +114,7 @@ public sealed class StationAccessServiceTests
     [Fact]
     public async Task Prosumer_IsForbiddenByBusinessService()
     {
+        // Exercise Prosumer_IsForbiddenByBusinessService with isolated synthetic data and explicit assertions.
         EnergyBookingSlot slot = Slot();
         MongoTestContext database = DatabaseWith(User(UserRole.Prosumer), slot);
 
@@ -116,6 +129,7 @@ public sealed class StationAccessServiceTests
     [Fact]
     public async Task MissingSlot_IsNotFound()
     {
+        // Exercise MissingSlot_IsNotFound with isolated synthetic data and explicit assertions.
         var database = new MongoTestContext();
         database.ReturnUsers(User(UserRole.Backoffice));
         database.ReturnSlots();
@@ -131,6 +145,7 @@ public sealed class StationAccessServiceTests
     [Fact]
     public void AvailabilityEndpoint_AllowsOnlyBackofficeAndGridOperatorRoles()
     {
+        // Exercise AvailabilityEndpoint_AllowsOnlyBackofficeAndGridOperatorRoles with isolated synthetic data and explicit assertions.
         AuthorizeAttribute? authorization = typeof(SlotsController)
             .GetMethod(nameof(SlotsController.ChangeSlotAvailability))!
             .GetCustomAttribute<AuthorizeAttribute>();
@@ -147,6 +162,7 @@ public sealed class StationAccessServiceTests
     [InlineData(nameof(SlotsController.UpdateSlot))]
     public void SlotDetailMutations_RemainBackofficeOnly(string methodName)
     {
+        // Exercise SlotDetailMutations_RemainBackofficeOnly with isolated synthetic data and explicit assertions.
         AuthorizeAttribute? authorization = typeof(SlotsController)
             .GetMethod(methodName)!
             .GetCustomAttribute<AuthorizeAttribute>();
@@ -159,6 +175,7 @@ public sealed class StationAccessServiceTests
 
     private static MongoTestContext DatabaseWith(User user, EnergyBookingSlot slot)
     {
+        // Exercise DatabaseWith with isolated synthetic data and explicit assertions.
         var database = new MongoTestContext();
         database.ReturnUsers(user);
         database.ReturnSlots(slot);
@@ -169,6 +186,7 @@ public sealed class StationAccessServiceTests
         MongoTestContext database,
         EnergyBookingSlot slot)
     {
+        // Exercise SetupAvailabilityUpdate with isolated synthetic data and explicit assertions.
         EnergyBookingSlot updatedSlot = Slot(
             slot.Id,
             slot.StationId,
@@ -184,6 +202,7 @@ public sealed class StationAccessServiceTests
 
     private static User User(UserRole role, string? assignedStationId = null) => new()
     {
+        // Exercise User with isolated synthetic data and explicit assertions.
         Nic = "200012345678",
         FullName = "Test User",
         Email = "test@example.com",
@@ -201,6 +220,7 @@ public sealed class StationAccessServiceTests
         string? stationId = null,
         SlotAvailabilityStatus status = SlotAvailabilityStatus.Available) => new()
     {
+        // Exercise Slot with isolated synthetic data and explicit assertions.
         Id = id ?? ObjectId.GenerateNewId().ToString(),
         StationId = stationId ?? ObjectId.GenerateNewId().ToString(),
         StartTimeUtc = DateTime.UtcNow.AddHours(2),

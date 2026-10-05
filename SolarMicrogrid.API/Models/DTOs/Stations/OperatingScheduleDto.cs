@@ -1,3 +1,10 @@
+/*
+ * OperatingScheduleDto.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Defines one day of a station operating schedule.
+ * -----------------------------------------------------------------------------
+ */
+
 using System.ComponentModel.DataAnnotations;
 
 namespace SolarMicrogrid.API.Models.DTOs.Stations;

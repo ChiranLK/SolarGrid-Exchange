@@ -79,7 +79,7 @@ describe('post-login role redirection', () => {
 })
 
 describe('Member 1 route protection (direct URL access)', () => {
-  const adminPaths = ['/users', '/users/new', '/users/pending', '/users/deactivation-requests']
+  const adminPaths = ['/users', '/users/new', '/users/200000000004/edit', '/users/pending', '/users/deactivation-requests']
 
   it.each(adminPaths)('renders %s for Backoffice', (path) => {
     const html = renderApp(path, 'Backoffice')
@@ -107,6 +107,16 @@ describe('Member 1 route protection (direct URL access)', () => {
     expect(renderApp('/prosumer', 'Backoffice')).not.toContain('Use the SolarGrid mobile app')
     expect(renderApp('/prosumer', 'GridOperator')).not.toContain('Use the SolarGrid mobile app')
   })
+
+  it.each(['/stations', '/stations/station-id', '/reservations', '/reservations/new'])(
+    'keeps Prosumers out of the staff web route %s',
+    (path) => {
+      const html = renderApp(path, 'Prosumer')
+      expect(html).not.toContain('Loading stations')
+      expect(html).not.toContain('Loading reservations')
+      expect(html).not.toContain('Create reservation')
+    },
+  )
 
   it('loads the admin views only through the Web API', () => {
     renderApp('/users', 'Backoffice')

@@ -1,3 +1,10 @@
+/*
+ * Stage18AuditTests.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Verifies assignment-stage authorization and deletion route policies.
+ * -----------------------------------------------------------------------------
+ */
+
 using System.Reflection;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
@@ -29,6 +36,7 @@ public sealed class Stage18AuditTests
     public async Task HistoricalOnlyReservations_DoNotBlockStationDeactivation(
         ReservationStatus historicalStatus)
     {
+        // Exercise HistoricalOnlyReservations_DoNotBlockStationDeactivation with isolated synthetic data and explicit assertions.
         var database = new MongoTestContext();
         SolarStationInfo station = StationServiceTests.Station();
         database.ReturnStations(station);
@@ -70,6 +78,7 @@ public sealed class Stage18AuditTests
     [Fact]
     public async Task MissingStation_ReturnsNotFoundFromBothDeactivationRoutes()
     {
+        // Exercise MissingStation_ReturnsNotFoundFromBothDeactivationRoutes with isolated synthetic data and explicit assertions.
         var database = new MongoTestContext();
         database.ReturnStations();
         var controller = new StationsController(new StationService(
@@ -87,6 +96,7 @@ public sealed class Stage18AuditTests
     [Fact]
     public async Task MissingSlot_ReturnsNotFoundFromDeleteRoute()
     {
+        // Exercise MissingSlot_ReturnsNotFoundFromDeleteRoute with isolated synthetic data and explicit assertions.
         var database = new MongoTestContext();
         database.ReturnSlots();
         var slotService = new SlotService(database.Context);
@@ -112,6 +122,7 @@ public sealed class Stage18AuditTests
         UserRole role,
         bool expectForbidden)
     {
+        // Exercise DeleteRoutePolicy_ForbidsNonBackofficeUsers with isolated synthetic data and explicit assertions.
         var authorization = controllerType.GetMethod(actionName)!
             .GetCustomAttribute<AuthorizeAttribute>();
         Assert.NotNull(authorization);
@@ -143,6 +154,7 @@ public sealed class Stage18AuditTests
     [InlineData(typeof(NotFoundException), StatusCodes.Status404NotFound)]
     public async Task DomainFailures_MapToExpectedHttpStatus(Type exceptionType, int expectedStatus)
     {
+        // Exercise DomainFailures_MapToExpectedHttpStatus with isolated synthetic data and explicit assertions.
         Exception exception = (Exception)Activator.CreateInstance(exceptionType, "test failure")!;
         var context = new DefaultHttpContext();
         context.Response.Body = new MemoryStream();
@@ -158,6 +170,7 @@ public sealed class Stage18AuditTests
     [Fact]
     public async Task CreatedStation_SerializesGeoJsonCoordinatesLongitudeFirst()
     {
+        // Exercise CreatedStation_SerializesGeoJsonCoordinatesLongitudeFirst with isolated synthetic data and explicit assertions.
         var database = new MongoTestContext();
         SolarStationInfo? inserted = null;
         database.Stations
@@ -184,6 +197,7 @@ public sealed class Stage18AuditTests
     [Fact]
     public async Task Deactivation_ForwardsCancellationTokenToEveryMongoOperation()
     {
+        // Exercise Deactivation_ForwardsCancellationTokenToEveryMongoOperation with isolated synthetic data and explicit assertions.
         var database = new MongoTestContext();
         SolarStationInfo station = StationServiceTests.Station();
         database.ReturnStations(station);

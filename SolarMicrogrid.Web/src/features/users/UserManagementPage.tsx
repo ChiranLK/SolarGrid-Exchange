@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { stationApi } from '../../api/stationApi'
 import { userApi } from '../../api/userApi'
 import { useAuth } from '../../auth/useAuth'
@@ -89,6 +89,9 @@ export function UserListState({
                   <td>{user.deactivationRequested ? <span className="badge text-bg-warning">Requested</span> : <span className="text-body-secondary">None</span>}</td>
                   <td>
                     <div className="d-flex flex-wrap gap-2 justify-content-end">
+                      <Link to={`/users/${encodeURIComponent(user.nic)}/edit`} className="btn btn-sm btn-outline-secondary">
+                        Edit details
+                      </Link>
                       {actions.canActivate && (
                         <button type="button" className="btn btn-sm btn-success" aria-label={`Activate ${user.fullName}`}
                           onClick={() => onAction({ ...base, kind: 'activate' })}>Activate</button>
@@ -140,6 +143,9 @@ export function UserListState({
             </dl>
             {user.deactivationRequested && <p className="small mb-3"><span className="badge text-bg-warning">Requested</span></p>}
             <div className="sg-mobile-actions d-flex flex-wrap gap-2">
+              <Link to={`/users/${encodeURIComponent(user.nic)}/edit`} className="btn btn-sm btn-outline-secondary">
+                Edit details
+              </Link>
               {actions.canActivate && (
                 <button type="button" className="btn btn-sm btn-success" aria-label={`Activate ${user.fullName}`}
                   onClick={() => onAction({ ...base, kind: 'activate' })}>Activate</button>

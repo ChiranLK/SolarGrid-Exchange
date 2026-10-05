@@ -1,3 +1,10 @@
+/*
+ * PagedSlotResponseDto.cs
+ * -----------------------------------------------------------------------------
+ * Purpose : Defines the paged slot-list response contract.
+ * -----------------------------------------------------------------------------
+ */
+
 namespace SolarMicrogrid.API.Models.DTOs.Slots;
 
 public sealed class PagedSlotResponseDto

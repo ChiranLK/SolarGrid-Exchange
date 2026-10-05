@@ -36,6 +36,7 @@ namespace SolarMicrogrid.API.Filters
         public RequireActiveAccountAttribute()
             : base(typeof(ActiveAccountFilter))
         {
+            // Resolve the live-account resource filter through dependency injection.
         }
     }
 
@@ -46,6 +47,7 @@ namespace SolarMicrogrid.API.Filters
         // Receives the shared MongoDB context through dependency injection.
         public ActiveAccountFilter(MongoDbContext context)
         {
+            // Execute ActiveAccountFilter with validated inputs and the authoritative application state.
             _context = context;
         }
 

@@ -21,17 +21,19 @@ const stations: StationSummary[] = [
 
 function listHtml(overrides: Partial<Parameters<typeof UserListState>[0]> = {}) {
   return renderToStaticMarkup(
-    <UserListState
-      loading={false}
-      error={null}
-      users={[]}
-      search=""
-      stations={stations}
-      currentNic="200000000001"
-      onRetry={vi.fn()}
-      onAction={vi.fn()}
-      {...overrides}
-    />,
+    <MemoryRouter>
+      <UserListState
+        loading={false}
+        error={null}
+        users={[]}
+        search=""
+        stations={stations}
+        currentNic="200000000001"
+        onRetry={vi.fn()}
+        onAction={vi.fn()}
+        {...overrides}
+      />
+    </MemoryRouter>,
   )
 }
 

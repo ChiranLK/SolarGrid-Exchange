@@ -138,6 +138,18 @@
             android:textAppearance="@style/TextAppearance.SolarGrid.Label"
             android:visibility="gone" />
 
+        <!--
+            Keep loading, empty and error content in the same vertical flow as the filters.
+            This view used to be a centered child of the root FrameLayout, which allowed its
+            illustration and retry action to cover the filter buttons on shorter screens.
+        -->
+        <com.solargrid.exchange.ui.common.UiStateView
+            android:id="@+id/history_state"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:gravity="center" />
+
         <ListView
             android:id="@+id/history_list"
             android:layout_width="match_parent"
@@ -187,10 +199,4 @@
                 android:text="@string/next_page" />
         </LinearLayout>
     </LinearLayout>
-
-    <com.solargrid.exchange.ui.common.UiStateView
-        android:id="@+id/history_state"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center" />
 </FrameLayout>
