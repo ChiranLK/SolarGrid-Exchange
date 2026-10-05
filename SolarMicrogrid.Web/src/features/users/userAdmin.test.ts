@@ -248,6 +248,6 @@ describe('API error presentation', () => {
   })
 
   it('passes through the network message when the API is unreachable', () => {
-    expect(describeActionError(new ApiError(0, 'Unable to reach the SolarGrid API.')).message).toBe('Unable to reach the SolarGrid API.')
+    expect(describeActionError(new ApiError(0, 'Unable to reach SolarGrid right now.')).message).toBe('Unable to reach SolarGrid right now.')
   })
 })

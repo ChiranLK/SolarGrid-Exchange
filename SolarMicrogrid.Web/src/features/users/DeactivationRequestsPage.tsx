@@ -71,7 +71,7 @@ export function DeactivationRequestsState({ loading, error, requests, onRetry, o
         </table>
       </div>
       <p className="small text-body-secondary px-3 py-2 mb-0">
-        The API does not currently support rejecting a request; the account stays active until a request is approved.
+        Requests cannot be declined here; the account stays active until a request is approved.
       </p>
     </div>
     <div className="sg-mobile-list d-grid gap-3 d-lg-none">
@@ -96,7 +96,7 @@ export function DeactivationRequestsState({ loading, error, requests, onRetry, o
         </article>
       ))}
       <p className="small text-body-secondary mb-0">
-        The API does not currently support rejecting a request; the account stays active until a request is approved.
+        Requests cannot be declined here; the account stays active until a request is approved.
       </p>
     </div>
     </>

@@ -54,7 +54,7 @@ export function StationFormPage() {
   return (
     <>
       <div className="mb-3"><Link to={stationId ? `/stations/${encodeURIComponent(stationId)}` : '/stations'}>← Back to stations</Link></div>
-      <PageHeader eyebrow="Backoffice" title={isEdit ? 'Edit station' : 'Create station'} description="The API validates location, capacities, and operating hours before saving." />
+      <PageHeader eyebrow="Backoffice" title={isEdit ? 'Edit station' : 'Create station'} description="Location, capacities and operating hours are checked before saving." />
       {loading ? <LoadingState label="Loading station…" /> : loadError ? <ApiErrorState error={loadError} resourceName="station" onRetry={() => { setLoading(true); setRetry((value) => value + 1) }} /> : (
         <>
           {saveError && <div className="mb-3"><ApiErrorState error={saveError} resourceName="station" />{validationDetails.length > 0 && <ul className="alert alert-danger mt-2 mb-0">{validationDetails.map((message) => <li key={message}>{message}</li>)}</ul>}</div>}

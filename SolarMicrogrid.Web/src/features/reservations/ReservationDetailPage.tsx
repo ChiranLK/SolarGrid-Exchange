@@ -413,7 +413,7 @@ export function ReservationDetailPage() {
           {activeAction === 'cancel' && actions.canCancel && (
             <ReasonForm
               title="Cancel reservation"
-              description="Confirm that this reservation should be cancelled. The optional reason is recorded only if the API accepts the transition."
+              description="Confirm that this reservation should be cancelled. The optional reason is saved with the reservation."
               label="Cancellation reason (optional)"
               value={cancelReason}
               isBusy={isMutating}
@@ -477,7 +477,7 @@ export function ReservationDetailPage() {
       <ConfirmationDialog
         isOpen={activeAction === 'approve' && actions.canApprove}
         title="Approve reservation?"
-        message="The API will revalidate the Prosumer, station, slot, schedule, overlap, and held allocation before approval."
+        message="The Prosumer account, station, slot, schedule and capacity are re-checked before approval."
         confirmLabel="Approve reservation"
         isBusy={isMutating}
         onCancel={() => selectAction(null)}
@@ -528,7 +528,7 @@ function ReservationActionResult({
             <p className="text-body-secondary mb-0">
               {reconciled
                 ? 'The original response was uncertain, so this result was confirmed from current server state.'
-                : 'The result below was refreshed from the reservation API.'}
+                : 'The details below were refreshed from the latest booking record.'}
             </p>
           </div>
           <StatusBadge status={reservation.status} />
@@ -597,7 +597,7 @@ function ActionAvailability({
       <div className="card-body p-4">
         <h2 id="available-actions-title" className="h5 mb-3">Available actions</h2>
         <p className="small text-body-secondary">
-          Availability and reasons come from the API for your current identity.
+          Only the actions your role can take on this reservation are enabled.
         </p>
         <div className="d-grid gap-3">
           {actionRows.map((row) => (
@@ -745,7 +745,7 @@ function UpdateReservationForm({
     <form className="card border-0 shadow-sm mb-4" onSubmit={handleSubmit}>
       <div className="card-body p-4">
         <h2 className="h5">Update reservation</h2>
-        <p className="text-body-secondary">Material changes to an approved reservation return it to Pending when accepted by the API.</p>
+        <p className="text-body-secondary">Material changes to an approved reservation return it to Pending for approval again.</p>
         {loadError && <div className="alert alert-warning" role="alert">{loadError}</div>}
         <div className="row g-3">
           <div className="col-12 col-lg-6">

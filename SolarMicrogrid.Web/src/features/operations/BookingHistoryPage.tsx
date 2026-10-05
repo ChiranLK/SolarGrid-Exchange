@@ -161,7 +161,7 @@ export function BookingHistoryPage() {
       <PageHeader
         eyebrow="Grid operations"
         title="Booking history"
-        description="Search the API-authorized history for your assigned station. Results remain in server order."
+        description="Search the booking history for your assigned station."
         actions={(
           <button type="button" className="btn btn-success" onClick={refresh} disabled={isLoading}>
             Refresh

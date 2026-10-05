@@ -27,7 +27,7 @@ export function describeCreationError(error: unknown): CreationErrorPresentation
   if (error.status === 0) {
     return {
       title: 'Save outcome not confirmed',
-      message: 'The API could not be reached while checking current server state. The reservation may have been saved; reload before retrying, then reuse the same request without creating a duplicate.',
+      message: 'SolarGrid could not be reached while checking the latest booking state. The reservation may have been saved; reload before retrying, then reuse the same request without creating a duplicate.',
       outcomeUnknown: true,
     }
   }

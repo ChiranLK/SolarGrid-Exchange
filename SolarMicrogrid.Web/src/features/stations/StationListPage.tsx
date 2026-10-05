@@ -62,7 +62,7 @@ export function StationListPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Solar network" title="Stations" description="Find stations by name or address. Capacity and status come from the API."
+      <PageHeader eyebrow="Solar network" title="Stations" description="Find stations by name or address. Generation capacity, battery storage and status are shown for each station."
         actions={session?.role === 'Backoffice' ? <Link to="/stations/new" className="btn btn-success">Create station</Link> : undefined} />
       <form className="card border-0 shadow-sm mb-4" onSubmit={submitSearch} role="search">
         <div className="card-body row g-3 align-items-end">

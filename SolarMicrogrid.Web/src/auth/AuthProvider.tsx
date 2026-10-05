@@ -39,7 +39,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       try {
         const currentUser = await authApi.me()
         if (!isUserRole(currentUser.role)) {
-          throw new Error('The API returned an unsupported user role.')
+          throw new Error('This account type is not supported on the web app.')
         }
 
         const validatedSession: AuthSession = {
@@ -72,7 +72,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const login = useCallback(async (request: LoginRequest) => {
     const response = await authApi.login(request)
     if (!isUserRole(response.role)) {
-      throw new Error('The API returned an unsupported user role.')
+      throw new Error('This account type is not supported on the web app.')
     }
 
     const authenticatedSession: AuthSession = {

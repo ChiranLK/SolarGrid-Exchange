@@ -60,10 +60,10 @@ export function StationSlots({ stationId, stationIsActive }: { stationId: string
   return (
     <section className="mt-4" aria-labelledby="station-slots-heading">
       <div className="d-flex flex-column flex-sm-row justify-content-between gap-2 mb-3">
-        <div><h2 id="station-slots-heading" className="h4 mb-1">Energy slots</h2><p className="text-body-secondary mb-0">Available capacity is reported by the API, not calculated here.</p></div>
+        <div><h2 id="station-slots-heading" className="h4 mb-1">Energy slots</h2><p className="text-body-secondary mb-0">Remaining capacity updates as reservations are approved.</p></div>
         {session?.role === 'Backoffice' && stationIsActive && <Link className="btn btn-success align-self-start" to={`/stations/${encodeURIComponent(stationId)}/slots/new`}>Create slot</Link>}
       </div>
-      {session?.role === 'GridOperator' && <p className="alert alert-info">Availability changes are allowed only for your currently assigned station. The API checks your live assignment before every change.</p>}
+      {session?.role === 'GridOperator' && <p className="alert alert-info">You can change availability only for the station you are currently assigned to.</p>}
       <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
         <label htmlFor="slot-status" className="form-label mb-0">Status</label>
         <select id="slot-status" className="form-select w-auto" value={status} onChange={(event) => { setLoading(true); setPage(1); setStatus(event.target.value as typeof status) }}>

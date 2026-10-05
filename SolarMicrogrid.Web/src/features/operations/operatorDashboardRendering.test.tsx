@@ -85,14 +85,14 @@ describe('Grid Operator dashboard rendering', () => {
     const error = renderState(
       'error',
       null,
-      new ApiError(0, 'Hosted API is unavailable.'),
+      new ApiError(0, 'Hosted service is unavailable.'),
     )
 
     expect(loading).toContain('Loading operator dashboard')
     expect(empty).toContain('No operational reservations')
     expect(empty).toContain('Refresh')
-    expect(error).toContain('API unavailable')
-    expect(error).toContain('Hosted API is unavailable.')
+    expect(error).toContain('Service unavailable')
+    expect(error).toContain('Hosted service is unavailable.')
     expect(error).toContain('Try again')
   })
 

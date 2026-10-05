@@ -86,7 +86,7 @@ export function StaffProsumerPicker({
             aria-describedby="eligible-prosumer-help"
           />
           <div id="eligible-prosumer-help" className="form-text">
-            Only matching active Prosumer accounts are returned by the authorized API.
+            Only matching active Prosumer accounts are listed.
           </div>
         </div>
         <div className="col-12 col-lg-3 d-flex align-items-start pt-lg-4">
@@ -118,7 +118,7 @@ export function StaffProsumerPicker({
         <div className="mt-3">
           <EmptyState
             title="No eligible Prosumers found"
-            description="Try another name, NIC, or email. Inactive and non-Prosumer accounts are excluded by the API."
+            description="Try another name, NIC, or email. Inactive and non-Prosumer accounts are not listed."
           />
         </div>
       )}

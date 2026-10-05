@@ -59,7 +59,7 @@ export function StationSchedulePage() {
   return (
     <>
       <div className="mb-3"><Link to={stationId ? `/stations/${encodeURIComponent(stationId)}` : '/stations'}>← Back to station</Link></div>
-      <PageHeader eyebrow="Backoffice" title="Edit operating schedule" description="Schedule times are in Asia/Colombo. Changes are validated by the API." />
+      <PageHeader eyebrow="Backoffice" title="Edit operating schedule" description="Schedule times are in Sri Lanka time (Asia/Colombo)." />
       {loading ? <LoadingState label="Loading schedule…" /> : loadError ? <ApiErrorState error={loadError} resourceName="station" /> : station ? (
         <form className="card border-0 shadow-sm" onSubmit={submit} noValidate><div className="card-body p-4">
           {saveError !== null && <div className="mb-3"><ApiErrorState error={saveError} resourceName="station" /></div>}
